@@ -116,3 +116,38 @@ export function useSeed(): boolean {
   seedCount -= 1;
   return true;
 }
+
+// ---------------- 日期与成长（Phase 3.4） ----------------
+
+/**
+ * 当前游戏天数（默认第 1 天）
+ * Phase 3.4 仅提供简单日期状态与 debug 推进接口；
+ * Phase 4 将由 TimeSystem 驱动真实时间流逝与跨天。
+ */
+let currentDay = 1;
+
+/** 读取当前天数 */
+export function getCurrentDay(): number {
+  return currentDay;
+}
+
+/**
+ * 推进到下一天（Debug 用，Phase 4 将由 TimeSystem 驱动）
+ * 同时做作物成长判定：
+ *   萝卜：plantDay + 1 <= currentDay 且 watered=true → 状态变 grown
+ *   （即播种次日且已浇水即成熟）
+ * @returns 新的当前天数
+ */
+export function advanceDay(): number {
+  currentDay += 1;
+  // 成长判定：遍历所有作物，满足条件则置为 grown
+  for (const [key, crop] of crops) {
+    if (crop.watered && crop.plantDay + 1 <= currentDay) {
+      const [col, row] = key.split(',').map(Number);
+      if (getTileState(col, row) !== 'grown') {
+        setTileState(col, row, 'grown');
+      }
+    }
+  }
+  return currentDay;
+}

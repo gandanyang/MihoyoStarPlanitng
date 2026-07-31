@@ -6,6 +6,7 @@ import {
   FARM_AREA,
   TILE_SIZE,
   getCrop,
+  getCurrentDay,
   getSeedCount,
   getTileState,
   isInFarmArea,
@@ -207,17 +208,30 @@ export class MapScene extends Phaser.Scene {
   }
 
   /**
-   * 刷新 HUD 文本（区域名 + 操作提示，农场额外显示种子数）
+   * 刷新 HUD 文本（区域名 + 天数 + 操作提示，农场额外显示种子数）
    */
   private updateHUD(): void {
     const name = MAP_NAMES[this.mapKey] ?? this.mapKey;
+    const day = `第${getCurrentDay()}天`;
     if (this.mapKey === 'farm') {
       this.hudText.setText(
-        `${name}  |  WASD 移动 | E 锄地/播种 | 萝卜种子:${getSeedCount()} | 走到出口切换区域`
+        `${name}  |  ${day} | WASD 移动 | E 锄地/播种/浇水 | 萝卜种子:${getSeedCount()} | 走到出口切换区域`
       );
     } else {
-      this.hudText.setText(`${name}  |  WASD 移动 | 走到出口切换区域`);
+      this.hudText.setText(`${name}  |  ${day} | WASD 移动 | 走到出口切换区域`);
     }
+  }
+
+  /**
+   * 刷新所有农田格子的视觉（public，供 debug.nextDay 成长判定后调用）
+   * 遍历 tileRects 重新读取 FarmState 状态并刷新显示
+   */
+  refreshFarmVisual(): void {
+    for (const [key, visual] of this.tileRects) {
+      const [col, row] = key.split(',').map(Number);
+      this.updateTileVisual(col, row, visual);
+    }
+    this.updateHUD();
   }
 
   /**
@@ -261,7 +275,7 @@ export class MapScene extends Phaser.Scene {
       // 播种：耕地 → 已种，消耗一颗萝卜种子
       if (!useSeed()) return; // 种子不足，静默不处理
       setTileState(tc, tr, 'planted');
-      setCrop(tc, tr, { cropType: 'radish', plantDay: 0, watered: false });
+      setCrop(tc, tr, { cropType: 'radish', plantDay: getCurrentDay(), watered: false });
     } else if (state === 'planted') {
       // 浇水：已种 → 已浇水（成长前置条件）
       setTileState(tc, tr, 'watered');
