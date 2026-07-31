@@ -3,6 +3,7 @@ import { GAME_CONFIG, GAME_TITLE } from './config';
 import { MapScene } from './scenes/MapScene';
 import { nextDay as timeNextDay, setTime as setGameTime, formatTime } from './data/TimeSystem';
 import { getCurrentDay } from './data/FarmState';
+import { refreshSchedule } from './systems/NPCSystem';
 
 // 创建 Phaser 游戏实例
 // 4 个区域各注册一个 MapScene 实例，首个（农场）自动启动
@@ -49,6 +50,12 @@ const game = new Phaser.Game({
   },
   setTime: (hour: number, minute: number) => {
     setGameTime(hour, minute);
+    // 时间跳变后刷新 NPC 日程并重建当前场景 NPC
+    refreshSchedule();
+    const scene = game.scene.getScenes(true)[0] as MapScene | undefined;
+    if (scene && typeof scene.rebuildNPCs === 'function') {
+      scene.rebuildNPCs();
+    }
     console.log(`[debug] setTime → Day ${getCurrentDay()} ${formatTime()}`);
   },
 };

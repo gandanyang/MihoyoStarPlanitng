@@ -15,6 +15,8 @@ import {
 } from '../data/FarmState';
 import { addItem, getItemCount } from '../data/Inventory';
 import { formatTime, nextDay as timeNextDay, tick as timeTick } from '../data/TimeSystem';
+import { NPC } from '../entities/NPC';
+import { getNPCsForScene, refreshSchedule, updateNPCs } from '../systems/NPCSystem';
 
 interface SceneInitData {
   spawn?: { x: number; y: number };
@@ -48,6 +50,12 @@ export class MapScene extends Phaser.Scene {
   private timeText!: Phaser.GameObjects.Text;
   // 上一帧时间戳（ms），用于计算 dt 调用 TimeSystem.tick
   private lastFrameTime = 0;
+  // 当前场景中的 NPC 列表（create 时从 NPCSystem 查询并创建 sprite）
+  private npcList: NPC[] = [];
+  // 对话框（靠近 NPC 按 E 显示，3 秒后消失）
+  private dialogueText: Phaser.GameObjects.Text | null = null;
+  // 对话框消失计时器
+  private dialogueTimer: Phaser.Time.TimerEvent | null = null;
 
   constructor(key: string) {
     super(key);
@@ -138,8 +146,11 @@ export class MapScene extends Phaser.Scene {
       this.setupFarmTiles();
     }
 
-    // E 键：锄地交互（所有场景注册，仅 farm 场景生效）
+    // E 键：锄地/播种/浇水/收获/睡觉/对话（所有场景注册）
     this.keyE = this.input.keyboard!.addKey('E');
+
+    // 创建当前场景的 NPC（根据 TimeSystem 时间判定 location）
+    this.setupNPCs();
   }
 
   update(timeMs: number): void {
@@ -150,6 +161,9 @@ export class MapScene extends Phaser.Scene {
     timeTick(dtMs);
 
     this.player.update();
+
+    // NPC 插值移动（仅对当前场景有 sprite 的 NPC 生效）
+    updateNPCs(dtMs);
 
     // E 键农田交互：锄地/播种（切换中不响应，避免离开农场瞬间误触）
     if (!this.transitioning && Phaser.Input.Keyboard.JustDown(this.keyE)) {
@@ -184,6 +198,65 @@ export class MapScene extends Phaser.Scene {
   updateTimeHUD(): void {
     const t = getCurrentDay();
     this.timeText.setText(`Day ${t}  ${formatTime()}`);
+  }
+
+  /**
+   * 创建当前场景中的 NPC 精灵
+   * 根据 TimeSystem 当前时间判定 NPC location，仅渲染在本场景的 NPC
+   */
+  private setupNPCs(): void {
+    // 先刷新日程（确保 currentLocation 与当前时间一致）
+    refreshSchedule();
+    this.npcList = getNPCsForScene(this.mapKey);
+    for (const npc of this.npcList) {
+      // 占位方块（颜色区分），尺寸 12x12
+      const sprite = this.add.rectangle(npc.targetX, npc.targetY, 12, 12, npc.color, 1);
+      sprite.setDepth(5);
+      npc.sprite = sprite;
+      // 名字标签
+      const label = this.add.text(npc.targetX, npc.targetY - 14, npc.name, {
+        fontFamily: 'Arial',
+        fontSize: '10px',
+        color: '#ffffff',
+      });
+      label.setOrigin(0.5).setDepth(6).setScrollFactor(1);
+      npc.label = label;
+      // 立即吸附到目标位置（避免从原点滑过来）
+      npc.snapToTarget();
+    }
+  }
+
+  /**
+   * 显示对话框（靠近 NPC 按 E 触发，3 秒后自动消失）
+   */
+  private showDialogue(npc: NPC): void {
+    // 已有对话框则先清除
+    if (this.dialogueText) {
+      this.dialogueText.destroy();
+      this.dialogueText = null;
+    }
+    if (this.dialogueTimer) {
+      this.dialogueTimer.remove();
+      this.dialogueTimer = null;
+    }
+    const text = `${npc.name}：${npc.dialogue}`;
+    this.dialogueText = this.add
+      .text(this.player.x, this.player.y - 24, text, {
+        fontFamily: 'Arial',
+        fontSize: '12px',
+        color: '#ffffff',
+        backgroundColor: '#000000',
+        padding: { x: 6, y: 4 },
+      })
+      .setOrigin(0.5)
+      .setDepth(200);
+    this.dialogueTimer = this.time.delayedCall(3000, () => {
+      if (this.dialogueText) {
+        this.dialogueText.destroy();
+        this.dialogueText = null;
+      }
+      this.dialogueTimer = null;
+    });
   }
 
   /**
@@ -273,10 +346,22 @@ export class MapScene extends Phaser.Scene {
 
   /**
    * E 键统一交互入口：
+   *   0. 若玩家靠近 NPC（所有场景）→ 显示对话
    *   1. 若玩家在农场睡觉区域内 → 尝试睡觉（任何时间都可以，不强制到 22:00）
    *   2. 否则 → 农田交互（锄地/播种/浇水/收获）
    */
   private tryInteract(): void {
+    // 0. 优先检测靠近 NPC（所有场景）：距离 < 24 像素则显示对话
+    for (const npc of this.npcList) {
+      if (!npc.sprite) continue;
+      const dx = this.player.x - npc.sprite.x;
+      const dy = this.player.y - npc.sprite.y;
+      if (dx * dx + dy * dy < 24 * 24) {
+        this.showDialogue(npc);
+        return;
+      }
+    }
+
     if (this.mapKey !== 'farm') return;
 
     // 1. 睡觉点检测：农场左下方木屋区域（瓦片 col 2-4, row 13-14）
@@ -295,11 +380,33 @@ export class MapScene extends Phaser.Scene {
   /**
    * 睡觉：TimeSystem.nextDay() → FarmState.advanceDay()
    * 时间重置为次日 06:00，作物成长结算
+   * 同时刷新 NPC 日程（次日 06:00 NPC 回到 farm 出生点）
    */
   private trySleep(): void {
     timeNextDay();
     // 刷新农田视觉（成长后 grown 作物变大）和 HUD
     this.refreshFarmVisual();
+    // 刷新 NPC 日程：次日 06:00，所有 NPC 应在 farm
+    // 当前在 farm 场景，重建本场景 NPC（其他场景进入时会自动 setupNPCs）
+    this.rebuildNPCs();
+  }
+
+  /**
+   * 重建当前场景的 NPC（睡觉/时间跳变后调用）
+   * 销毁旧 sprite，按新日程重新创建
+   */
+  rebuildNPCs(): void {
+    for (const npc of this.npcList) {
+      if (npc.sprite) {
+        npc.sprite.destroy();
+        npc.sprite = null;
+      }
+      if (npc.label) {
+        npc.label.destroy();
+        npc.label = null;
+      }
+    }
+    this.setupNPCs();
   }
 
   /**
