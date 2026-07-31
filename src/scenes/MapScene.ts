@@ -14,6 +14,7 @@ import {
   setTileState,
   useSeed,
 } from '../data/FarmState';
+import { addItem, getItemCount } from '../data/Inventory';
 
 interface SceneInitData {
   spawn?: { x: number; y: number };
@@ -215,10 +216,10 @@ export class MapScene extends Phaser.Scene {
     const day = `第${getCurrentDay()}天`;
     if (this.mapKey === 'farm') {
       this.hudText.setText(
-        `${name}  |  ${day} | WASD 移动 | E 锄地/播种/浇水 | 萝卜种子:${getSeedCount()} | 走到出口切换区域`
+        `${name} | ${day} | WASD/E交互 | 种子:${getSeedCount()} 萝卜:${getItemCount('radish')} | 出口切换`
       );
     } else {
-      this.hudText.setText(`${name}  |  ${day} | WASD 移动 | 走到出口切换区域`);
+      this.hudText.setText(`${name} | ${day} | WASD 移动 | 出口切换`);
     }
   }
 
@@ -235,10 +236,11 @@ export class MapScene extends Phaser.Scene {
   }
 
   /**
-   * 农田交互（E 键）：根据面前格子状态自动判断锄地/播种/浇水
+   * 农田交互（E 键）：根据面前格子状态自动判断锄地/播种/浇水/收获
    *   empty   → tilled   （锄地）
    *   tilled  → planted  （播种，消耗一颗萝卜种子，记录 CropData 供 Phase 4 时间系统用）
    *   planted → watered  （浇水，标记 watered=true，成长前置条件；成长逻辑留给 Phase 4 时间系统）
+   *   grown   → tilled   （收获，土地保留可重新播种，清除作物，获得萝卜 +1）
    * 作用方向由 Player.facing 决定
    */
   private tryInteract(): void {
@@ -281,8 +283,13 @@ export class MapScene extends Phaser.Scene {
       setTileState(tc, tr, 'watered');
       const crop = getCrop(tc, tr);
       if (crop) setCrop(tc, tr, { ...crop, watered: true });
+    } else if (state === 'grown') {
+      // 收获：成熟 → 耕地（保留已耕状态，可重新播种），清除作物，获得萝卜 +1
+      setTileState(tc, tr, 'tilled');
+      setCrop(tc, tr, undefined);
+      addItem('radish', 1);
     } else {
-      // watered/grown 暂不处理（收获在 Phase 3.5）
+      // watered 已浇水未成熟，暂不处理
       return;
     }
 
