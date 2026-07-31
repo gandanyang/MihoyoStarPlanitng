@@ -6,6 +6,9 @@ Phaser 3 + TypeScript + Vite 像素风农场 RPG 浏览器游戏。
 
 **v0.2-farm-growth** — 商店经济循环 + 农场等级经验系统
 
+
+
+
 ## 快速开始
 
 ```bash
