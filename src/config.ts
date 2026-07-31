@@ -11,3 +11,13 @@ export const GAME_CONFIG = {
 
 // 游戏标题
 export const GAME_TITLE = '星露谷二游 0.1';
+
+/**
+ * 判断是否为移动端布局（小屏）。
+ * 用于 HUD 等 UI 自适应：移动端精简信息、PC 保留完整提示。
+ * 注意：输入控件（摇杆/按钮）PC 和手机都显示，不依赖此判断。
+ * 统一入口，避免到处散落 window.innerWidth 判断。
+ */
+export function isMobileLayout(): boolean {
+  return window.innerWidth < 800;
+}

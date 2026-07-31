@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
 import { MAP_EXITS, MAP_NAMES } from '../data/exits';
+import { isMobileLayout } from '../config';
 import {
   FARM_AREA,
   TILE_SIZE,
@@ -226,11 +227,17 @@ export class MapScene extends Phaser.Scene {
   }
 
   /**
-   * 刷新左上角时间 HUD（Day N / HH:MM）
+   * 刷新左上角时间 HUD
+   * PC：Day N / HH:MM
+   * 移动端：只显示 HH:MM（Day 已在顶部 HUD 显示，避免重复）
    */
   updateTimeHUD(): void {
-    const t = getTime().day;
-    this.timeText.setText(`Day ${t}  ${formatTime()}`);
+    if (isMobileLayout()) {
+      this.timeText.setText(formatTime());
+    } else {
+      const t = getTime().day;
+      this.timeText.setText(`Day ${t}  ${formatTime()}`);
+    }
   }
 
   /**
@@ -283,6 +290,8 @@ export class MapScene extends Phaser.Scene {
   /**
    * 显示自定义文字对话框（3 秒后自动消失）
    * 用于任务对话/采集提示等非 NPC 固定台词
+   * PC：玩家头顶跟随（不变）
+   * 移动端：屏幕底部固定居中（setScrollFactor 0），避开摇杆/按钮
    */
   private showDialogueText(text: string): void {
     if (this.dialogueText) {
@@ -293,16 +302,27 @@ export class MapScene extends Phaser.Scene {
       this.dialogueTimer.remove();
       this.dialogueTimer = null;
     }
+    const mobile = isMobileLayout();
+    // 移动端：屏幕底部居中；PC：玩家头顶跟随
+    const x = mobile ? this.scale.width / 2 : this.player.x;
+    const y = mobile ? this.scale.height - 180 : this.player.y - 24;
+    const originX = 0.5;
+    const originY = mobile ? 1 : 0.5;
+    const scrollFactor = mobile ? 0 : 1;
+    const fontSize = mobile ? '14px' : '12px';
+    const wrapWidth = mobile ? this.scale.width - 80 : 300;
+
     this.dialogueText = this.add
-      .text(this.player.x, this.player.y - 24, text, {
+      .text(x, y, text, {
         fontFamily: 'Arial',
-        fontSize: '12px',
+        fontSize,
         color: '#ffffff',
         backgroundColor: '#000000',
         padding: { x: 6, y: 4 },
-        wordWrap: { width: 300 },
+        wordWrap: { width: wrapWidth },
       })
-      .setOrigin(0.5)
+      .setOrigin(originX, originY)
+      .setScrollFactor(scrollFactor)
       .setDepth(200);
     this.dialogueTimer = this.time.delayedCall(4000, () => {
       if (this.dialogueText) {
@@ -315,6 +335,8 @@ export class MapScene extends Phaser.Scene {
 
   /**
    * 显示对话框（靠近 NPC 按 E 触发，3 秒后自动消失）
+   * PC：玩家头顶跟随（不变）
+   * 移动端：屏幕底部固定居中（setScrollFactor 0），避开摇杆/按钮
    */
   private showDialogue(npc: NPC): void {
     // 已有对话框则先清除
@@ -326,16 +348,28 @@ export class MapScene extends Phaser.Scene {
       this.dialogueTimer.remove();
       this.dialogueTimer = null;
     }
+    const mobile = isMobileLayout();
     const text = `${npc.name}：${npc.dialogue}`;
+    // 移动端：屏幕底部居中；PC：玩家头顶跟随
+    const x = mobile ? this.scale.width / 2 : this.player.x;
+    const y = mobile ? this.scale.height - 180 : this.player.y - 24;
+    const originX = 0.5;
+    const originY = mobile ? 1 : 0.5;
+    const scrollFactor = mobile ? 0 : 1;
+    const fontSize = mobile ? '14px' : '12px';
+    const wrapWidth = mobile ? this.scale.width - 80 : 300;
+
     this.dialogueText = this.add
-      .text(this.player.x, this.player.y - 24, text, {
+      .text(x, y, text, {
         fontFamily: 'Arial',
-        fontSize: '12px',
+        fontSize,
         color: '#ffffff',
         backgroundColor: '#000000',
         padding: { x: 6, y: 4 },
+        wordWrap: { width: wrapWidth },
       })
-      .setOrigin(0.5)
+      .setOrigin(originX, originY)
+      .setScrollFactor(scrollFactor)
       .setDepth(200);
     this.dialogueTimer = this.time.delayedCall(3000, () => {
       if (this.dialogueText) {
@@ -406,16 +440,30 @@ export class MapScene extends Phaser.Scene {
 
   /**
    * 刷新 HUD 文本（区域名 + 天数 + 操作提示，农场额外显示种子数）
+   * PC：完整单行（含操作提示 WASD/E/出口切换）
+   * 移动端：精简两行，删除操作提示（摇杆+按钮已是教学）
+   *   农场：第一行 区域名+天数，第二行 种子/萝卜
+   *   其他：单行 区域名+天数
    */
   private updateHUD(): void {
     const name = MAP_NAMES[this.mapKey] ?? this.mapKey;
     const day = `第${getTime().day}天`;
-    if (this.mapKey === 'farm') {
-      this.hudText.setText(
-        `${name} | ${day} | WASD/E交互 | 种子:${getSeedCount()} 萝卜:${getItemCount('radish')} | 出口切换`
-      );
+    if (isMobileLayout()) {
+      // 移动端：精简，无操作提示
+      if (this.mapKey === 'farm') {
+        this.hudText.setText(`${name} ${day}\n种子${getSeedCount()} 萝卜${getItemCount('radish')}`);
+      } else {
+        this.hudText.setText(`${name} ${day}`);
+      }
     } else {
-      this.hudText.setText(`${name} | ${day} | WASD 移动 | 出口切换`);
+      // PC：完整提示
+      if (this.mapKey === 'farm') {
+        this.hudText.setText(
+          `${name} | ${day} | WASD/E交互 | 种子:${getSeedCount()} 萝卜:${getItemCount('radish')} | 出口切换`
+        );
+      } else {
+        this.hudText.setText(`${name} | ${day} | WASD 移动 | 出口切换`);
+      }
     }
   }
 
