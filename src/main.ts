@@ -1,8 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_CONFIG, GAME_TITLE } from './config';
 import { MapScene } from './scenes/MapScene';
-import { nextDay as timeNextDay, setTime as setGameTime, formatTime } from './data/TimeSystem';
-import { getCurrentDay } from './data/FarmState';
+import { getTime, nextDay as timeNextDay, setTime as setGameTime, formatTime } from './data/TimeSystem';
 import { refreshSchedule } from './systems/NPCSystem';
 
 // 创建 Phaser 游戏实例
@@ -56,7 +55,7 @@ const game = new Phaser.Game({
     if (scene && typeof scene.rebuildNPCs === 'function') {
       scene.rebuildNPCs();
     }
-    console.log(`[debug] setTime → Day ${getCurrentDay()} ${formatTime()}`);
+    console.log(`[debug] setTime → Day ${getTime().day} ${formatTime()}`);
   },
 };
 

@@ -95,13 +95,14 @@ export function tick(dtMs: number): void {
 
 /**
  * 结束当天 → 推进到次日 06:00
- * 内部调用 FarmState.advanceDay() 做作物成长结算。
+ * 内部调用 FarmState.advanceDay(time.day) 做作物成长结算。
+ * TimeSystem 是唯一时间来源：天数只在这里 +=1，FarmState 不自存天数。
  * Phase 4 之后扩展的 NPC/商店/任务刷新等也在此处追加调用。
  * @returns 新的天数
  */
 export function nextDay(): number {
-  advanceDay();
   time.day += 1;
+  advanceDay(time.day);
   time.hour = DAY_START_HOUR;
   time.minute = 0;
   pendingMinutes = 0;

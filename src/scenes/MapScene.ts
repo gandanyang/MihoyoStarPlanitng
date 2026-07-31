@@ -5,7 +5,6 @@ import {
   FARM_AREA,
   TILE_SIZE,
   getCrop,
-  getCurrentDay,
   getSeedCount,
   getTileState,
   isInFarmArea,
@@ -14,7 +13,7 @@ import {
   useSeed,
 } from '../data/FarmState';
 import { addItem, getItemCount } from '../data/Inventory';
-import { formatTime, nextDay as timeNextDay, tick as timeTick } from '../data/TimeSystem';
+import { formatTime, getTime, nextDay as timeNextDay, tick as timeTick } from '../data/TimeSystem';
 import { NPC } from '../entities/NPC';
 import { getNPCsForScene, refreshSchedule, updateNPCs } from '../systems/NPCSystem';
 
@@ -196,7 +195,7 @@ export class MapScene extends Phaser.Scene {
    * 刷新左上角时间 HUD（Day N / HH:MM）
    */
   updateTimeHUD(): void {
-    const t = getCurrentDay();
+    const t = getTime().day;
     this.timeText.setText(`Day ${t}  ${formatTime()}`);
   }
 
@@ -322,7 +321,7 @@ export class MapScene extends Phaser.Scene {
    */
   private updateHUD(): void {
     const name = MAP_NAMES[this.mapKey] ?? this.mapKey;
-    const day = `第${getCurrentDay()}天`;
+    const day = `第${getTime().day}天`;
     if (this.mapKey === 'farm') {
       this.hudText.setText(
         `${name} | ${day} | WASD/E交互 | 种子:${getSeedCount()} 萝卜:${getItemCount('radish')} | 出口切换`
@@ -448,7 +447,7 @@ export class MapScene extends Phaser.Scene {
       // 播种：耕地 → 已种，消耗一颗萝卜种子
       if (!useSeed()) return; // 种子不足，静默不处理
       setTileState(tc, tr, 'planted');
-      setCrop(tc, tr, { cropType: 'radish', plantDay: getCurrentDay(), watered: false });
+      setCrop(tc, tr, { cropType: 'radish', plantDay: getTime().day, watered: false });
     } else if (state === 'planted') {
       // 浇水：已种 → 已浇水（成长前置条件）
       setTileState(tc, tr, 'watered');
