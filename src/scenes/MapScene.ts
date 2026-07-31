@@ -46,7 +46,7 @@ export class MapScene extends Phaser.Scene {
   private tileRects = new Map<string, TileVisual>();
   // 输入管理器（统一键盘/触屏输入，Player 和交互共用）
   private inputManager!: InputManager;
-  // 触屏控件（摇杆+交互按钮，触屏设备才显示）
+  // 触屏控件（摇杆+交互按钮，DOM 单例，PC 和手机都显示）
   private touchControls!: TouchControls;
   // HUD 文本引用（主 HUD：区域名/天数/种子/萝卜）
   private hudText!: Phaser.GameObjects.Text;
@@ -177,7 +177,7 @@ export class MapScene extends Phaser.Scene {
       .setDepth(100);
     this.updateQuestHUD();
 
-    // 触屏控件（摇杆+交互按钮，触屏设备才显示，PC 自动隐藏）
+    // 触屏控件（摇杆+交互按钮，DOM 单例，PC 和手机都显示）
     this.touchControls = new TouchControls(this, this.inputManager);
   }
 

@@ -1,173 +1,179 @@
 /**
- * 触屏控件（Phase M3）
+ * 触屏控件（Phase M3，DOM 实现）
  *
  * 虚拟摇杆（左下角）+ 交互按钮（右下角"交互"）。
- * 自动检测触屏设备：触屏设备显示，纯 PC 隐藏。
+ * 用 DOM 元素覆盖在 canvas 上，不受 Phaser 摄像机 zoom/scroll 影响。
+ *
+ * 关键设计：所有状态和 DOM 都是模块级单例。
+ * 原因：MapScene 每个场景都会 new TouchControls()，但 DOM 只能创建一次。
+ * 如果状态放在实例里，场景切换后新实例的 dragging 永远是 false，
+ * 而 DOM 事件绑定在旧实例上 → 新场景摇杆失效，玩家无法移动（卡死）。
+ * 改成模块级后，所有场景共用同一套 dragging/joystickBase，事件绑定到模块函数，
+ * 每场景只更新 currentInput 引用即可。
  *
  * 架构：控件只操作 InputManager，不直接碰 Player/MapScene。
- *   摇杆拖动 → inputManager.moveX / moveY
- *   按钮按下 → inputManager.queueAction()
+ *   摇杆拖动 → currentInput.moveX / moveY
+ *   按钮按下 → currentInput.queueAction()
  *
- * 8 方向移动（与键盘 WASD 行为一致），死区防误触。
- * 控件固定在屏幕上（setScrollFactor 0），不随摄像机移动。
+ * currentInput 是模块级引用，每场景 create 时更新为当前活跃场景的 InputManager，
+ * 保证 DOM 事件（全局）操作的是当前场景的输入。
  */
 
-import Phaser from 'phaser';
 import { InputManager } from './InputManager';
 
+/** 当前活跃场景的 InputManager（DOM 事件回调操作它） */
+let currentInput: InputManager | null = null;
+
+// ===== 模块级摇杆状态（所有场景共用） =====
+let dragging = false;
+let lastPX = 0;
+let lastPY = 0;
+/** 死区（像素），小于此距离不触发方向 */
+const deadzone = 10;
+let joystickBase: HTMLDivElement | null = null;
+let joystickThumb: HTMLDivElement | null = null;
+/** DOM 是否已创建（防止重复创建） */
+let domCreated = false;
+
+/** 创建 DOM 控件（模块级，只创建一次） */
+function createDom(): void {
+  if (domCreated) return;
+  // HMR 时模块重载 domCreated 会归 false，但旧 DOM 可能还在，避免重复
+  if (document.getElementById('touch-controls')) {
+    domCreated = true;
+    return;
+  }
+  domCreated = true;
+
+  const container = document.createElement('div');
+  container.id = 'touch-controls';
+  container.style.cssText =
+    'position:fixed;inset:0;pointer-events:none;z-index:100;user-select:none;-webkit-user-select:none';
+
+  // 摇杆容器（左下角）
+  const joy = document.createElement('div');
+  joy.style.cssText =
+    'position:absolute;left:30px;bottom:30px;width:130px;height:130px;pointer-events:auto;touch-action:none';
+  joystickBase = document.createElement('div');
+  joystickBase.style.cssText =
+    'position:absolute;inset:0;border-radius:50%;background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.4)';
+  joystickThumb = document.createElement('div');
+  joystickThumb.style.cssText =
+    'position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px;border-radius:50%;background:rgba(255,255,255,0.6)';
+  joy.appendChild(joystickBase);
+  joy.appendChild(joystickThumb);
+
+  // 摇杆事件（touch + mouse 兼容，绑定到模块级函数）
+  joy.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const t = e.touches[0];
+    startDrag(t.clientX, t.clientY);
+  });
+  joy.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    const t = e.touches[0];
+    drag(t.clientX, t.clientY);
+  });
+  joy.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    endDrag();
+  });
+  joy.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    startDrag(e.clientX, e.clientY);
+  });
+  // mousemove/up 监听 window，避免移出摇杆区域就失效
+  window.addEventListener('mousemove', (e) => {
+    if (dragging) drag(e.clientX, e.clientY);
+  });
+  window.addEventListener('mouseup', () => {
+    if (dragging) endDrag();
+  });
+
+  // 交互按钮（右下角）
+  const btn = document.createElement('div');
+  btn.style.cssText =
+    'position:absolute;right:30px;bottom:30px;width:90px;height:90px;border-radius:50%;background:rgba(76,175,80,0.5);border:2px solid rgba(255,255,255,0.6);pointer-events:auto;display:flex;align-items:center;justify-content:center;color:#fff;font:bold 18px Arial;touch-action:none;cursor:pointer';
+  btn.textContent = '交互';
+  const pressBtn = (e: Event) => {
+    e.preventDefault();
+    if (currentInput) currentInput.queueAction();
+  };
+  btn.addEventListener('touchstart', pressBtn);
+  btn.addEventListener('mousedown', pressBtn);
+
+  container.appendChild(joy);
+  container.appendChild(btn);
+  document.body.appendChild(container);
+}
+
+/** 开始拖动摇杆 */
+function startDrag(px: number, py: number): void {
+  dragging = true;
+  lastPX = px;
+  lastPY = py;
+  applyDirection();
+}
+
+/** 拖动中 */
+function drag(px: number, py: number): void {
+  lastPX = px;
+  lastPY = py;
+  applyDirection();
+}
+
+/** 结束拖动，归零 */
+function endDrag(): void {
+  dragging = false;
+  if (currentInput) {
+    currentInput.moveX = 0;
+    currentInput.moveY = 0;
+  }
+  if (joystickThumb) {
+    joystickThumb.style.left = '50%';
+    joystickThumb.style.top = '50%';
+  }
+}
+
+/** 根据手指位置计算 8 方向，设 moveX/moveY，移动 thumb */
+function applyDirection(): void {
+  if (!currentInput || !joystickBase || !joystickThumb) return;
+  const rect = joystickBase.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  let dx = lastPX - cx;
+  let dy = lastPY - cy;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const max = rect.width / 2;
+  if (dist > max) {
+    dx = (dx / dist) * max;
+    dy = (dy / dist) * max;
+  }
+  // 移动 thumb
+  joystickThumb.style.left = `${rect.width / 2 + dx}px`;
+  joystickThumb.style.top = `${rect.height / 2 + dy}px`;
+  // 8 方向（与键盘 WASD 一致），死区防误触
+  currentInput.moveX = dx > deadzone ? 1 : dx < -deadzone ? -1 : 0;
+  currentInput.moveY = dy > deadzone ? 1 : dy < -deadzone ? -1 : 0;
+}
+
 export class TouchControls {
-  private scene: Phaser.Scene;
-  private input: InputManager;
-
-  // 是否触屏设备（决定是否显示控件）
-  private enabled: boolean;
-
-  // 摇杆
-  private base!: Phaser.GameObjects.Arc;
-  private thumb!: Phaser.GameObjects.Arc;
-  // 摇杆拖动状态
-  private dragging = false;
-  // 最近手指位置（屏幕坐标），update 每帧据此重设方向
-  private lastPX = 0;
-  private lastPY = 0;
-  // 摇杆中心点（屏幕坐标）
-  private readonly baseX = 90;
-  private readonly baseY = 510;
-  private readonly baseRadius = 42;
-  // 死区（像素），小于此距离不触发方向
-  private readonly deadzone = 10;
-
-  // 交互按钮
-  private actionBtn!: Phaser.GameObjects.Arc;
-  private readonly btnX = 710;
-  private readonly btnY = 510;
-  private readonly btnRadius = 38;
-
-  constructor(scene: Phaser.Scene, input: InputManager) {
-    this.scene = scene;
-    this.input = input;
-    this.enabled = this.isTouchDevice();
-
-    if (!this.enabled) return;
-
-    this.createJoystick();
-    this.createActionButton();
-  }
-
-  /** 检测触屏设备 */
-  private isTouchDevice(): boolean {
-    return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-  }
-
-  /** 创建虚拟摇杆 */
-  private createJoystick(): void {
-    this.base = this.scene.add
-      .circle(this.baseX, this.baseY, this.baseRadius, 0xffffff, 0.15)
-      .setStrokeStyle(2, 0xffffff, 0.4)
-      .setScrollFactor(0)
-      .setDepth(1000);
-    this.thumb = this.scene.add
-      .circle(this.baseX, this.baseY, 18, 0xffffff, 0.5)
-      .setScrollFactor(0)
-      .setDepth(1001);
-
-    // 摇杆区域可交互
-    this.base.setInteractive(
-      new Phaser.Geom.Circle(this.baseX, this.baseY, this.baseRadius + 20),
-      Phaser.Geom.Circle.Contains,
-    );
-
-    // 按下摇杆开始拖动
-    this.base.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      this.dragging = true;
-      this.lastPX = pointer.x;
-      this.lastPY = pointer.y;
-      this.updateJoystick(pointer.x, pointer.y);
-    });
-
-    // 全局监听拖动与抬起（避免手指移出 base 就失效）
-    this.scene.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
-      if (this.dragging) {
-        this.lastPX = pointer.x;
-        this.lastPY = pointer.y;
-        this.updateJoystick(pointer.x, pointer.y);
-      }
-    });
-    this.scene.input.on('pointerup', () => {
-      if (this.dragging) {
-        this.dragging = false;
-        this.resetJoystick();
-      }
-    });
-  }
-
-  /** 根据手指位置更新摇杆方向 */
-  private updateJoystick(px: number, py: number): void {
-    let dx = px - this.baseX;
-    let dy = py - this.baseY;
-    // 限制 thumb 在 base 半径内
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const maxDist = this.baseRadius;
-    if (dist > maxDist) {
-      dx = (dx / dist) * maxDist;
-      dy = (dy / dist) * maxDist;
+  constructor(_scene: Phaser.Scene, input: InputManager) {
+    // 更新当前活跃 InputManager（场景切换时由新场景更新）
+    currentInput = input;
+    // DOM 只创建一次，后续场景切换只更新 currentInput
+    if (!domCreated) {
+      createDom();
     }
-    this.thumb.setPosition(this.baseX + dx, this.baseY + dy);
-
-    // 计算 8 方向（与键盘一致：-1/0/1），死区防误触
-    this.input.moveX = dx > this.deadzone ? 1 : dx < -this.deadzone ? -1 : 0;
-    this.input.moveY = dy > this.deadzone ? 1 : dy < -this.deadzone ? -1 : 0;
-  }
-
-  /** 摇杆归位，停止移动 */
-  private resetJoystick(): void {
-    this.thumb.setPosition(this.baseX, this.baseY);
-    this.input.moveX = 0;
-    this.input.moveY = 0;
-  }
-
-  /** 创建交互按钮 */
-  private createActionButton(): void {
-    this.actionBtn = this.scene.add
-      .circle(this.btnX, this.btnY, this.btnRadius, 0x4caf50, 0.5)
-      .setStrokeStyle(2, 0xffffff, 0.6)
-      .setScrollFactor(0)
-      .setDepth(1000)
-      .setInteractive();
-
-    this.scene.add
-      .text(this.btnX, this.btnY, '交互', {
-        fontFamily: 'Arial',
-        fontSize: '16px',
-        color: '#ffffff',
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(1001);
-
-    // 按下触发动作（消费语义由 InputManager.consumeAction 保证只触发一次）
-    this.actionBtn.on('pointerdown', () => {
-      this.input.queueAction();
-      // 视觉反馈：按下缩小
-      this.actionBtn.setScale(0.9);
-    });
-    this.actionBtn.on('pointerup', () => {
-      this.actionBtn.setScale(1);
-    });
-    this.actionBtn.on('pointerout', () => {
-      this.actionBtn.setScale(1);
-    });
   }
 
   /**
    * 每帧调用（在 inputManager.update() 之后、player.update() 之前）
-   * 摇杆拖动时每帧重设方向，防止 inputManager.update() 用键盘值覆盖（触屏设备键盘为 0）
-   * 未拖动时不干预（保留键盘输入）
+   * 拖动中每帧重设方向，防止 inputManager.update() 用键盘值覆盖
+   * 使用模块级 dragging，保证跨场景一致
    */
   update(): void {
-    if (!this.enabled || !this.dragging) return;
-    this.updateJoystick(this.lastPX, this.lastPY);
+    if (!dragging) return;
+    applyDirection();
   }
-
-  /** 场景销毁时清理（Phaser 场景切换自动销毁游戏对象，无需手动） */
 }
