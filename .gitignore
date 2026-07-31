@@ -1,0 +1,33 @@
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+dist-ssr/
+
+# Vite 缓存
+.vite/
+
+# 日志
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 编辑器/IDE 临时文件
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 环境变量（如有，切勿提交）
+.env
+.env.local
+.env.*.local
