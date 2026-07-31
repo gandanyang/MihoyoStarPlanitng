@@ -65,10 +65,12 @@ export function setTileState(
  * 作物数据
  * plantDay：播种时的游戏天数（Phase 4 时间系统接入后由时间系统传入，0.1 暂记 0）
  * cropType：作物类型（0.1 只有萝卜 radish）
+ * watered：当天是否已浇水（成长条件，Phase 3.3 起）
  */
 export interface CropData {
   cropType: 'radish';
   plantDay: number;
+  watered: boolean;
 }
 
 /** 作物数据表：key = "col,row"，仅 planted/watered/grown 状态有值 */

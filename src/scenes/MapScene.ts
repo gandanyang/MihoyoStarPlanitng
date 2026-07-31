@@ -221,9 +221,10 @@ export class MapScene extends Phaser.Scene {
   }
 
   /**
-   * 农田交互（E 键）：根据面前格子状态自动判断锄地或播种
-   *   empty  → tilled  （锄地）
-   *   tilled → planted （播种，消耗一颗萝卜种子，记录 CropData 供 Phase 4 时间系统用）
+   * 农田交互（E 键）：根据面前格子状态自动判断锄地/播种/浇水
+   *   empty   → tilled   （锄地）
+   *   tilled  → planted  （播种，消耗一颗萝卜种子，记录 CropData 供 Phase 4 时间系统用）
+   *   planted → watered  （浇水，标记 watered=true，成长前置条件；成长逻辑留给 Phase 4 时间系统）
    * 作用方向由 Player.facing 决定
    */
   private tryInteract(): void {
@@ -260,9 +261,14 @@ export class MapScene extends Phaser.Scene {
       // 播种：耕地 → 已种，消耗一颗萝卜种子
       if (!useSeed()) return; // 种子不足，静默不处理
       setTileState(tc, tr, 'planted');
-      setCrop(tc, tr, { cropType: 'radish', plantDay: 0 });
+      setCrop(tc, tr, { cropType: 'radish', plantDay: 0, watered: false });
+    } else if (state === 'planted') {
+      // 浇水：已种 → 已浇水（成长前置条件）
+      setTileState(tc, tr, 'watered');
+      const crop = getCrop(tc, tr);
+      if (crop) setCrop(tc, tr, { ...crop, watered: true });
     } else {
-      // planted/watered/grown 暂不处理（浇水/收获在后续阶段）
+      // watered/grown 暂不处理（收获在 Phase 3.5）
       return;
     }
 
