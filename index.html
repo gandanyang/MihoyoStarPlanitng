@@ -2,21 +2,24 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>星露谷二游 0.1</title>
     <style>
-      body {
+      html, body {
         margin: 0;
         padding: 0;
+        height: 100%;
+        overflow: hidden;
         background: #111;
+        font-family: sans-serif;
+        /* 阻止移动端双指缩放与橡皮筋滚动 */
+        touch-action: none;
+        overscroll-behavior: none;
+      }
+      body {
         display: flex;
         justify-content: center;
         align-items: center;
-        min-height: 100vh;
-        font-family: sans-serif;
-      }
-      #game-container {
-        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
       }
     </style>
   </head>

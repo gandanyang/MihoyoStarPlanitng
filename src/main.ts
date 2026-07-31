@@ -13,6 +13,12 @@ const game = new Phaser.Game({
   height: GAME_CONFIG.height,
   backgroundColor: GAME_CONFIG.backgroundColor,
   title: GAME_TITLE,
+  // 画布自适应：保持内部分辨率 800×600，等比缩放填满屏幕并居中
+  // 地图坐标/碰撞/NPC 位置都基于 800×600 世界坐标，不改内部尺寸
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+  },
   // 启用 Arcade 物理系统（场景内 this.physics 依赖此配置）
   physics: {
     default: 'arcade',
