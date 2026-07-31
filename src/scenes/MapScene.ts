@@ -2,7 +2,6 @@ import Phaser from 'phaser';
 import { Player } from '../entities/Player';
 import { MAP_EXITS, MAP_NAMES } from '../data/exits';
 import {
-  CropData,
   FARM_AREA,
   TILE_SIZE,
   getCrop,
@@ -15,6 +14,7 @@ import {
   useSeed,
 } from '../data/FarmState';
 import { addItem, getItemCount } from '../data/Inventory';
+import { formatTime, nextDay as timeNextDay, tick as timeTick } from '../data/TimeSystem';
 
 interface SceneInitData {
   spawn?: { x: number; y: number };
@@ -40,10 +40,14 @@ export class MapScene extends Phaser.Scene {
   private transitioning = false;
   // 农田格子视觉对象（仅 farm 场景使用），key = "col,row"
   private tileRects = new Map<string, TileVisual>();
-  // E 键：锄地/播种交互
+  // E 键：锄地/播种/浇水/收获/睡觉
   private keyE!: Phaser.Input.Keyboard.Key;
-  // HUD 文本引用（播种后刷新种子数用）
+  // HUD 文本引用（主 HUD：区域名/天数/种子/萝卜）
   private hudText!: Phaser.GameObjects.Text;
+  // HUD 文本引用（左上角时间：Day N / HH:MM）
+  private timeText!: Phaser.GameObjects.Text;
+  // 上一帧时间戳（ms），用于计算 dt 调用 TimeSystem.tick
+  private lastFrameTime = 0;
 
   constructor(key: string) {
     super(key);
@@ -114,6 +118,21 @@ export class MapScene extends Phaser.Scene {
       .setDepth(100);
     this.updateHUD();
 
+    // 时间 HUD（左上角）：Day N / HH:MM
+    this.timeText = this.add
+      .text(12, 12, '', {
+        fontFamily: 'Arial',
+        fontSize: '14px',
+        color: '#ffffff',
+      })
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setDepth(100);
+    this.updateTimeHUD();
+
+    // 记录初始帧时间戳
+    this.lastFrameTime = this.time.now;
+
     // 农场场景：渲染农田格子覆盖层
     if (this.mapKey === 'farm') {
       this.setupFarmTiles();
@@ -123,7 +142,13 @@ export class MapScene extends Phaser.Scene {
     this.keyE = this.input.keyboard!.addKey('E');
   }
 
-  update(): void {
+  update(timeMs: number): void {
+    // 计算 dt（ms），推进游戏时间；上限 1000ms 防止切后台回来一次性跳太多
+    const rawDt = timeMs - this.lastFrameTime;
+    const dtMs = Math.max(0, Math.min(rawDt, 1000));
+    this.lastFrameTime = timeMs;
+    timeTick(dtMs);
+
     this.player.update();
 
     // E 键农田交互：锄地/播种（切换中不响应，避免离开农场瞬间误触）
@@ -148,6 +173,17 @@ export class MapScene extends Phaser.Scene {
         return;
       }
     }
+
+    // 每帧刷新时间 HUD（时间在流逝）
+    this.updateTimeHUD();
+  }
+
+  /**
+   * 刷新左上角时间 HUD（Day N / HH:MM）
+   */
+  updateTimeHUD(): void {
+    const t = getCurrentDay();
+    this.timeText.setText(`Day ${t}  ${formatTime()}`);
   }
 
   /**
@@ -236,16 +272,44 @@ export class MapScene extends Phaser.Scene {
   }
 
   /**
-   * 农田交互（E 键）：根据面前格子状态自动判断锄地/播种/浇水/收获
-   *   empty   → tilled   （锄地）
-   *   tilled  → planted  （播种，消耗一颗萝卜种子，记录 CropData 供 Phase 4 时间系统用）
-   *   planted → watered  （浇水，标记 watered=true，成长前置条件；成长逻辑留给 Phase 4 时间系统）
-   *   grown   → tilled   （收获，土地保留可重新播种，清除作物，获得萝卜 +1）
-   * 作用方向由 Player.facing 决定
+   * E 键统一交互入口：
+   *   1. 若玩家在农场睡觉区域内 → 尝试睡觉（任何时间都可以，不强制到 22:00）
+   *   2. 否则 → 农田交互（锄地/播种/浇水/收获）
    */
   private tryInteract(): void {
     if (this.mapKey !== 'farm') return;
 
+    // 1. 睡觉点检测：农场左下方木屋区域（瓦片 col 2-4, row 13-14）
+    // 进入该区域任意位置按 E 都可睡觉
+    const pc = Math.floor(this.player.x / TILE_SIZE);
+    const pr = Math.floor(this.player.y / TILE_SIZE);
+    if (pc >= 2 && pc <= 4 && pr >= 13 && pr <= 14) {
+      this.trySleep();
+      return;
+    }
+
+    // 2. 农田交互：根据面前格子状态自动判断锄地/播种/浇水/收获
+    this.tryFarmInteract();
+  }
+
+  /**
+   * 睡觉：TimeSystem.nextDay() → FarmState.advanceDay()
+   * 时间重置为次日 06:00，作物成长结算
+   */
+  private trySleep(): void {
+    timeNextDay();
+    // 刷新农田视觉（成长后 grown 作物变大）和 HUD
+    this.refreshFarmVisual();
+  }
+
+  /**
+   * 农田交互（按 Player.facing 决定面前格子）：
+   *   empty   → tilled   （锄地）
+   *   tilled  → planted  （播种，消耗一颗萝卜种子，记录 CropData）
+   *   planted → watered  （浇水，标记 watered=true）
+   *   grown   → tilled   （收获，土地保留可重新播种，清除作物，获得萝卜 +1）
+   */
+  private tryFarmInteract(): void {
     // 玩家所在瓦片坐标
     const pc = Math.floor(this.player.x / TILE_SIZE);
     const pr = Math.floor(this.player.y / TILE_SIZE);

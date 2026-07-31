@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { GAME_CONFIG, GAME_TITLE } from './config';
 import { MapScene } from './scenes/MapScene';
-import { advanceDay } from './data/FarmState';
+import { nextDay as timeNextDay, setTime as setGameTime, formatTime } from './data/TimeSystem';
+import { getCurrentDay } from './data/FarmState';
 
 // 创建 Phaser 游戏实例
 // 4 个区域各注册一个 MapScene 实例，首个（农场）自动启动
@@ -31,18 +32,24 @@ const game = new Phaser.Game({
 // 开发阶段把 game 实例挂到 window，便于浏览器控制台调试与自动化测试
 (window as unknown as { __game: Phaser.Game }).__game = game;
 
-// Debug API：快速推进一天，触发作物成长判定（Phase 3.4 测试用，Phase 4 由 TimeSystem 驱动）
-// 用法：浏览器控制台执行 window.debug.nextDay()
-(window as unknown as { debug: { nextDay: () => number } }).debug = {
+// Debug API（Phase 4 仍保留，供测试用）
+// 用法：
+//   window.debug.nextDay()          结束今日，推进到次日 06:00（TimeSystem.nextDay → FarmState.advanceDay）
+//   window.debug.setTime(21, 50)      设置当前时间（hour, minute（小时0-23 / 分钟0-59
+(window as unknown as { debug: { nextDay: () => number; setTime: (h: number, m: number) => void } }).debug = {
   nextDay: () => {
-    const newDay = advanceDay();
-    // 刷新当前活跃场景的农田视觉（farm 场景重绘 grown 作物；其他场景仅刷新 HUD 天数）
+    // Phase 4 起统一走 TimeSystem.nextDay，它内调 FarmState.advanceDay
+    const newDay = timeNextDay();
     const scene = game.scene.getScenes(true)[0] as MapScene | undefined;
     if (scene && typeof scene.refreshFarmVisual === 'function') {
       scene.refreshFarmVisual();
     }
-    console.log(`[debug] nextDay → 第${newDay}天`);
+    console.log(`[debug] nextDay → Day ${newDay} 06:00`);
     return newDay;
+  },
+  setTime: (hour: number, minute: number) => {
+    setGameTime(hour, minute);
+    console.log(`[debug] setTime → Day ${getCurrentDay()} ${formatTime()}`);
   },
 };
 
