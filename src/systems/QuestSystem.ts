@@ -1,0 +1,79 @@
+/**
+ * 主线任务系统（Phase 6）
+ *
+ * 唯一主线任务：星之碎片
+ * 5 步流程：村长接受 → 前往森林 → 采集星之碎片 → 返回村长 → 触发剧情
+ *
+ * 状态机：
+ *   not_started → accepted → collected → completed
+ *      (村长对话)   (森林采集)   (村长交付)
+ *
+ * TimeSystem 是天数唯一来源，任务状态跨场景保留（模块级单例）。
+ */
+
+/** 任务状态 */
+export type QuestState = 'not_started' | 'accepted' | 'collected' | 'completed';
+
+/** 当前任务状态（模块级单例） */
+let questState: QuestState = 'not_started';
+
+/** 读取当前任务状态 */
+export function getQuestState(): QuestState {
+  return questState;
+}
+
+/** 接受任务：not_started → accepted（与村长对话触发） */
+export function acceptQuest(): void {
+  if (questState === 'not_started') {
+    questState = 'accepted';
+  }
+}
+
+/** 采集星之碎片：accepted → collected（森林采集点 E 键触发） */
+export function collectShard(): void {
+  if (questState === 'accepted') {
+    questState = 'collected';
+  }
+}
+
+/** 交付任务：collected → completed（与村长对话触发，附带剧情） */
+export function deliverQuest(): void {
+  if (questState === 'collected') {
+    questState = 'completed';
+  }
+}
+
+/**
+ * 根据任务状态返回村长对话
+ * 不同状态对话不同，接受/交付在对话时自动推进状态
+ */
+export function getElderDialogue(): string {
+  switch (questState) {
+    case 'not_started':
+      acceptQuest();
+      return '村长：星辰岛的森林深处藏着一块「星之碎片」。能帮我取回吗？（任务已接受）';
+    case 'accepted':
+      return '村长：去森林找到发光的星之碎片吧，孩子。';
+    case 'collected':
+      deliverQuest();
+      return '村长：你拿到了！...这块碎片是岛屿心脏的一部分。传说当星辰归位，岛屿会苏醒。感谢你，冒险者。（任务完成）';
+    case 'completed':
+      return '村长：星辰岛的秘密才刚刚揭开...期待你的下一次冒险。';
+  }
+}
+
+/**
+ * 返回当前任务目标提示文字（HUD 显示用）
+ */
+export function getQuestObjective(): string {
+  switch (questState) {
+    case 'not_started':
+      return '与村长对话（农场/小镇）';
+    case 'accepted':
+      return '前往森林采集星之碎片';
+    case 'collected':
+      return '返回村长交付任务';
+    case 'completed':
+      return '主线任务完成！';
+  }
+}

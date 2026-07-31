@@ -16,6 +16,7 @@ import { addItem, getItemCount } from '../data/Inventory';
 import { formatTime, getTime, nextDay as timeNextDay, tick as timeTick } from '../data/TimeSystem';
 import { NPC } from '../entities/NPC';
 import { getNPCsForScene, refreshSchedule, updateNPCs } from '../systems/NPCSystem';
+import { collectShard, getElderDialogue, getQuestObjective, getQuestState } from '../systems/QuestSystem';
 
 interface SceneInitData {
   spawn?: { x: number; y: number };
@@ -55,6 +56,10 @@ export class MapScene extends Phaser.Scene {
   private dialogueText: Phaser.GameObjects.Text | null = null;
   // 对话框消失计时器
   private dialogueTimer: Phaser.Time.TimerEvent | null = null;
+  // 森林采集点：星之碎片（accepted 状态时显示，采集后销毁）
+  private shardSprite: Phaser.GameObjects.Ellipse | null = null;
+  // 任务目标 HUD（右上角）
+  private questText!: Phaser.GameObjects.Text;
 
   constructor(key: string) {
     super(key);
@@ -150,6 +155,23 @@ export class MapScene extends Phaser.Scene {
 
     // 创建当前场景的 NPC（根据 TimeSystem 时间判定 location）
     this.setupNPCs();
+
+    // 森林场景：创建星之碎片采集点（仅 accepted 状态显示）
+    if (this.mapKey === 'forest') {
+      this.setupShard();
+    }
+
+    // 任务目标 HUD（右上角，所有场景显示）
+    this.questText = this.add
+      .text(this.scale.width - 12, 12, '', {
+        fontFamily: 'Arial',
+        fontSize: '12px',
+        color: '#ffe082',
+      })
+      .setOrigin(1, 0)
+      .setScrollFactor(0)
+      .setDepth(100);
+    this.updateQuestHUD();
   }
 
   update(timeMs: number): void {
@@ -223,6 +245,60 @@ export class MapScene extends Phaser.Scene {
       // 立即吸附到目标位置（避免从原点滑过来）
       npc.snapToTarget();
     }
+  }
+
+  /**
+   * 创建森林星之碎片采集点
+   * 仅任务状态为 accepted 时显示（紫色发光椭圆）
+   * 采集后销毁
+   */
+  private setupShard(): void {
+    if (getQuestState() !== 'accepted') return;
+    // 采集点位置：森林 (20, 10) 瓦片中心
+    const cx = 20 * TILE_SIZE + TILE_SIZE / 2;
+    const cy = 10 * TILE_SIZE + TILE_SIZE / 2;
+    this.shardSprite = this.add.ellipse(cx, cy, 14, 14, 0xb388ff, 1);
+    this.shardSprite.setDepth(5);
+  }
+
+  /**
+   * 刷新任务目标 HUD（右上角）
+   */
+  updateQuestHUD(): void {
+    this.questText.setText(`任务：${getQuestObjective()}`);
+  }
+
+  /**
+   * 显示自定义文字对话框（3 秒后自动消失）
+   * 用于任务对话/采集提示等非 NPC 固定台词
+   */
+  private showDialogueText(text: string): void {
+    if (this.dialogueText) {
+      this.dialogueText.destroy();
+      this.dialogueText = null;
+    }
+    if (this.dialogueTimer) {
+      this.dialogueTimer.remove();
+      this.dialogueTimer = null;
+    }
+    this.dialogueText = this.add
+      .text(this.player.x, this.player.y - 24, text, {
+        fontFamily: 'Arial',
+        fontSize: '12px',
+        color: '#ffffff',
+        backgroundColor: '#000000',
+        padding: { x: 6, y: 4 },
+        wordWrap: { width: 300 },
+      })
+      .setOrigin(0.5)
+      .setDepth(200);
+    this.dialogueTimer = this.time.delayedCall(4000, () => {
+      if (this.dialogueText) {
+        this.dialogueText.destroy();
+        this.dialogueText = null;
+      }
+      this.dialogueTimer = null;
+    });
   }
 
   /**
@@ -356,7 +432,27 @@ export class MapScene extends Phaser.Scene {
       const dx = this.player.x - npc.sprite.x;
       const dy = this.player.y - npc.sprite.y;
       if (dx * dx + dy * dy < 24 * 24) {
-        this.showDialogue(npc);
+        // 村长对话由 QuestSystem 根据任务状态决定（含接受/交付推进）
+        if (npc.id === 'elder') {
+          this.showDialogueText(getElderDialogue());
+          this.updateQuestHUD();
+        } else {
+          this.showDialogue(npc);
+        }
+        return;
+      }
+    }
+
+    // 0.5 森林采集点：accepted 状态靠近星之碎片 E 键采集
+    if (this.mapKey === 'forest' && this.shardSprite && this.shardSprite.visible) {
+      const dx = this.player.x - this.shardSprite.x;
+      const dy = this.player.y - this.shardSprite.y;
+      if (dx * dx + dy * dy < 24 * 24) {
+        collectShard();
+        this.shardSprite.destroy();
+        this.shardSprite = null;
+        this.showDialogueText('采集到「星之碎片」！返回村长交付任务。');
+        this.updateQuestHUD();
         return;
       }
     }
