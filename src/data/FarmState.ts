@@ -58,3 +58,59 @@ export function setTileState(
 ): void {
   tiles.set(tileKey(col, row), state);
 }
+
+// ---------------- 作物数据（Phase 3.2 起） ----------------
+
+/**
+ * 作物数据
+ * plantDay：播种时的游戏天数（Phase 4 时间系统接入后由时间系统传入，0.1 暂记 0）
+ * cropType：作物类型（0.1 只有萝卜 radish）
+ */
+export interface CropData {
+  cropType: 'radish';
+  plantDay: number;
+}
+
+/** 作物数据表：key = "col,row"，仅 planted/watered/grown 状态有值 */
+const crops = new Map<string, CropData>();
+
+/** 读取某格作物数据 */
+export function getCrop(col: number, row: number): CropData | undefined {
+  return crops.get(tileKey(col, row));
+}
+
+/** 设置某格作物数据（传 undefined 清除） */
+export function setCrop(
+  col: number,
+  row: number,
+  crop: CropData | undefined
+): void {
+  if (crop) {
+    crops.set(tileKey(col, row), crop);
+  } else {
+    crops.delete(tileKey(col, row));
+  }
+}
+
+// ---------------- 种子库存（Phase 3.2） ----------------
+
+/** 初始萝卜种子数量（写死，0.1 不做背包/商店） */
+const INITIAL_SEEDS = 5;
+
+/** 当前萝卜种子数量 */
+let seedCount = INITIAL_SEEDS;
+
+/** 读取当前种子数量 */
+export function getSeedCount(): number {
+  return seedCount;
+}
+
+/**
+ * 消耗一颗种子播种
+ * @returns true 成功；false 种子不足
+ */
+export function useSeed(): boolean {
+  if (seedCount <= 0) return false;
+  seedCount -= 1;
+  return true;
+}
