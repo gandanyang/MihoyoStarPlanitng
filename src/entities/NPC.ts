@@ -28,8 +28,8 @@ export interface ScheduleEntry {
 export class NPC {
   readonly id: string;
   readonly name: string;
-  /** 占位方块颜色 */
-  readonly color: number;
+  /** 贴图 key（preload 加载的图片 key） */
+  readonly textureKey: string;
   /** 固定日程（按 time 升序排列） */
   readonly schedule: ScheduleEntry[];
 
@@ -41,7 +41,7 @@ export class NPC {
   targetY: number;
 
   /** 渲染对象（由 MapScene 在 create 时创建并赋值，离开场景时置空） */
-  sprite: Phaser.GameObjects.Rectangle | null = null;
+  sprite: Phaser.GameObjects.Image | null = null;
   /** 名字标签 */
   label: Phaser.GameObjects.Text | null = null;
 
@@ -51,13 +51,13 @@ export class NPC {
   constructor(
     id: string,
     name: string,
-    color: number,
+    textureKey: string,
     dialogue: string,
     schedule: ScheduleEntry[]
   ) {
     this.id = id;
     this.name = name;
-    this.color = color;
+    this.textureKey = textureKey;
     this.dialogue = dialogue;
     this.schedule = schedule;
     // 初始位置取第一条日程（应是最早时刻 06:00 那条）
@@ -80,7 +80,8 @@ export class NPC {
     this.sprite.y += dy * factor;
     if (this.label) {
       this.label.x = this.sprite.x;
-      this.label.y = this.sprite.y - 14;
+      // 32x32 NPC 缩放 0.5 后，标签在头顶上方 10 像素
+      this.label.y = this.sprite.y - 10;
     }
   }
 
@@ -94,7 +95,8 @@ export class NPC {
     this.sprite.y = this.targetY;
     if (this.label) {
       this.label.x = this.sprite.x;
-      this.label.y = this.sprite.y - 14;
+      // 32x32 NPC 缩放 0.5 后，标签在头顶上方 10 像素
+      this.label.y = this.sprite.y - 10;
     }
   }
 }

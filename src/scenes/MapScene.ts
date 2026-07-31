@@ -83,12 +83,17 @@ export class MapScene extends Phaser.Scene {
     if (!this.textures.exists('tiles')) {
       this.load.image('tiles', 'assets/tiles/placeholder_tileset.png');
     }
+    // 玩家 spritesheet（4方向×4帧 run 动画，每帧 32x32，显示时缩放 0.5 与 16x16 瓦片协调）
+    if (!this.textures.exists('player')) {
+      this.load.spritesheet('player', 'assets/sprites/player.png', { frameWidth: 32, frameHeight: 32 });
+    }
+    // NPC 贴图（3 张 32x32 单帧，显示时缩放 0.5 与 16x16 瓦片协调）
+    if (!this.textures.exists('npc_elder')) this.load.image('npc_elder', 'assets/sprites/npc_elder.png');
+    if (!this.textures.exists('npc_merchant')) this.load.image('npc_merchant', 'assets/sprites/npc_merchant.png');
+    if (!this.textures.exists('npc_girl')) this.load.image('npc_girl', 'assets/sprites/npc_girl.png');
   }
 
   create(): void {
-    // 玩家占位纹理（全局共用，已存在则跳过）
-    this.createPlaceholderTexture('player', 0x4488ff, 0x224488);
-
     // 创建 tilemap 并关联 tileset
     const map = this.make.tilemap({ key: this.mapKey });
     const tileset = map.addTilesetImage('placeholder', 'tiles');
@@ -249,12 +254,13 @@ export class MapScene extends Phaser.Scene {
     refreshSchedule();
     this.npcList = getNPCsForScene(this.mapKey);
     for (const npc of this.npcList) {
-      // 占位方块（颜色区分），尺寸 12x12
-      const sprite = this.add.rectangle(npc.targetX, npc.targetY, 12, 12, npc.color, 1);
+      // NPC 精灵贴图（32x32，缩放 0.5 后显示为 16x16，与瓦片协调）
+      const sprite = this.add.image(npc.targetX, npc.targetY, npc.textureKey);
+      sprite.setScale(0.5);
       sprite.setDepth(5);
       npc.sprite = sprite;
-      // 名字标签
-      const label = this.add.text(npc.targetX, npc.targetY - 14, npc.name, {
+      // 名字标签（32x32 缩放 0.5 后，标签上移 10 像素贴头顶）
+      const label = this.add.text(npc.targetX, npc.targetY - 10, npc.name, {
         fontFamily: 'Arial',
         fontSize: '10px',
         color: '#ffffff',
@@ -624,23 +630,5 @@ export class MapScene extends Phaser.Scene {
     const visual = this.tileRects.get(`${tc},${tr}`);
     if (visual) this.updateTileVisual(tc, tr, visual);
     this.updateHUD();
-  }
-
-  /**
-   * 生成占位纹理：实心方块 + 边框（无美术资源阶段的兜底）
-   */
-  private createPlaceholderTexture(
-    key: string,
-    fillColor: number,
-    borderColor: number
-  ): void {
-    if (this.textures.exists(key)) return;
-    const g = this.add.graphics();
-    g.fillStyle(fillColor);
-    g.fillRect(0, 0, 16, 16);
-    g.lineStyle(2, borderColor);
-    g.strokeRect(0, 0, 16, 16);
-    g.generateTexture(key, 16, 16);
-    g.destroy();
   }
 }

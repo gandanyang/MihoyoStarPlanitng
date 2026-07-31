@@ -42,11 +42,11 @@ function buildSchedule(): ScheduleEntry[] {
   ];
 }
 
-/** 三个 NPC */
+/** 三个 NPC（textureKey 对应 preload 加载的贴图） */
 const npcs: NPC[] = [
-  new NPC('elder', '村长', 0xffc107, '欢迎来到星辰岛。', buildSchedule()),
-  new NPC('shopkeeper', '商店老板', 0x4caf50, '小店刚开张，0.1 版本还没货。', buildSchedule()),
-  new NPC('mystery', '神秘少女', 0xe91e63, '...你听得见岛的低语吗？', buildSchedule()),
+  new NPC('elder', '村长', 'npc_elder', '欢迎来到星辰岛。', buildSchedule()),
+  new NPC('shopkeeper', '商店老板', 'npc_merchant', '小店刚开张，0.1 版本还没货。', buildSchedule()),
+  new NPC('mystery', '神秘少女', 'npc_girl', '...你听得见岛的低语吗？', buildSchedule()),
 ];
 
 /** 读取全部 NPC（只读列表） */

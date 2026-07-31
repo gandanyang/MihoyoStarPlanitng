@@ -23,8 +23,8 @@ const game = new Phaser.Game({
   physics: {
     default: 'arcade',
     arcade: {
-      // Phase 1 临时开启调试，可视化碰撞体，验收后关闭
-      debug: true,
+      // 物理调试已关闭（美术升级后不再需要可视化碰撞体）
+      debug: false,
     },
   },
   scene: [
