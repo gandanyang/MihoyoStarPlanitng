@@ -1238,7 +1238,7 @@
   "tilesets": [
     {
       "firstgid": 1,
-      "image": "../tiles/placeholder_tileset.png",
+      "image": "../tiles/farm_tileset.png",
       "imageheight": 16,
       "imagewidth": 128,
       "margin": 0,

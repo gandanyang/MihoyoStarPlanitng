@@ -32,6 +32,8 @@ export class InputManager {
   private keyA: Phaser.Input.Keyboard.Key;
   private keyS: Phaser.Input.Keyboard.Key;
   private keyD: Phaser.Input.Keyboard.Key;
+  /** 背包键：B（MapScene 直接读取 JustDown） */
+  keyB: Phaser.Input.Keyboard.Key;
 
   constructor(keyboard: Phaser.Input.Keyboard.KeyboardPlugin) {
     this.cursors = keyboard.createCursorKeys();
@@ -44,6 +46,9 @@ export class InputManager {
     keyboard.addKey('E').on('down', () => this.queueAction());
     keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE).on('down', () => this.queueAction());
     keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER).on('down', () => this.queueAction());
+
+    // 背包键：B（MapScene 直接读取，不走 action 队列）
+    this.keyB = keyboard.addKey('B');
   }
 
   /**
@@ -65,6 +70,15 @@ export class InputManager {
       return true;
     }
     return false;
+  }
+
+  /**
+   * 清空排队动作（丢弃本次按键）
+   * 场景：打开商店时，若开门瞬间的 E 键已排队，
+   * 不清空会导致下一次 update 立即把商店关掉。
+   */
+  clearAction(): void {
+    this.actionQueued = false;
   }
 
   /**

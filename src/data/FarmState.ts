@@ -117,6 +117,50 @@ export function useSeed(): boolean {
   return true;
 }
 
+/**
+ * 增加种子数量（商店购买后调用）
+ * @param n 增加数量（必须 > 0）
+ */
+export function addSeeds(n: number): void {
+  if (n <= 0) return;
+  seedCount += n;
+}
+
+/** 直接设置种子数量（存档恢复用） */
+export function setSeedCount(n: number): void {
+  seedCount = Math.max(0, Math.floor(n));
+}
+
+/** 获取所有土地状态条目（存档序列化用） */
+export function getAllTileEntries(): [string, TileState][] {
+  return Array.from(tiles.entries());
+}
+
+/** 获取所有作物条目（存档序列化用） */
+export function getAllCropEntries(): [string, CropData][] {
+  return Array.from(crops.entries());
+}
+
+/** 清空所有土地和作物状态（存档恢复前调用） */
+export function clearAllTiles(): void {
+  tiles.clear();
+  crops.clear();
+}
+
+/** 恢复土地状态（存档恢复用） */
+export function restoreTileEntries(entries: [string, TileState][]): void {
+  for (const [key, state] of entries) {
+    tiles.set(key, state);
+  }
+}
+
+/** 恢复作物状态（存档恢复用） */
+export function restoreCropEntries(entries: [string, CropData][]): void {
+  for (const [key, crop] of entries) {
+    crops.set(key, crop);
+  }
+}
+
 // ---------------- 成长结算（Phase 3.4 起） ----------------
 
 /**

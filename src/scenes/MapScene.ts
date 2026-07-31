@@ -15,11 +15,17 @@ import {
 } from '../data/FarmState';
 import { addItem, getItemCount } from '../data/Inventory';
 import { formatTime, getTime, nextDay as timeNextDay, tick as timeTick } from '../data/TimeSystem';
+import { getCoins } from '../data/Economy';
+import { addXp, getLevel, getXp, getXpToNext, setOnLevelUp } from '../data/FarmProgress';
 import { NPC } from '../entities/NPC';
 import { getNPCsForScene, refreshSchedule, updateNPCs } from '../systems/NPCSystem';
 import { collectShard, getElderDialogue, getQuestObjective, getQuestState } from '../systems/QuestSystem';
 import { InputManager } from '../systems/InputManager';
 import { TouchControls } from '../systems/TouchControls';
+import { ShopPanel } from '../ui/ShopPanel';
+import { BackpackPanel } from '../ui/BackpackPanel';
+import { hasSave, load, apply, save, getLastIncompatibleVersion, clearIncompatibleVersion } from '../systems/SaveSystem';
+import { play } from '../systems/AudioSystem';
 
 interface SceneInitData {
   spawn?: { x: number; y: number };
@@ -37,6 +43,9 @@ interface TileVisual {
  * 玩家走到出口区域 → 切换到目标场景并放置在对应出生点。
  */
 export class MapScene extends Phaser.Scene {
+  // 模块级 beforeunload 回调引用（避免重复注册）
+  private static _beforeUnload: (() => void) | null = null;
+
   private readonly mapKey: string;
   private player!: Player;
   private wallsLayer!: Phaser.Tilemaps.TilemapLayer;
@@ -49,10 +58,20 @@ export class MapScene extends Phaser.Scene {
   private inputManager!: InputManager;
   // 触屏控件（摇杆+交互按钮，DOM 单例，PC 和手机都显示）
   private touchControls!: TouchControls;
-  // HUD 文本引用（主 HUD：区域名/天数/种子/萝卜）
-  private hudText!: Phaser.GameObjects.Text;
-  // HUD 文本引用（左上角时间：Day N / HH:MM）
-  private timeText!: Phaser.GameObjects.Text;
+  // 商店面板（Phase 0.2，DOM 覆盖层，非独立场景）
+  private shopPanel!: ShopPanel;
+  // 背包面板（Phase 0.25，DOM 覆盖层，B 键开启）
+  private backpackPanel!: BackpackPanel;
+  // DOM HUD 元素（替代 Phaser 文本，避免 scrollFactor + zoom 渲染问题）
+  private hudDom!: HTMLDivElement;
+  private hudTimeDom!: HTMLDivElement;
+  private hudAreaDom!: HTMLDivElement;
+  private hudQuestDom!: HTMLDivElement;
+  // XP 经验条 DOM 元素
+  private xpBarFill!: HTMLDivElement;
+  private xpBarLabel!: HTMLDivElement;
+  // 农田选中高亮（淡黄色边框，显示当前面向的格子）
+  private targetHighlight!: Phaser.GameObjects.Rectangle;
   // 上一帧时间戳（ms），用于计算 dt 调用 TimeSystem.tick
   private lastFrameTime = 0;
   // 当前场景中的 NPC 列表（create 时从 NPCSystem 查询并创建 sprite）
@@ -63,8 +82,6 @@ export class MapScene extends Phaser.Scene {
   private dialogueTimer: Phaser.Time.TimerEvent | null = null;
   // 森林采集点：星之碎片（accepted 状态时显示，采集后销毁）
   private shardSprite: Phaser.GameObjects.Ellipse | null = null;
-  // 任务目标 HUD（右上角）
-  private questText!: Phaser.GameObjects.Text;
 
   constructor(key: string) {
     super(key);
@@ -79,10 +96,12 @@ export class MapScene extends Phaser.Scene {
   preload(): void {
     // 加载当前场景对应的 Tiled 地图 JSON
     this.load.tilemapTiledJSON(this.mapKey, `assets/maps/${this.mapKey}.json`);
-    // tileset 图片全局共用，已缓存则跳过
-    if (!this.textures.exists('tiles')) {
-      this.load.image('tiles', 'assets/tiles/placeholder_tileset.png');
+    // tileset 图片：每个地图使用自己的主题瓦片
+    // 移除旧瓦片纹理（切换场景时避免纹理冲突）
+    if (this.textures.exists('tiles')) {
+      this.textures.remove('tiles');
     }
+    this.load.image('tiles', `assets/tiles/${this.mapKey}_tileset.png`);
     // 玩家 spritesheet（4方向×4帧 run 动画，每帧 32x32，显示时缩放 0.5 与 16x16 瓦片协调）
     if (!this.textures.exists('player')) {
       this.load.spritesheet('player', 'assets/sprites/player.png', { frameWidth: 32, frameHeight: 32 });
@@ -111,6 +130,32 @@ export class MapScene extends Phaser.Scene {
     // 碰撞：石墙(gid 3) 与水(gid 4)
     this.wallsLayer.setCollisionBetween(3, 4);
 
+    // 存档恢复：仅在农场场景首次进入时检查
+    // 若存档存在则加载数据，若玩家上次在其他场景则切换过去
+    if (this.mapKey === 'farm' && hasSave() && !this.spawn) {
+      const saveData = load();
+      if (saveData) {
+        apply(saveData);
+        if (saveData.player.scene !== 'farm') {
+          this.scene.start(saveData.player.scene, {
+            spawn: { x: saveData.player.x, y: saveData.player.y },
+          });
+          return;
+        }
+        // 农场场景：直接设置出生点
+        this.spawn = { x: saveData.player.x, y: saveData.player.y };
+      } else {
+        // 版本不兼容：显示提示，清除旧存档
+        const oldVer = getLastIncompatibleVersion();
+        if (oldVer) {
+          this.showDialogueText(
+            `存档版本不兼容（v${oldVer}→v0.3），已自动重置。`,
+          );
+          clearIncompatibleVersion();
+        }
+      }
+    }
+
     // 输入管理器（统一键盘/触屏输入）
     this.inputManager = new InputManager(this.input.keyboard!);
 
@@ -131,29 +176,53 @@ export class MapScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
     this.cameras.main.setZoom(2);
 
-    // HUD：当前区域名 + 操作提示（农场额外显示种子数）
-    this.hudText = this.add
-      .text(this.scale.width / 2, 24, '', {
-        fontFamily: 'Arial',
-        fontSize: '14px',
-        color: '#ffffff',
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(100);
-    this.updateHUD();
+    // DOM HUD 覆盖层（扛 zoom + scrollFactor 兼容问题，和 ShopPanel 一样走 DOM）
+    // 先移除旧 HUD（场景切换时避免 DOM 泄漏）
+    const oldHud = document.getElementById('hud-overlay');
+    if (oldHud) oldHud.remove();
 
-    // 时间 HUD（左上角）：Day N / HH:MM
-    this.timeText = this.add
-      .text(12, 12, '', {
-        fontFamily: 'Arial',
-        fontSize: '14px',
-        color: '#ffffff',
-      })
-      .setOrigin(0, 0)
-      .setScrollFactor(0)
-      .setDepth(100);
-    this.updateTimeHUD();
+    const container = document.getElementById('game-container')!;
+    this.hudDom = document.createElement('div');
+    this.hudDom.id = 'hud-overlay';
+    this.hudDom.style.cssText =
+      'position:absolute;top:0;left:0;width:100%;height:0;pointer-events:none;z-index:5;font-family:Arial,sans-serif';
+    container.appendChild(this.hudDom);
+
+    // 左上角：时间 + 经验条
+    this.hudTimeDom = document.createElement('div');
+    this.hudTimeDom.style.cssText =
+      'position:absolute;top:4px;left:8px;color:#fff;font-size:13px;text-shadow:1px 1px 0 #000';
+    this.hudDom.appendChild(this.hudTimeDom);
+
+    // XP 经验条容器（时间下方）
+    const xpBar = document.createElement('div');
+    xpBar.style.cssText =
+      'position:absolute;top:22px;left:8px;width:180px;height:8px;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.2);border-radius:2px;overflow:hidden';
+    this.hudDom.appendChild(xpBar);
+
+    this.xpBarFill = document.createElement('div');
+    this.xpBarFill.style.cssText =
+      'width:0%;height:100%;background:linear-gradient(90deg,#4caf50,#8bc34a);transition:width 0.3s';
+    xpBar.appendChild(this.xpBarFill);
+
+    this.xpBarLabel = document.createElement('div');
+    this.xpBarLabel.style.cssText =
+      'position:absolute;top:20px;left:192px;color:#ffe082;font-size:10px;text-shadow:1px 1px 0 #000;white-space:nowrap';
+    this.hudDom.appendChild(this.xpBarLabel);
+
+    // 中上：区域名 + 操作提示
+    this.hudAreaDom = document.createElement('div');
+    this.hudAreaDom.style.cssText =
+      'position:absolute;top:24px;left:50%;transform:translateX(-50%);color:#fff;font-size:13px;text-shadow:1px 1px 0 #000;white-space:nowrap';
+    this.hudDom.appendChild(this.hudAreaDom);
+
+    // 右上：任务目标
+    this.hudQuestDom = document.createElement('div');
+    this.hudQuestDom.style.cssText =
+      'position:absolute;top:4px;right:8px;color:#ffe082;font-size:12px;text-shadow:1px 1px 0 #000;text-align:right';
+    this.hudDom.appendChild(this.hudQuestDom);
+
+    this.updateHUD();
 
     // 记录初始帧时间戳
     this.lastFrameTime = this.time.now;
@@ -161,6 +230,12 @@ export class MapScene extends Phaser.Scene {
     // 农场场景：渲染农田格子覆盖层
     if (this.mapKey === 'farm') {
       this.setupFarmTiles();
+
+      // 农田选中高亮（淡黄色边框，跟随玩家面向的格子）
+      this.targetHighlight = this.add.rectangle(0, 0, TILE_SIZE, TILE_SIZE, 0xfff176, 0.15);
+      this.targetHighlight.setStrokeStyle(1, 0xfff176, 0.7);
+      this.targetHighlight.setDepth(8);
+      this.targetHighlight.setVisible(false);
     }
 
     // 创建当前场景的 NPC（根据 TimeSystem 时间判定 location）
@@ -171,23 +246,71 @@ export class MapScene extends Phaser.Scene {
       this.setupShard();
     }
 
-    // 任务目标 HUD（右上角，所有场景显示）
-    this.questText = this.add
-      .text(this.scale.width - 12, 12, '', {
-        fontFamily: 'Arial',
-        fontSize: '12px',
-        color: '#ffe082',
-      })
-      .setOrigin(1, 0)
-      .setScrollFactor(0)
-      .setDepth(100);
-    this.updateQuestHUD();
-
     // 触屏控件（摇杆+交互按钮，DOM 单例，PC 和手机都显示）
     this.touchControls = new TouchControls(this, this.inputManager);
+    // 商店面板（DOM 覆盖层；数据变化时刷新 HUD 金币显示；关店时清理输入残留）
+    this.shopPanel = new ShopPanel(
+      () => this.updateHUD(),
+      () => {
+        // 关店清理：丢弃开店期间残留的 E 键，防止下帧立即重开商店
+        this.inputManager.clearAction();
+        // 重置帧计时，防止关店后时间跳跃（lastFrameTime 仍停在开店前）
+        this.lastFrameTime = performance.now();
+      },
+    );
+
+    // 背包面板（DOM 覆盖层；关包时清理 B 键残留）
+    this.backpackPanel = new BackpackPanel(() => {
+      this.inputManager.clearAction();
+      this.lastFrameTime = performance.now();
+    });
+    // 农场升级通知（升级时显示气泡提示）
+    setOnLevelUp((newLevel: number) => {
+      this.showDialogueText(`农场升级！Lv.${newLevel}`);
+      this.updateTimeHUD();
+    });
+
+    // 离开页面前自动存档（beforeunload，只注册一次，后续场景切换复用）
+    if (MapScene._beforeUnload) {
+      window.removeEventListener('beforeunload', MapScene._beforeUnload);
+    }
+    MapScene._beforeUnload = () => {
+      if (this.player && this.player.active) {
+        save({ x: this.player.x, y: this.player.y, scene: this.mapKey, facing: this.player.facing });
+      }
+    };
+    window.addEventListener('beforeunload', MapScene._beforeUnload);
   }
 
   update(timeMs: number): void {
+    // 商店打开：冻结时间/玩家移动/NPC/交互，只响应关闭
+    // 关闭方式：E/空格/回车（consumeAction）或 Esc（ShopPanel DOM 监听）
+    if (this.shopPanel.isOpen()) {
+      // 冻结玩家物理：防止开店前残留的速度让角色在商店界面背后滑动
+      this.player.setVelocity(0, 0);
+      if (this.inputManager.consumeAction()) {
+        this.shopPanel.close();
+      }
+      return;
+    }
+
+    // 背包打开：冻结时间/玩家移动/NPC/交互，只响应关闭
+    if (this.backpackPanel.isOpen()) {
+      this.player.setVelocity(0, 0);
+      // B 键关闭
+      if (Phaser.Input.Keyboard.JustDown(this.inputManager.keyB)) {
+        this.backpackPanel.close();
+      }
+      return;
+    }
+
+    // B 键打开背包（仅在未与其他面板交互时）
+    if (Phaser.Input.Keyboard.JustDown(this.inputManager.keyB)) {
+      this.inputManager.clearAction();
+      this.backpackPanel.open();
+      return;
+    }
+
     // 计算 dt（ms），推进游戏时间；上限 1000ms 防止切后台回来一次性跳太多
     const rawDt = timeMs - this.lastFrameTime;
     const dtMs = Math.max(0, Math.min(rawDt, 1000));
@@ -203,6 +326,9 @@ export class MapScene extends Phaser.Scene {
 
     // NPC 插值移动（仅对当前场景有 sprite 的 NPC 生效）
     updateNPCs(dtMs);
+
+    // 农田选中高亮：跟随玩家面向的格子（仅农场）
+    this.updateTargetHighlight();
 
     // 交互：消费一次动作输入（按一次只触发一次，不会连发）
     if (!this.transitioning && this.inputManager.consumeAction()) {
@@ -232,16 +358,26 @@ export class MapScene extends Phaser.Scene {
   }
 
   /**
-   * 刷新左上角时间 HUD
-   * PC：Day N / HH:MM
-   * 移动端：只显示 HH:MM（Day 已在顶部 HUD 显示，避免重复）
+   * 刷新左上角时间 + 经验 HUD（DOM）
    */
   updateTimeHUD(): void {
-    if (isMobileLayout()) {
-      this.timeText.setText(formatTime());
+    const t = getTime().day;
+    const timeStr = isMobileLayout() ? formatTime() : `Day ${t}  ${formatTime()}`;
+    this.hudTimeDom.textContent = timeStr;
+
+    // 经验条（仅农场场景有 DOM 元素）
+    if (!this.xpBarFill) return;
+    const lv = getLevel();
+    const xp = getXp();
+    const next = getXpToNext();
+    if (next <= 0) {
+      this.xpBarFill.style.width = '100%';
+      this.xpBarLabel.textContent = `Lv.${lv} MAX`;
     } else {
-      const t = getTime().day;
-      this.timeText.setText(`Day ${t}  ${formatTime()}`);
+      const total = xp + next;
+      const pct = Math.round((xp / total) * 100);
+      this.xpBarFill.style.width = `${pct}%`;
+      this.xpBarLabel.textContent = `Lv.${lv}  ${xp}/${total}`;
     }
   }
 
@@ -290,7 +426,7 @@ export class MapScene extends Phaser.Scene {
    * 刷新任务目标 HUD（右上角）
    */
   updateQuestHUD(): void {
-    this.questText.setText(`任务：${getQuestObjective()}`);
+    this.hudQuestDom.textContent = `任务：${getQuestObjective()}`;
   }
 
   /**
@@ -445,30 +581,29 @@ export class MapScene extends Phaser.Scene {
   }
 
   /**
-   * 刷新 HUD 文本（区域名 + 天数 + 操作提示，农场额外显示种子数）
+   * 刷新 HUD 文本（区域名 + 天数 + 金币 + 操作提示，农场额外显示种子/萝卜）
    * PC：完整单行（含操作提示 WASD/E/出口切换）
    * 移动端：精简两行，删除操作提示（摇杆+按钮已是教学）
-   *   农场：第一行 区域名+天数，第二行 种子/萝卜
-   *   其他：单行 区域名+天数
+   *   农场：第一行 区域名+天数，第二行 种子/萝卜/金币
+   *   其他：第一行 区域名+天数，第二行 金币
    */
   private updateHUD(): void {
     const name = MAP_NAMES[this.mapKey] ?? this.mapKey;
     const day = `第${getTime().day}天`;
+    const coins = `金币:${getCoins()}`;
+    const lv = `Lv.${getLevel()}`;
     if (isMobileLayout()) {
-      // 移动端：精简，无操作提示
       if (this.mapKey === 'farm') {
-        this.hudText.setText(`${name} ${day}\n种子${getSeedCount()} 萝卜${getItemCount('radish')}`);
+        this.hudAreaDom.textContent = `${name} ${day} ${lv} | 种子${getSeedCount()} 萝卜${getItemCount('radish')} ${coins}`;
       } else {
-        this.hudText.setText(`${name} ${day}`);
+        this.hudAreaDom.textContent = `${name} ${day} ${lv} | ${coins}`;
       }
     } else {
-      // PC：完整提示
       if (this.mapKey === 'farm') {
-        this.hudText.setText(
-          `${name} | ${day} | WASD/E交互 | 种子:${getSeedCount()} 萝卜:${getItemCount('radish')} | 出口切换`
-        );
+        this.hudAreaDom.textContent =
+          `${name} | ${day} | ${lv} | WASD/E交互 | 种子:${getSeedCount()} 萝卜:${getItemCount('radish')} | ${coins} | 出口切换`;
       } else {
-        this.hudText.setText(`${name} | ${day} | WASD 移动 | 出口切换`);
+        this.hudAreaDom.textContent = `${name} | ${day} | ${lv} | WASD 移动 | ${coins} | 出口切换`;
       }
     }
   }
@@ -493,21 +628,43 @@ export class MapScene extends Phaser.Scene {
    *   2. 否则 → 农田交互（锄地/播种/浇水/收获）
    */
   private tryInteract(): void {
-    // 0. 优先检测靠近 NPC（所有场景）：距离 < 24 像素则显示对话
+    // 1. 睡觉点检测（农场专有，优先于 NPC 交互，避免 NPC 站在入口挡住）
+    if (this.mapKey === 'farm') {
+      const pc = Math.floor(this.player.x / TILE_SIZE);
+      const pr = Math.floor(this.player.y / TILE_SIZE);
+      if (pc >= 2 && pc <= 4 && pr >= 12 && pr <= 14) {
+        this.trySleep();
+        return;
+      }
+    }
+
+    // 2. 优先检测靠近 NPC（所有场景）：取交互范围内最近的一个
+    // 注意：不能用数组顺序取第一个，否则多个 NPC 靠近时 elder 永远先被触发
+    let nearest: NPC | null = null;
+    let nearestDist = 24 * 24;
     for (const npc of this.npcList) {
       if (!npc.sprite) continue;
       const dx = this.player.x - npc.sprite.x;
       const dy = this.player.y - npc.sprite.y;
-      if (dx * dx + dy * dy < 24 * 24) {
-        // 村长对话由 QuestSystem 根据任务状态决定（含接受/交付推进）
-        if (npc.id === 'elder') {
-          this.showDialogueText(getElderDialogue());
-          this.updateQuestHUD();
-        } else {
-          this.showDialogue(npc);
-        }
-        return;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < nearestDist) {
+        nearestDist = d2;
+        nearest = npc;
       }
+    }
+    if (nearest) {
+      // 村长对话由 QuestSystem 根据任务状态决定（含接受/交付推进）
+      if (nearest.id === 'elder') {
+        this.showDialogueText(getElderDialogue());
+        this.updateQuestHUD();
+      } else if (nearest.id === 'shopkeeper') {
+        // 商人：打开商店面板（Phase 0.2）；先清空本次 E 键队列，防止开门即关
+        this.inputManager.clearAction();
+        this.shopPanel.open();
+      } else {
+        this.showDialogue(nearest);
+      }
+      return;
     }
 
     // 0.5 森林采集点：accepted 状态靠近星之碎片 E 键采集
@@ -518,6 +675,7 @@ export class MapScene extends Phaser.Scene {
         collectShard();
         this.shardSprite.destroy();
         this.shardSprite = null;
+        addItem('star_shard', 1);
         this.showDialogueText('采集到「星之碎片」！返回村长交付任务。');
         this.updateQuestHUD();
         return;
@@ -526,16 +684,7 @@ export class MapScene extends Phaser.Scene {
 
     if (this.mapKey !== 'farm') return;
 
-    // 1. 睡觉点检测：农场左下方木屋区域（瓦片 col 2-4, row 13-14）
-    // 进入该区域任意位置按 E 都可睡觉
-    const pc = Math.floor(this.player.x / TILE_SIZE);
-    const pr = Math.floor(this.player.y / TILE_SIZE);
-    if (pc >= 2 && pc <= 4 && pr >= 13 && pr <= 14) {
-      this.trySleep();
-      return;
-    }
-
-    // 2. 农田交互：根据面前格子状态自动判断锄地/播种/浇水/收获
+    // 农田交互：根据面前格子状态自动判断锄地/播种/浇水/收获
     this.tryFarmInteract();
   }
 
@@ -549,8 +698,10 @@ export class MapScene extends Phaser.Scene {
     // 刷新农田视觉（成长后 grown 作物变大）和 HUD
     this.refreshFarmVisual();
     // 刷新 NPC 日程：次日 06:00，所有 NPC 应在 farm
-    // 当前在 farm 场景，重建本场景 NPC（其他场景进入时会自动 setupNPCs）
     this.rebuildNPCs();
+    // 睡觉后自动存档
+    save({ x: this.player.x, y: this.player.y, scene: this.mapKey, facing: this.player.facing });
+    this.showDialogueText('已保存 Zzz...');
   }
 
   /**
@@ -572,11 +723,36 @@ export class MapScene extends Phaser.Scene {
   }
 
   /**
+   * 更新农田选中高亮（每帧跟随玩家面向的格子）
+   * 仅农场场景生效，非农场或目标不在耕地区时隐藏
+   */
+  private updateTargetHighlight(): void {
+    if (this.mapKey !== 'farm' || !this.targetHighlight) return;
+    const pc = Math.floor(this.player.x / TILE_SIZE);
+    const pr = Math.floor(this.player.y / TILE_SIZE);
+    let tc = pc;
+    let tr = pr;
+    switch (this.player.facing) {
+      case 'up': tr = pr - 1; break;
+      case 'down': tr = pr + 1; break;
+      case 'left': tc = pc - 1; break;
+      case 'right': tc = pc + 1; break;
+    }
+    if (!isInFarmArea(tc, tr)) {
+      this.targetHighlight.setVisible(false);
+      return;
+    }
+    this.targetHighlight.setVisible(true);
+    this.targetHighlight.setPosition(tc * TILE_SIZE + TILE_SIZE / 2, tr * TILE_SIZE + TILE_SIZE / 2);
+  }
+
+  /**
    * 农田交互（按 Player.facing 决定面前格子）：
    *   empty   → tilled   （锄地）
    *   tilled  → planted  （播种，消耗一颗萝卜种子，记录 CropData）
    *   planted → watered  （浇水，标记 watered=true）
    *   grown   → tilled   （收获，土地保留可重新播种，清除作物，获得萝卜 +1）
+   *   watered → 暂不处理（等待次日成长判定）
    */
   private tryFarmInteract(): void {
     // 玩家所在瓦片坐标
@@ -606,21 +782,28 @@ export class MapScene extends Phaser.Scene {
     if (state === 'empty') {
       // 锄地：空地 → 耕地
       setTileState(tc, tr, 'tilled');
+      play('hoe');
     } else if (state === 'tilled') {
       // 播种：耕地 → 已种，消耗一颗萝卜种子
       if (!useSeed()) return; // 种子不足，静默不处理
       setTileState(tc, tr, 'planted');
       setCrop(tc, tr, { cropType: 'radish', plantDay: getTime().day, watered: false });
+      addXp(3, 'plant');
+      play('plant');
     } else if (state === 'planted') {
       // 浇水：已种 → 已浇水（成长前置条件）
       setTileState(tc, tr, 'watered');
       const crop = getCrop(tc, tr);
       if (crop) setCrop(tc, tr, { ...crop, watered: true });
+      addXp(1, 'water');
+      play('water');
     } else if (state === 'grown') {
       // 收获：成熟 → 耕地（保留已耕状态，可重新播种），清除作物，获得萝卜 +1
       setTileState(tc, tr, 'tilled');
       setCrop(tc, tr, undefined);
       addItem('radish', 1);
+      addXp(10, 'harvest');
+      play('harvest');
     } else {
       // watered 已浇水未成熟，暂不处理
       return;

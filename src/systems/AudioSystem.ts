@@ -1,0 +1,122 @@
+/**
+ * 音效系统 MVP（Phase 0.25）
+ *
+ * 使用 Web Audio API 程序合成短音效，无需外部音频文件。
+ * 模块级单例，所有场景共用同一个 AudioContext。
+ *
+ * 后续可替换为真实音频文件，只需修改 play() 内部实现。
+ */
+
+type SfxName = 'hoe' | 'plant' | 'water' | 'harvest' | 'buy' | 'sell' | 'levelup';
+
+let ctx: AudioContext | null = null;
+
+/** 懒初始化 AudioContext（浏览器要求用户交互后才能创建） */
+function getCtx(): AudioContext {
+  if (!ctx) {
+    ctx = new AudioContext();
+  }
+  // 某些浏览器会暂停 AudioContext，需要 resume
+  if (ctx.state === 'suspended') {
+    ctx.resume();
+  }
+  return ctx;
+}
+
+/** 播放一个简单的音调（频率 + 持续时间 + 波形） */
+function tone(
+  freq: number,
+  duration: number,
+  type: OscillatorType = 'sine',
+  volume = 0.15,
+  delay = 0,
+): void {
+  const c = getCtx();
+  const osc = c.createOscillator();
+  const gain = c.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(volume, c.currentTime + delay);
+  gain.gain.exponentialRampToValueAtTime(0.001, c.currentTime + delay + duration);
+  osc.connect(gain);
+  gain.connect(c.destination);
+  osc.start(c.currentTime + delay);
+  osc.stop(c.currentTime + delay + duration + 0.01);
+}
+
+/** 播放白噪声（用于浇水等） */
+function noise(duration: number, volume = 0.08, delay = 0): void {
+  const c = getCtx();
+  const bufferSize = c.sampleRate * duration;
+  const buffer = c.createBuffer(1, bufferSize, c.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = Math.random() * 2 - 1;
+  }
+  const source = c.createBufferSource();
+  source.buffer = buffer;
+  const gain = c.createGain();
+  gain.gain.setValueAtTime(volume, c.currentTime + delay);
+  gain.gain.exponentialRampToValueAtTime(0.001, c.currentTime + delay + duration);
+  // 低通滤波让噪声更柔和
+  const filter = c.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = 2000;
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(c.destination);
+  source.start(c.currentTime + delay);
+}
+
+/**
+ * 播放指定音效。
+ * 用法：AudioSystem.play('harvest')
+ */
+export function play(name: SfxName): void {
+  switch (name) {
+    case 'hoe':
+      // 锄地：低频碰撞感
+      tone(80, 0.12, 'triangle', 0.2);
+      tone(60, 0.08, 'sine', 0.15, 0.02);
+      break;
+
+    case 'plant':
+      // 播种：轻快短促的弹跳音
+      tone(600, 0.06, 'sine', 0.1);
+      tone(800, 0.04, 'sine', 0.08, 0.03);
+      break;
+
+    case 'water':
+      // 浇水：柔和白噪声 + 水流感
+      noise(0.25, 0.06);
+      tone(400, 0.15, 'sine', 0.04, 0.05);
+      break;
+
+    case 'harvest':
+      // 收获：上行三连音，丰收的愉悦感
+      tone(440, 0.08, 'triangle', 0.12);
+      tone(554, 0.08, 'triangle', 0.12, 0.06);
+      tone(660, 0.12, 'triangle', 0.14, 0.12);
+      break;
+
+    case 'buy':
+      // 购买：清脆的硬币声
+      tone(1200, 0.06, 'square', 0.06);
+      tone(1600, 0.04, 'square', 0.04, 0.04);
+      break;
+
+    case 'sell':
+      // 出售：稍低沉的硬币声
+      tone(900, 0.06, 'square', 0.06);
+      tone(1200, 0.04, 'square', 0.04, 0.04);
+      break;
+
+    case 'levelup':
+      // 升级：上行琶音，成就感
+      tone(523, 0.1, 'triangle', 0.12);
+      tone(659, 0.1, 'triangle', 0.12, 0.08);
+      tone(784, 0.1, 'triangle', 0.12, 0.16);
+      tone(1047, 0.2, 'triangle', 0.15, 0.24);
+      break;
+  }
+}

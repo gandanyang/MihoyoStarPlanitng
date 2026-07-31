@@ -25,28 +25,48 @@ import { getTime } from '../data/TimeSystem';
 /** 瓦片尺寸 */
 const T = 16;
 
-/** 场景内固定目标点（像素） */
-const SPOTS = {
-  farm: { x: 3 * T + 8, y: 11 * T + 8 },
-  town: { x: 15 * T + 8, y: 10 * T + 8 },
-  forest: { x: 15 * T + 8, y: 10 * T + 8 },
+/**
+ * 场景内固定目标点（像素），每个 NPC 在场景内错开站位。
+ * 原因：若三个 NPC 站同一格，交互检测按数组顺序遍历（elder 排第一），
+ *       会导致靠近时永远触发村长任务对话，商店/少女无法交互。
+ * 各点均避开碰撞区（farm 木屋上墙 row12、town 石屋、forest 四角石簇）。
+ */
+type Spot = { x: number; y: number };
+type NpcId = 'elder' | 'shopkeeper' | 'mystery';
+type SpotMap = Record<NpcId, Spot>;
+const SPOTS: { farm: SpotMap; town: SpotMap; forest: SpotMap } = {
+  farm: {
+    elder: { x: 3 * T + 8, y: 11 * T + 8 },      // 木屋左上方
+    shopkeeper: { x: 7 * T + 8, y: 11 * T + 8 }, // 木屋正前
+    mystery: { x: 3 * T + 8, y: 8 * T + 8 },     // 木屋上方远处
+  },
+  town: {
+    elder: { x: 13 * T + 8, y: 10 * T + 8 },     // 十字路左
+    shopkeeper: { x: 16 * T + 8, y: 10 * T + 8 },// 十字路右
+    mystery: { x: 15 * T + 8, y: 8 * T + 8 },    // 纵向路中段
+  },
+  forest: {
+    elder: { x: 13 * T + 8, y: 10 * T + 8 },
+    shopkeeper: { x: 17 * T + 8, y: 10 * T + 8 },
+    mystery: { x: 15 * T + 8, y: 8 * T + 8 },
+  },
 };
 
-/** 构建日程（三 NPC 共用结构） */
-function buildSchedule(): ScheduleEntry[] {
+/** 构建日程（按 NPC id 查专属站位，三 NPC 共用时间表） */
+function buildSchedule(npcId: NpcId): ScheduleEntry[] {
   return [
-    { time: '06:00', location: 'farm', ...SPOTS.farm },
-    { time: '08:00', location: 'town', ...SPOTS.town },
-    { time: '12:00', location: 'forest', ...SPOTS.forest },
-    { time: '18:00', location: 'farm', ...SPOTS.farm },
+    { time: '06:00', location: 'farm', ...SPOTS.farm[npcId] },
+    { time: '08:00', location: 'town', ...SPOTS.town[npcId] },
+    { time: '12:00', location: 'forest', ...SPOTS.forest[npcId] },
+    { time: '18:00', location: 'farm', ...SPOTS.farm[npcId] },
   ];
 }
 
-/** 三个 NPC（textureKey 对应 preload 加载的贴图） */
+/** 三个 NPC（textureKey 对应 preload 加载的贴图；站位互不重叠） */
 const npcs: NPC[] = [
-  new NPC('elder', '村长', 'npc_elder', '欢迎来到星辰岛。', buildSchedule()),
-  new NPC('shopkeeper', '商店老板', 'npc_merchant', '小店刚开张，0.1 版本还没货。', buildSchedule()),
-  new NPC('mystery', '神秘少女', 'npc_girl', '...你听得见岛的低语吗？', buildSchedule()),
+  new NPC('elder', '村长', 'npc_elder', '欢迎来到星辰岛。', buildSchedule('elder')),
+  new NPC('shopkeeper', '商店老板', 'npc_merchant', '欢迎光临星辰杂货店！靠近我按 E 就能买卖。', buildSchedule('shopkeeper')),
+  new NPC('mystery', '神秘少女', 'npc_girl', '...你听得见岛的低语吗？', buildSchedule('mystery')),
 ];
 
 /** 读取全部 NPC（只读列表） */

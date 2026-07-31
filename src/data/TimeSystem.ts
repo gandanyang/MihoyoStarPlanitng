@@ -66,6 +66,14 @@ export function setTime(hour: number, minute: number): void {
   pendingMinutes = 0;
 }
 
+/** 完整设置时间（存档恢复用） */
+export function setTimeFull(day: number, hour: number, minute: number): void {
+  time.day = Math.max(1, Math.floor(day));
+  time.hour = Math.max(0, Math.min(23, Math.floor(hour)));
+  time.minute = Math.max(0, Math.min(59, Math.floor(minute)));
+  pendingMinutes = 0;
+}
+
 /**
  * 推进游戏时间（每帧由 MapScene.update 调用）
  * @param dtMs 距上一帧经过的毫秒数

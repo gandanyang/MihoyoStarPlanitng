@@ -11,6 +11,8 @@
  * TimeSystem 是天数唯一来源，任务状态跨场景保留（模块级单例）。
  */
 
+import { addXp } from '../data/FarmProgress';
+
 /** 任务状态 */
 export type QuestState = 'not_started' | 'accepted' | 'collected' | 'completed';
 
@@ -20,6 +22,11 @@ let questState: QuestState = 'not_started';
 /** 读取当前任务状态 */
 export function getQuestState(): QuestState {
   return questState;
+}
+
+/** 直接设置任务状态（存档恢复用） */
+export function setQuestState(state: QuestState): void {
+  questState = state;
 }
 
 /** 接受任务：not_started → accepted（与村长对话触发） */
@@ -40,6 +47,7 @@ export function collectShard(): void {
 export function deliverQuest(): void {
   if (questState === 'collected') {
     questState = 'completed';
+    addXp(30, 'quest');
   }
 }
 

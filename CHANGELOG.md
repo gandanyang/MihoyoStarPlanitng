@@ -6,6 +6,43 @@
 
 ## [未发布]
 
+### 0.2 商店 + 经济系统
+- **新增 `src/data/Economy.ts`**：金币系统（初始 50G），`getCoins`/`addCoins`/`spendCoins`；商品价格集中配置（种子 10G/颗、萝卜收购价 15G/个）
+- **新增 `src/ui/ShopPanel.ts`**：DOM 全屏覆盖层（非独立场景，沿用 TouchControls 模块级单例模式）
+  - 靠近商人按 E 打开，Esc/按钮/E 关闭
+  - 买萝卜种子（扣金币）+ 卖萝卜（得金币），余额不足/无货自动置灰按钮
+  - 商店打开时冻结时间/玩家移动/NPC/交互（MapScene.update 拦截）
+- **FarmState.ts**：新增 `addSeeds(n)`（商店买种子调用）
+- **InputManager.ts**：新增 `clearAction()`（丢弃开门瞬间已排队的 E 键，防止开门即关）
+- **MapScene.ts**：HUD 增加金币显示（PC 完整行 + 移动端精简行）；商人 `shopkeeper` 交互改为打开商店面板
+- **NPCSystem.ts**：商人对话更新为商店引导文案
+- 经济循环：种萝卜 → 收获 → 卖钱（15G/个）→ 买种子（10G/颗）→ 净赚 5G
+
+### 农场等级/经验系统（MVP）
+- **新增 `src/data/FarmProgress.ts`**：模块级单例，经验获取 + 自动升级，5 级阈值（0/100/250/500/900）
+- 经验规则：播种 +3 XP | 浇水 +1 XP | 收获萝卜 +10 XP | 完成任务 +30 XP
+- `addXp(amount, source)` 保留经验来源参数（plant/water/harvest/quest），控制台输出日志
+- 升级时通过 `onLevelUp` 回调触发 `showDialogueText` 气泡提示
+- **MapScene.ts**：`tryFarmInteract()` 播种/浇水/收获后各调用 `addXp`；`updateHUD()` 追加 `Lv.X` 显示
+- **QuestSystem.ts**：`deliverQuest()` 完成时 +30 XP
+- 无技能树、无奖励、无复杂 UI，保持 MVP 范围
+
+### 存档系统（SaveSystem）
+- **新增 `src/systems/SaveSystem.ts`**：localStorage 序列化/反序列化，版本号管理
+- 保存内容：时间、金币、背包、种子、农田状态、作物成长、经验等级、任务状态、玩家位置/场景/朝向
+- 触发时机：睡觉时自动保存、页面关闭前保存（beforeunload）
+- 加载：首次进入农场时检测存档，恢复全部数据，自动切换到上次所在场景
+- **各数据模块新增 setter**：`TimeSystem.setTimeFull`、`Economy.setCoins`、`Inventory.setItemCount`、`FarmState.setSeedCount/getAllTileEntries/getAllCropEntries/clearAllTiles/restoreTileEntries/restoreCropEntries`、`FarmProgress.setLevel/setXp`、`QuestSystem.setQuestState`
+
+### Bug 修复
+- **NPC 重叠无法触发商店**：三 NPC 站位从同一点错开（farm/town/forest 各定位），MapScene.tryInteract 改为取最近 NPC
+- **按 Esc 商店不关闭**：`close()` 在模块顶层作用域意外解析为 `window.close()`（浏览器关窗口），已提取模块级 `closePanel()` 函数统一处理
+- **商店状态 Bug（3 项）**：
+  - 开店时物理引擎持续运行 → 玩家在商店界面背后滑动。修复：开店期间每帧 `player.setVelocity(0,0)`
+  - 关店后 E 键残留导致立即重开商店。修复：关店时 `clearAction()` + 重置 `lastFrameTime`
+  - 关店后时间跳跃（lastFrameTime 停在开店前）。修复：关店时 `lastFrameTime = this.time.now`
+  - ShopPanel 新增 `onClose` 回调，`closePanel()` 加 `if (!open) return` 防重复关闭
+
 ### 美术资产规格升级（32×32 角色）
 - **gen_sprite_assets.py**：角色单帧从 16×16 升级为 32×32，瓦片保持 16×16 不变
   - `player.png` 输出尺寸 64×64 → 128×128（4列×4行，每帧 32×32）
