@@ -17,6 +17,7 @@ import { formatTime, getTime, nextDay as timeNextDay, tick as timeTick } from '.
 import { NPC } from '../entities/NPC';
 import { getNPCsForScene, refreshSchedule, updateNPCs } from '../systems/NPCSystem';
 import { collectShard, getElderDialogue, getQuestObjective, getQuestState } from '../systems/QuestSystem';
+import { InputManager } from '../systems/InputManager';
 
 interface SceneInitData {
   spawn?: { x: number; y: number };
@@ -42,8 +43,8 @@ export class MapScene extends Phaser.Scene {
   private transitioning = false;
   // 农田格子视觉对象（仅 farm 场景使用），key = "col,row"
   private tileRects = new Map<string, TileVisual>();
-  // E 键：锄地/播种/浇水/收获/睡觉
-  private keyE!: Phaser.Input.Keyboard.Key;
+  // 输入管理器（统一键盘/触屏输入，Player 和交互共用）
+  private inputManager!: InputManager;
   // HUD 文本引用（主 HUD：区域名/天数/种子/萝卜）
   private hudText!: Phaser.GameObjects.Text;
   // HUD 文本引用（左上角时间：Day N / HH:MM）
@@ -101,10 +102,13 @@ export class MapScene extends Phaser.Scene {
     // 碰撞：石墙(gid 3) 与水(gid 4)
     this.wallsLayer.setCollisionBetween(3, 4);
 
+    // 输入管理器（统一键盘/触屏输入）
+    this.inputManager = new InputManager(this.input.keyboard!);
+
     // 玩家出生点：传入的 spawn 或地图中央
     const sx = this.spawn?.x ?? map.widthInPixels / 2;
     const sy = this.spawn?.y ?? map.heightInPixels / 2;
-    this.player = new Player(this, sx, sy);
+    this.player = new Player(this, sx, sy, this.inputManager);
     this.player.setDepth(10);
 
     // 玩家与墙体碰撞
@@ -150,9 +154,6 @@ export class MapScene extends Phaser.Scene {
       this.setupFarmTiles();
     }
 
-    // E 键：锄地/播种/浇水/收获/睡觉/对话（所有场景注册）
-    this.keyE = this.input.keyboard!.addKey('E');
-
     // 创建当前场景的 NPC（根据 TimeSystem 时间判定 location）
     this.setupNPCs();
 
@@ -181,13 +182,16 @@ export class MapScene extends Phaser.Scene {
     this.lastFrameTime = timeMs;
     timeTick(dtMs);
 
+    // 每帧更新输入（从键盘读移动向量到 moveX/moveY）
+    this.inputManager.update();
+
     this.player.update();
 
     // NPC 插值移动（仅对当前场景有 sprite 的 NPC 生效）
     updateNPCs(dtMs);
 
-    // E 键农田交互：锄地/播种（切换中不响应，避免离开农场瞬间误触）
-    if (!this.transitioning && Phaser.Input.Keyboard.JustDown(this.keyE)) {
+    // 交互：消费一次动作输入（按一次只触发一次，不会连发）
+    if (!this.transitioning && this.inputManager.consumeAction()) {
       this.tryInteract();
     }
 
@@ -420,8 +424,9 @@ export class MapScene extends Phaser.Scene {
   }
 
   /**
-   * E 键统一交互入口：
+   * 交互入口（动作键触发，consumeAction 消费一次）：
    *   0. 若玩家靠近 NPC（所有场景）→ 显示对话
+   *   0.5 森林靠近星之碎片（accepted 状态）→ 采集
    *   1. 若玩家在农场睡觉区域内 → 尝试睡觉（任何时间都可以，不强制到 22:00）
    *   2. 否则 → 农田交互（锄地/播种/浇水/收获）
    */
