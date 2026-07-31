@@ -18,6 +18,7 @@ import { NPC } from '../entities/NPC';
 import { getNPCsForScene, refreshSchedule, updateNPCs } from '../systems/NPCSystem';
 import { collectShard, getElderDialogue, getQuestObjective, getQuestState } from '../systems/QuestSystem';
 import { InputManager } from '../systems/InputManager';
+import { TouchControls } from '../systems/TouchControls';
 
 interface SceneInitData {
   spawn?: { x: number; y: number };
@@ -45,6 +46,8 @@ export class MapScene extends Phaser.Scene {
   private tileRects = new Map<string, TileVisual>();
   // 输入管理器（统一键盘/触屏输入，Player 和交互共用）
   private inputManager!: InputManager;
+  // 触屏控件（摇杆+交互按钮，触屏设备才显示）
+  private touchControls!: TouchControls;
   // HUD 文本引用（主 HUD：区域名/天数/种子/萝卜）
   private hudText!: Phaser.GameObjects.Text;
   // HUD 文本引用（左上角时间：Day N / HH:MM）
@@ -173,6 +176,9 @@ export class MapScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(100);
     this.updateQuestHUD();
+
+    // 触屏控件（摇杆+交互按钮，触屏设备才显示，PC 自动隐藏）
+    this.touchControls = new TouchControls(this, this.inputManager);
   }
 
   update(timeMs: number): void {
@@ -184,6 +190,8 @@ export class MapScene extends Phaser.Scene {
 
     // 每帧更新输入（从键盘读移动向量到 moveX/moveY）
     this.inputManager.update();
+    // 触屏摇杆拖动时覆盖键盘值（在 inputManager.update 之后、player.update 之前）
+    this.touchControls.update();
 
     this.player.update();
 
