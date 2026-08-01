@@ -203,11 +203,11 @@ async function run() {
     await teleport(page, 'forest', 328, 184, 'up'); // 碎片 (328,168)
     await pressE(page);
     await sleep(700);
-    await advanceN(page, 3); // 推进 3 行，停在"它像是在等待一个条件"
+    await advanceN(page, 5); // 推进 5 行，停在"它在等待一个条件。没有回应，是因为条件还没满足。"
     await sleep(900); // 等待打字机播完
     const forestText = await dialogueText(page);
-    ok('5. 森林采集：程序员能力展示对话', forestText.includes('它像是在等待一个条件'), forestText.substring(0, 40));
-    await skipDialogue(page, 4); // 剩余 4 行 + 关闭 → 自动采集 + 里程碑存档
+    ok('5. 森林采集：程序员能力展示对话', forestText.includes('它在等待一个条件'), forestText.substring(0, 40));
+    await skipDialogue(page, 4); // 剩余 3 行 + 关闭 → 自动采集 + 里程碑存档
 
     const afterCollect = await page.evaluate(() => {
       const s = window.__game.scene.getScene('forest');
