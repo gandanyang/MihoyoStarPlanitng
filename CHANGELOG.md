@@ -6,6 +6,15 @@
 
 ## [未发布]
 
+### v0.5.2 制作人接管 + 移动端真机测试推进 + 移动端操作文案适配（BUG-011）
+- **制作人接管**（顶层设计.md v0.5，`8ccc34d`）：Codex → opencode 接任顶层设计/决策/评审角色；执行原则「先稳定再打磨」
+- **竖屏方案拍板**（`f3b0723`）：BUG-007 采用方案 A（竖屏横屏提示），但**实现延后**——优先移动端真机测试，拿到实测数据后再排期
+- **真机测试环境就绪**：dev server `http://192.168.31.195:5173/`（局域网可访问）；新增临时调试入口 `?reset=1` 启动强制清档（`fb1419f`，仅前端 localStorage 操作，测试后移除）
+- **BUG-011 移动端操作文案适配**（`35cbac4`）：4 文件（`StorySystem`/`NPCSystem`/`DailyQuestSystem`/`TitleScene`）硬编码 PC 按键提示改为 `isMobileLayout()` 双文案——移动端显示「摇杆」/「点「交互」」/「点按「背包」按钮」，替代 [E]/[B]/[R]/[WASD] 键提示
+- **新增探针**：`probe-mobile-text.mjs`（移动端文案 6 项断言）
+- **验证**：tsc / build / probe-mobile-text（6/6）/ test-tutorial（13）/ test-ch1-story（24）/ test-stress-switch（25）全绿
+- **待办**：真机 S1-S11 测试完成后移除 `?reset=1` 入口；BUG-001/002/003/008 真机复测；竖屏方案 A 排期实现
+
 ### v0.5.2 交互加固：教程期无斧头砍树不吞交互（BUG-010）
 - **根因**：`MapScene.tryChopTree()` 在玩家无斧头（`getItemCount('old_axe') <= 0`）时显示"需要斧头才能砍树！"并 `return true` 吞掉该次交互——教程期玩家若恰好站在树旁按交互，本意是锄地/播种/浇水却被砍树分支拦截
 - **修复**（`MapScene.ts`）：无斧头时改为 `return false`，不弹提示、不吞交互，操作落到农田交互（或自然无响应）
