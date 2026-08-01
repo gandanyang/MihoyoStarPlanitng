@@ -1,15 +1,17 @@
 /**
- * 存档系统（Phase 0.3）
+ * 存档系统（v0.5）
  *
  * 使用 localStorage 持久化游戏进度，刷新页面后恢复。
- * 保存内容：时间、金币、背包、种子、农田、作物、经验等级、任务状态、玩家位置。
+ * 保存内容按分组组织：player / world / farm / story。
  *
  * 触发时机：
  *   睡觉时自动保存（MapScene.trySleep）
  *   页面关闭/刷新前保存（beforeunload 事件）
- *   手动保存（预留接口）
  *
- * 版本号：存档格式变更时递增，旧版本加载时提示不兼容。
+ * 版本升级策略：
+ *   加载时若存档 version !== SAVE_VERSION，则调用 migrate() 迁移。
+ *   当前 v0.5 的迁移策略：直接清空旧存档 —— 宁可重新开始，也不让旧格式污染新结构。
+ *   后续版本升级时，在 migrate() 中编写逐字段搬移的真实迁移逻辑。
  */
 
 import { getCoins, setCoins } from '../data/Economy';
@@ -34,38 +36,54 @@ import { getStoryStep, setStoryStep, isCh1TownIntroDone, markCh1TownIntroDone, t
 import { getQuestState, setQuestState, type QuestState } from '../systems/QuestSystem';
 import { getDailyQuestSaveData, restoreDailyQuests, type DailyQuestSaveData } from '../systems/DailyQuestSystem';
 
-/** 当前存档格式版本（语义化：格式不兼容时递增） */
-export const SAVE_VERSION = '0.3';
+/** 当前存档格式版本（格式变更时递增；不匹配时走 migrate()） */
+export const SAVE_VERSION = '0.5';
 
 /** 存档 key */
 const STORAGE_KEY = 'return_star_save';
 
-/** 存档数据结构 */
+/** 存档数据结构（v0.5 分组格式） */
 export interface SaveData {
   version: string;
   /** 现实保存时间（ISO 格式，便于 UI 显示） */
   savedAt: string;
   /** Unix 时间戳（内部使用） */
   timestamp: number;
-  time: { day: number; hour: number; minute: number };
-  coins: number;
-  inventory: Record<ItemType, number>;
-  tiles: [string, TileState][];
-  crops: [string, CropData][];
-  trees: [string, TreeState][];
-  level: number;
-  xp: number;
-  questState: QuestState;
-  dailyQuest?: DailyQuestSaveData;
-  stamina: number;
-  minedOres: string[];
-  storyStep: StoryStep;
-  /** 第一章：是否已触发过小镇剧情 */
-  ch1TownIntroDone?: boolean;
-  player: { x: number; y: number; scene: string; facing: string };
+  /** 玩家：位置 + 背包 */
+  player: {
+    x: number;
+    y: number;
+    scene: string;
+    facing: string;
+    inventory: Record<ItemType, number>;
+  };
+  /** 世界：时间 / 经济 / 进度 */
+  world: {
+    day: number;
+    hour: number;
+    minute: number;
+    coins: number;
+    level: number;
+    xp: number;
+    stamina: number;
+    minedOres: string[];
+    questState: QuestState;
+    dailyQuest?: DailyQuestSaveData;
+  };
+  /** 农场：土地 / 作物 / 树木 */
+  farm: {
+    tiles: [string, TileState][];
+    crops: [string, CropData][];
+    trees: [string, TreeState][];
+  };
+  /** 剧情进度 */
+  story: {
+    storyStep: StoryStep;
+    ch1TownIntroDone?: boolean;
+  };
 }
 
-/** 上一次加载时遇到的不兼容版本号（用于 UI 提示） */
+/** 上一次加载时遇到的不匹配版本号（用于 UI 提示） */
 let lastIncompatibleVersion: string | null = null;
 
 /** 格式化时间为可读字符串 */
@@ -92,21 +110,34 @@ export function save(player: {
     version: SAVE_VERSION,
     savedAt: formatSavedAt(now),
     timestamp: now.getTime(),
-    time: { day: t.day, hour: t.hour, minute: t.minute },
-    coins: getCoins(),
-    inventory: Object.fromEntries(getAllInventoryEntries()) as Record<ItemType, number>,
-    tiles: getAllTileEntries(),
-    crops: getAllCropEntries(),
-    trees: getAllTreeEntries(),
-    level: getLevel(),
-    xp: getXp(),
-    questState: getQuestState(),
-    dailyQuest: player.dailyQuest ?? getDailyQuestSaveData(),
-    stamina: getStamina(),
-    minedOres: getMinedOreIds(),
-    storyStep: getStoryStep(),
-    ch1TownIntroDone: isCh1TownIntroDone(),
-    player: { x: player.x, y: player.y, scene: player.scene, facing: player.facing },
+    player: {
+      x: player.x,
+      y: player.y,
+      scene: player.scene,
+      facing: player.facing,
+      inventory: Object.fromEntries(getAllInventoryEntries()) as Record<ItemType, number>,
+    },
+    world: {
+      day: t.day,
+      hour: t.hour,
+      minute: t.minute,
+      coins: getCoins(),
+      level: getLevel(),
+      xp: getXp(),
+      stamina: getStamina(),
+      minedOres: getMinedOreIds(),
+      questState: getQuestState(),
+      dailyQuest: player.dailyQuest ?? getDailyQuestSaveData(),
+    },
+    farm: {
+      tiles: getAllTileEntries(),
+      crops: getAllCropEntries(),
+      trees: getAllTreeEntries(),
+    },
+    story: {
+      storyStep: getStoryStep(),
+      ch1TownIntroDone: isCh1TownIntroDone(),
+    },
   };
 
   try {
@@ -116,8 +147,8 @@ export function save(player: {
       savedAt: data.savedAt,
       day: t.day,
       time: `${t.hour}:${String(t.minute).padStart(2, '0')}`,
-      coins: data.coins,
-      level: data.level,
+      coins: data.world.coins,
+      level: data.world.level,
     });
   } catch (e) {
     console.warn('[SaveSystem] 存档保存失败（localStorage 可能已满）', e);
@@ -139,36 +170,36 @@ export function getSaveMeta(): { version: string; savedAt: string } | null {
   }
 }
 
-/** 获取上一次加载时遇到的不兼容版本号 */
+/** 获取上一次加载时遇到的不匹配版本号 */
 export function getLastIncompatibleVersion(): string | null {
   return lastIncompatibleVersion;
 }
 
-/** 清除不兼容版本记录 */
+/** 清除不匹配版本记录 */
 export function clearIncompatibleVersion(): void {
   lastIncompatibleVersion = null;
 }
 
-/** 读取存档（返回 null 表示无存档或版本不兼容） */
+/** 读取存档（返回 null 表示无存档、版本不匹配或数据损坏） */
 export function load(): SaveData | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw) as Partial<SaveData>;
 
-    // 版本检查
+    // 版本检查：不匹配 → 执行迁移（当前 v0.5 策略为清空旧存档）
     const saveVersion = data.version ?? 'unknown';
     if (saveVersion !== SAVE_VERSION) {
       lastIncompatibleVersion = saveVersion;
       console.warn(
-        `[SaveSystem] 存档版本不兼容：当前 ${SAVE_VERSION}，存档 ${saveVersion}。` +
-          '请手动删除旧存档后重新开始。',
+        `[SaveSystem] 存档版本不匹配：当前 ${SAVE_VERSION}，存档 ${saveVersion}，执行迁移。`,
       );
+      migrate(saveVersion);
       return null;
     }
 
     // 结构完整性校验
-    if (!data.player || !data.time || data.coins === undefined) {
+    if (!data.player || !data.world || !data.farm || !data.story) {
       console.warn('[SaveSystem] 存档数据不完整，忽略');
       return null;
     }
@@ -181,66 +212,36 @@ export function load(): SaveData | null {
 }
 
 /**
- * 向后兼容：将旧存档格式的背包数据迁移到新格式
- *
- * 旧格式：{ radish, seed, star_shard }
- * 新格式：{ radish, tomato, corn, radish_seed, tomato_seed, corn_seed, star_shard }
- *
- * 迁移规则：
- *   1. old 'seed' → 'radish_seed'
- *   2. 新物品（tomato, corn, tomato_seed, corn_seed）缺失时补 0
+ * 存档迁移：加载时 version 与 SAVE_VERSION 不一致时调用。
+ * v0.5 起始策略：直接清空旧存档 —— 宁可重新开始，也不让旧格式数据污染新分组结构。
+ * 后续版本升级时，在此处编写逐字段搬移的真实迁移逻辑。
  */
-function migrateInventory(
-  inventory: Record<string, number>,
-): Partial<Record<ItemType, number>> {
-  const migrated: Record<string, number> = { ...inventory };
-
-  // 旧格式 'seed' → 'radish_seed'
-  if (migrated['seed'] !== undefined) {
-    if (migrated['radish_seed'] === undefined) {
-      migrated['radish_seed'] = migrated['seed'];
-    }
-    delete migrated['seed'];
-  }
-
-  // 为新物品设置默认值（如果存档中没有）
-  const defaultItems: ItemType[] = ['tomato', 'corn', 'strawberry', 'tomato_seed', 'corn_seed', 'strawberry_seed', 'stone', 'copper', 'iron', 'manor_key', 'old_hoe', 'old_watering_can', 'old_axe', 'wood'];
-  for (const item of defaultItems) {
-    if (migrated[item] === undefined) {
-      migrated[item] = 0;
-    }
-  }
-
-  return migrated as Partial<Record<ItemType, number>>;
+function migrate(oldVersion: string): void {
+  console.warn(`[SaveSystem] 迁移 ${oldVersion} → ${SAVE_VERSION}：清空旧存档`);
+  localStorage.removeItem(STORAGE_KEY);
 }
 
 /** 应用存档到各模块（读取后调用） */
 export function apply(data: SaveData): void {
-  // 时间
-  setTimeFull(data.time.day, data.time.hour, data.time.minute);
-  // 金币
-  setCoins(data.coins);
-  // 背包（兼容旧存档格式迁移）
-  const migratedInventory = migrateInventory(data.inventory as Record<string, number>);
-  restoreAllInventory(migratedInventory);
-  // 农田
+  // 世界：时间 / 金币 / 经验 / 体力 / 矿脉 / 任务
+  setTimeFull(data.world.day, data.world.hour, data.world.minute);
+  setCoins(data.world.coins);
+  setLevel(data.world.level);
+  setXp(data.world.xp);
+  restoreStamina(data.world.stamina ?? 100);
+  restoreMinedOres(data.world.minedOres ?? []);
+  setQuestState(data.world.questState as QuestState);
+  if (data.world.dailyQuest) restoreDailyQuests(data.world.dailyQuest);
+  // 农场：土地 / 作物 / 树木
   clearAllTiles();
-  restoreTileEntries(data.tiles as [string, TileState][]);
-  restoreCropEntries(data.crops as [string, CropData][]);
-  // 树木
-  restoreTreeEntries((data.trees as [string, TreeState][]) ?? []);
-  // 经验等级
-  setLevel(data.level);
-  setXp(data.xp);
-  // 任务
-  setQuestState(data.questState as QuestState);
-  if (data.dailyQuest) restoreDailyQuests(data.dailyQuest);
-  // 体力 + 矿脉
-  restoreStamina(data.stamina ?? 100);
-  restoreMinedOres(data.minedOres ?? []);
-  // 剧情进度
-  setStoryStep(data.storyStep ?? 'done');
-  if (data.ch1TownIntroDone) markCh1TownIntroDone();
+  restoreTileEntries(data.farm.tiles as [string, TileState][]);
+  restoreCropEntries(data.farm.crops as [string, CropData][]);
+  restoreTreeEntries((data.farm.trees as [string, TreeState][]) ?? []);
+  // 剧情
+  setStoryStep(data.story.storyStep ?? 'done');
+  if (data.story.ch1TownIntroDone) markCh1TownIntroDone();
+  // 背包
+  restoreAllInventory(data.player.inventory);
   // 玩家位置（由 MapScene 读取后设置 spawn）
 }
 

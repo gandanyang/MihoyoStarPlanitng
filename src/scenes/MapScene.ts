@@ -54,7 +54,7 @@ import {
   XIYA_DIALOGUE, GATE_OPENED_DIALOGUE, SOW_SEEDS_DIALOGUE,
   WATER_CROPS_DIALOGUE, EVENING_DIALOGUE, TOWN_INTRO_DIALOGUE,
 } from '../systems/StorySystem';
-import { hasSave, load, apply, save, getLastIncompatibleVersion, clearIncompatibleVersion } from '../systems/SaveSystem';
+import { hasSave, load, apply, save, getLastIncompatibleVersion, clearIncompatibleVersion, SAVE_VERSION } from '../systems/SaveSystem';
 import { play } from '../systems/AudioSystem';
 
 interface SceneInitData {
@@ -234,7 +234,7 @@ export class MapScene extends Phaser.Scene {
         const oldVer = getLastIncompatibleVersion();
         if (oldVer) {
           this.showDialogueText(
-            `存档版本不兼容（v${oldVer}→v0.3），已自动重置。`,
+            `存档版本不兼容（v${oldVer}→v${SAVE_VERSION}），已自动重置。`,
           );
           clearIncompatibleVersion();
         }
