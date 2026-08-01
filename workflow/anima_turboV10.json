@@ -79,18 +79,6 @@
       "title": "VAE解码"
     }
   },
-  "9": {
-    "inputs": {
-      "images": [
-        "8",
-        0
-      ]
-    },
-    "class_type": "PreviewImage",
-    "_meta": {
-      "title": "预览图像"
-    }
-  },
   "10": {
     "inputs": {
       "value": ""
