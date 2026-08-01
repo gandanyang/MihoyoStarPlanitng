@@ -60,6 +60,7 @@ import {
   XIYA_DIALOGUE, GATE_OPENED_DIALOGUE, SOW_SEEDS_DIALOGUE,
   WATER_CROPS_DIALOGUE, EVENING_DIALOGUE, TOWN_INTRO_DIALOGUE,
   FOREST_SHARD_DIALOGUE, DEMO_ENDING_DIALOGUE, DEMO_ENDING_BRANCHES, DEMO_ENDING_FINALE,
+  WOODCUT_TIP_DIALOGUE, MINE_TIP_DIALOGUE,
 } from '../systems/StorySystem';
 import { hasSave, load, apply, save, getLastIncompatibleVersion, clearIncompatibleVersion, SAVE_VERSION } from '../systems/SaveSystem';
 import { play } from '../systems/AudioSystem';
@@ -132,6 +133,9 @@ export class MapScene extends Phaser.Scene {
   private oreSprites: { deposit: OreDeposit; sprite: Phaser.GameObjects.Image }[] = [];
   // 农场树木精灵列表（farm 场景，key = "col,row"）
   private treeSprites = new Map<string, Phaser.GameObjects.Image>();
+  // 首次引导标志
+  private woodcutTipShown = false;
+  private mineTipShown = false;
   // 当前选中的种子类型（R 键切换，用于播种）
   private selectedCropType: CropType = 'radish';
   // 种子类型切换冷却（防连发）
@@ -1304,6 +1308,13 @@ export class MapScene extends Phaser.Scene {
 
     // 0.6 矿洞挖矿：靠近矿脉 E 键开采
     if (this.mapKey === 'mine') {
+      // 挖矿引导（仅第一次进入矿洞触发）
+      if (!this.mineTipShown) {
+        this.mineTipShown = true;
+        if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+        this.storyDialogue.play(MINE_TIP_DIALOGUE);
+        return;
+      }
       this.tryMine();
       return;
     }
@@ -1634,6 +1645,14 @@ export class MapScene extends Phaser.Scene {
     // 斧头检查：无斧头时不吞交互（教程期玩家本无斧头，让操作落到农田交互）
     if (getItemCount('old_axe') <= 0) {
       return false;
+    }
+
+    // 砍树引导（仅第一次触发）
+    if (!this.woodcutTipShown) {
+      this.woodcutTipShown = true;
+      if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+      this.storyDialogue.play(WOODCUT_TIP_DIALOGUE);
+      return true;
     }
 
     // 体力检查（每次砍击扣 5 点，一棵树 3 次 = 15 点）

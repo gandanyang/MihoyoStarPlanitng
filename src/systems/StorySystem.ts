@@ -174,6 +174,22 @@ export const FOREST_SHARD_DIALOGUE: DialogueLine[] = [
   { speaker: '', color: COLORS.girl, text: '……它沉睡太久了。' },
 ];
 
+// ============ 引导对话：砍树 + 挖矿 ============
+
+/** 砍树引导（教程完成后第一次砍树触发） */
+export const WOODCUT_TIP_DIALOGUE: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（林澈看向庄园里的树木。）' },
+  { speaker: '林澈', color: COLORS.linche, inner: true, text: '这些树……也许能用来修房子。' },
+  { speaker: '', color: COLORS.system, text: hint('靠近树，按 [E] 键用斧头砍伐。木材可以卖钱或修建设施。', '靠近树，点「交互」用斧头砍伐。木材可以卖钱或修建设施。') },
+];
+
+/** 挖矿引导（第一次进入矿洞触发） */
+export const MINE_TIP_DIALOGUE: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（矿洞深处，岩壁上隐约有光芒闪烁。）' },
+  { speaker: '林澈', color: COLORS.linche, inner: true, text: '那些发光的矿石……如果能挖出来，也许能换不少钱。' },
+  { speaker: '', color: COLORS.system, text: hint('靠近发光的矿脉，按 [E] 键开采。矿石可以卖给商店老板。', '靠近发光的矿脉，点「交互」开采。矿石可以卖给商店老板。') },
+];
+
 // ============ Demo 结尾：观星夜（定稿版 v0.3） ============
 
 /** 观星夜收尾（第一章完成 + 夜晚，靠近观星点触发；含静默镜头与选项） */

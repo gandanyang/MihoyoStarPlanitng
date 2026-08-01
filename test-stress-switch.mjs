@@ -121,6 +121,26 @@ const ROUTES = [
 ];
 
 /** 进入 mine 后：瞬移到第一块未开采矿脉旁按 E，验证开采 */
+let mineTipConsumed = false;
+
+/** 消耗挖矿引导对话（仅第一次进入 mine 时调用） */
+async function consumeMineTip(page) {
+  if (mineTipConsumed) return;
+  mineTipConsumed = true;
+  // 先按 E 触发引导对话
+  await page.keyboard.press('KeyE');
+  await sleep(400);
+  // 用 advance() 跳过 3 行引导对话
+  for (let i = 0; i < 7; i++) {
+    await page.evaluate(() => {
+      const s = window.__game.scene.getScenes(true)[0];
+      if (s?.storyDialogue?.isOpen()) s.storyDialogue.advance();
+    });
+    await sleep(150);
+  }
+  await sleep(500);
+}
+
 async function mineOneOre(page, round) {
   const info = await page.evaluate(() => {
     const s = window.__game.scene.getScene('mine');
@@ -216,8 +236,11 @@ async function run() {
       // 关闭可能自动播放的剧情对话（如小镇第一章开场），否则出口检测被阻塞
       await skipOpenDialogue(page);
 
-      // 已进入 mine：做一次挖矿验证（矿脉移除 = 不重复开采）
-      if (snap.scene === 'mine') await mineOneOre(page, round);
+      // 已进入 mine：先消耗挖矿引导（仅第一次），再做挖矿验证
+      if (snap.scene === 'mine') {
+        await consumeMineTip(page);
+        await mineOneOre(page, round);
+      }
 
       if (round % 8 === 0) {
         await screenshot(page, `stress-${round}-${route.to}`);

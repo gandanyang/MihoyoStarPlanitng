@@ -88,6 +88,18 @@ async function pressEAt(page, x, y) {
   await sleep(300);
 }
 
+/** 跳过 StoryDialogue 对话（lineCount 行数，每行 2 次 advance + 1 次关闭） */
+async function skipStoryDialogue(page, lineCount) {
+  for (let i = 0; i < lineCount * 2 + 1; i++) {
+    await page.evaluate(() => {
+      const s = window.__game.scene.getScenes(true)[0];
+      if (s?.storyDialogue?.isOpen()) s.storyDialogue.advance();
+    });
+    await sleep(150);
+  }
+  await sleep(500);
+}
+
 async function run() {
   console.log('=== 归星物语 砍树机制 E2E 测试（v0.5）===\n');
 
@@ -139,6 +151,17 @@ async function run() {
     result('W1. 农场树木已创建', tree && tree.trees === 30, `树木数=${tree?.trees}`);
     result('W1b. 目标树(2,3)为活树', tree && tree.t23 !== 'stump' && tree.t23 !== 'missing', `贴图=${tree?.t23}`);
     result('W1c. 对照树(4,5)为活树', tree && tree.t45 !== 'stump' && tree.t45 !== 'missing', `贴图=${tree?.t45}`);
+
+    // ==================== W1d: 首次砍树引导（消耗掉第一次触发） ====================
+    console.log('\n--- W1d: 首次砍树引导 ---');
+    await pressEAt(page, 40, 76); // 触发砍树引导对话
+    await sleep(400);
+    // 用 advance() 跳过引导对话（3 行），不触发键盘 E 事件
+    await skipStoryDialogue(page, 3);
+    // 确认引导已消费（dialogueText 应为 null，树未砍）
+    tree = await farmTreeInfo(page);
+    result('W1d. 砍树引导已触发', tree.dialogue === null, `对话="${tree.dialogue}"`);
+    result('W1d. 树未砍', tree.t23 !== 'stump', `贴图=${tree.t23}`);
 
     // ==================== W2: 第 1 击（树血 3→2） ====================
     console.log('\n--- W2: 第 1 击 ---');
