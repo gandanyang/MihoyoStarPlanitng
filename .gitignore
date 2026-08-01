@@ -34,3 +34,7 @@ Thumbs.db
 
 # 浏览器自动化测试截图（测试产物，不入库）
 test-screenshots/
+
+# Python 缓存
+**/__pycache__/
+*.pyc
