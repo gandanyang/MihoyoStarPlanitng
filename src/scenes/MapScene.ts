@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
 import { MAP_EXITS, MAP_NAMES } from '../data/exits';
-import { isMobileLayout } from '../config';
+import { isMobileLayout, isTouchDevice } from '../config';
 import {
   FARM_AREA,
   TILE_SIZE,
@@ -425,6 +425,7 @@ export class MapScene extends Phaser.Scene {
         this.lastFrameTime = performance.now();
       },
       () => this.useManorKey(),
+      () => this.updateHUD(),
     );
     // 农场升级通知（升级时显示气泡提示）
     setOnLevelUp((newLevel: number) => {
@@ -1844,8 +1845,12 @@ export class MapScene extends Phaser.Scene {
 
     const el = document.createElement('div');
     el.id = 'daily-quest-panel';
+    // 触屏设备：左上（避开右侧背包/交互按钮区）；桌面：右上
+    const panelPos = isTouchDevice()
+      ? 'position:fixed;left:8px;top:70px;'
+      : 'position:fixed;right:4px;top:70px;';
     el.style.cssText =
-      'position:fixed;right:4px;top:70px;width:min(200px,40vw);background:rgba(30,25,20,0.9);' +
+      panelPos + 'width:min(200px,40vw);background:rgba(30,25,20,0.9);' +
       'border:2px solid #8a6a45;border-radius:8px;padding:8px;color:#fff;font-size:11px;' +
       'font-family:Arial;z-index:10;user-select:none;pointer-events:auto;';
 

@@ -7,17 +7,33 @@
  * 交互：
  *   按 B 键 → MapScene 调 open() → 玩家移动/时间冻结
  *   关闭：B 键再次 / Esc 键 / 关闭按钮
+ *   出售：物品格「出售」按钮 → 按 Economy 价格卖出 → 金币+1 / 物品-1
  *
- * 不实现：拖拽、使用、丢弃、排序（MVP 范围）
+ * 不实现：拖拽、丢弃、排序（MVP 范围）
  */
 
-import { getCoins } from '../data/Economy';
-import { getNonEmptyItems, itemIconHtml } from '../data/Inventory';
+import { getCoins, addCoins, RADISH_PRICE, TOMATO_PRICE, CORN_PRICE, STRAWBERRY_PRICE, STONE_PRICE, COPPER_PRICE, IRON_PRICE, WOOD_PRICE } from '../data/Economy';
+import { getNonEmptyItems, itemIconHtml, addItem, ItemType } from '../data/Inventory';
+import { play } from '../systems/AudioSystem';
 
 /** 关店回调 */
 type OnClose = () => void;
 /** 使用钥匙回调 */
 type OnUseKey = () => boolean;
+/** 数据变更回调（出售物品后更新 HUD） */
+type OnDataChange = () => void;
+
+/** 可出售物品 → 收购价（仅背包出售的物品；种子/工具/钥匙/碎片/钻石不出售） */
+const SELL_PRICE: Partial<Record<ItemType, number>> = {
+  radish: RADISH_PRICE,
+  tomato: TOMATO_PRICE,
+  corn: CORN_PRICE,
+  strawberry: STRAWBERRY_PRICE,
+  stone: STONE_PRICE,
+  copper: COPPER_PRICE,
+  iron: IRON_PRICE,
+  wood: WOOD_PRICE,
+};
 
 // ===== 模块级单例 =====
 let panelEl: HTMLDivElement | null = null;
@@ -25,6 +41,7 @@ let domCreated = false;
 let open = false;
 let onClose: OnClose | null = null;
 let onUseKey: OnUseKey | null = null;
+let onDataChange: OnDataChange | null = null;
 
 /** 关闭面板（模块级，B/Esc/按钮都走这里） */
 function closePanel(): void {
@@ -73,6 +90,17 @@ function createDom(): void {
       if (onUseKey?.()) {
         closePanel();
       }
+    } else if (target.dataset?.action === 'sell') {
+      // 背包出售：卖 1 个
+      const itemId = target.dataset?.item as ItemType | undefined;
+      if (itemId && SELL_PRICE[itemId] !== undefined) {
+        const price = SELL_PRICE[itemId]!;
+        addItem(itemId, -1);
+        addCoins(price);
+        play('sell');
+        refresh();
+        onDataChange?.();
+      }
     }
   });
 
@@ -113,16 +141,20 @@ function refresh(): void {
 
   let html = '';
 
-  for (const { count, def } of items) {
+  for (const { item, count, def } of items) {
     const useBtn = def.id === 'manor_key'
       ? `<button data-action="use-key" style="margin-top:6px;font-size:12px;padding:4px 12px;background:#6a8a45;border:none;border-radius:4px;color:#fff;cursor:pointer;">使用</button>`
+      : '';
+    const sellPrice = SELL_PRICE[item];
+    const sellBtn = sellPrice !== undefined
+      ? `<button data-action="sell" data-item="${item}" style="margin-top:6px;font-size:12px;padding:4px 10px;background:#c49a2a;border:none;border-radius:4px;color:#fff;cursor:pointer;">卖 ${sellPrice}G</button>`
       : '';
     html += `
       <div style="${cellStyle}">
         <div style="margin-bottom:4px;line-height:1;">${itemIconHtml(def.id, 28)}</div>
         <div style="font-size:13px;font-weight:bold;color:#e0d5c1;">${def.name}</div>
         <div style="font-size:12px;color:#a5d6a7;">×${count}</div>
-        ${useBtn}
+        ${useBtn}${sellBtn}
       </div>
     `;
   }
@@ -131,9 +163,10 @@ function refresh(): void {
 }
 
 export class BackpackPanel {
-  constructor(onCloseCb?: OnClose, onUseKeyCb?: OnUseKey) {
+  constructor(onCloseCb?: OnClose, onUseKeyCb?: OnUseKey, onDataChangeCb?: OnDataChange) {
     if (onCloseCb) onClose = onCloseCb;
     if (onUseKeyCb) onUseKey = onUseKeyCb;
+    if (onDataChangeCb) onDataChange = onDataChangeCb;
     if (!domCreated) createDom();
   }
 
