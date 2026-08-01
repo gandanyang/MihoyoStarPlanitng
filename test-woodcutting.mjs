@@ -180,8 +180,10 @@ async function run() {
 
     // ==================== W7: 存档序列化保留树桩 ====================
     console.log('\n--- W7: 存档序列化保留树桩 ---');
-    // 真实睡觉路径（床边按 E → trySleep → save 用 this.mapKey），验证树桩进入存档
-    await teleport(page, 56, 224);
+    // 真实睡觉路径：走进木屋 → 站在床上按 E（trySleep → save 用 this.mapKey），验证树桩进入存档
+    await teleport(page, 104, 320); // 农场大门 (6,20) → 进入屋内
+    await sleep(2500);
+    await teleport(page, 40, 40);   // 屋内床铺 (2,2)
     await sleep(150);
     await page.keyboard.press('KeyE');
     await sleep(1200);
