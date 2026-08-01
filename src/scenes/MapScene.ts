@@ -122,6 +122,8 @@ export class MapScene extends Phaser.Scene {
   private shardSprite: Phaser.GameObjects.Ellipse | null = null;
   // 森林碎片对话已播放（首次交互先播对话，结束后自动采集）
   private shardDialoguePlayed = false;
+  // 屋内真实床铺格集合（house 场景，Ground 层 gid 9；"真实床"睡觉判定）
+  private bedTiles = new Set<string>();
   // 矿洞矿脉精灵列表（mine 场景，id → sprite）
   private oreSprites: { deposit: OreDeposit; sprite: Phaser.GameObjects.Image }[] = [];
   // 农场树木精灵列表（farm 场景，key = "col,row"）
@@ -219,6 +221,10 @@ export class MapScene extends Phaser.Scene {
   private createScene(): void {
     // 创建 tilemap 并关联 tileset
     const map = this.make.tilemap({ key: this.mapKey });
+    // 屋内场景：收集真实床铺格（睡觉判定用）
+    if (this.mapKey === 'house') {
+      this.collectBedTiles(map);
+    }
     let tileset = map.addTilesetImage('placeholder', 'tiles');
     if (!tileset) {
       // 兜底：tileset 纹理加载失败时用程序生成的占位瓦片，避免整个场景黑屏
@@ -1181,16 +1187,20 @@ export class MapScene extends Phaser.Scene {
    *   2. 否则 → 农田交互（锄地/播种/浇水/收获）
    */
   private tryInteract(): void {
-    // 1. 睡觉点检测（农场室外旧点 + 室内床边，优先于 NPC 交互）
-    if (this.mapKey === 'farm' || this.mapKey === 'house') {
+    // 1. 睡觉点检测：屋内真实床铺（house，Ground 层 gid 9）
+    //    支持：站在床格上按 E，或站在床相邻格且面向床按 E
+    if (this.mapKey === 'house') {
       const pc = Math.floor(this.player.x / TILE_SIZE);
       const pr = Math.floor(this.player.y / TILE_SIZE);
-      // 农场：左下木屋区域（cols 2-4, rows 12-14）
-      // 室内：床边（cols 1-4, rows 1-4，床在 cols 2-3, rows 2-3）
-      const isSleepArea = this.mapKey === 'farm'
-        ? (pc >= 2 && pc <= 4 && pr >= 12 && pr <= 14)
-        : (pc >= 1 && pc <= 4 && pr >= 1 && pr <= 4);
-      if (isSleepArea) {
+      let tc = pc;
+      let tr = pr;
+      switch (this.player.facing) {
+        case 'up': tr = pr - 1; break;
+        case 'down': tr = pr + 1; break;
+        case 'left': tc = pc - 1; break;
+        case 'right': tc = pc + 1; break;
+      }
+      if (this.bedTiles.has(`${pc},${pr}`) || this.bedTiles.has(`${tc},${tr}`)) {
         // 教程：晚间睡觉 → 结束教程
         if (!isTutorialDone() && this.tryTutorialSleep()) return;
         this.trySleep();
@@ -1407,6 +1417,33 @@ export class MapScene extends Phaser.Scene {
       scene: this.mapKey, facing: this.player.facing,
       dailyQuest: getDailyQuestSaveData(),
     });
+  }
+
+  /**
+   * 收集屋内真实床铺格（Ground 层 gid 9）。
+   * 扫描失败时回退到已知床铺区域（house cols 2-3, rows 2-3），保证睡觉判定不失效。
+   */
+  private collectBedTiles(map: Phaser.Tilemaps.Tilemap): void {
+    this.bedTiles.clear();
+    for (const layerData of map.layers) {
+      const data = layerData?.data;
+      if (!data) continue;
+      for (let r = 0; r < data.length; r++) {
+        for (let c = 0; c < data[r].length; c++) {
+          if (data[r][c]?.index === 9) {
+            this.bedTiles.add(`${c},${r}`);
+          }
+        }
+      }
+    }
+    if (this.bedTiles.size === 0) {
+      for (let c = 2; c <= 3; c++) {
+        for (let r = 2; r <= 3; r++) {
+          this.bedTiles.add(`${c},${r}`);
+        }
+      }
+    }
+    console.log(`[MapScene:house] 床铺格 ${this.bedTiles.size} 个`);
   }
 
   /**

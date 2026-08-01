@@ -246,15 +246,40 @@ async function run() {
     info = await sceneInfo(page);
     result('10. 浇水完成 → 睡觉提示', info.step === 'evening_talk', `步骤=${info.step}`);
 
-    // ==================== STEP 11: 睡觉 → 教程完成 ====================
-    console.log('\n--- Step 11: 睡觉结束第一天 ---');
-    await teleport(page, 'farm', 3 * 16 + 8, 14 * 16, 'up');
-    await pressE(page);
+    // ==================== STEP 11: 走进木屋 → 床边睡觉 → 教程完成 ====================
+    console.log('\n--- Step 11: 进屋上床睡觉 ---');
+    // 走到大门（农场 cols 5-7, rows 18-20）→ 进入屋内
+    await teleport(page, 'farm', 6 * 16 + 8, 20 * 16, 'up'); // (104, 320)
     await sleep(2500);
-
     info = await sceneInfo(page);
-    result('11. 教程完成(done)', info.step === 'done' && info.scene === 'farm',
+    result('11a. 走进木屋进入屋内', info.scene === 'house', `场景=${info.scene}`);
+    if (info.scene !== 'house') throw new Error(`预期 house，实际 ${info.scene}`);
+
+    // 床边一格（面向床）按 E → 教程完成（床边交互）
+    await teleport(page, 'house', 40, 72, 'up'); // tile (2,4) 面向床 (2,3)
+    await pressE(page);
+    await sleep(1500);
+    info = await sceneInfo(page);
+    result('11b. 床边按E 教程完成(done)', info.step === 'done' && info.scene === 'house',
       `场景=${info.scene}, 步骤=${info.step}`);
+
+    // 站在床铺上按 E → 普通睡觉（跨天，床上交互）
+    const dayBefore = await page.evaluate(() => {
+      try {
+        const raw = localStorage.getItem('return_star_save');
+        return raw ? JSON.parse(raw).world.day : null;
+      } catch { return null; }
+    });
+    await teleport(page, 'house', 40, 40, 'up'); // 床铺 (2,2)
+    await pressE(page);
+    await sleep(1500);
+    const dayAfter = await page.evaluate(() => {
+      try {
+        const raw = localStorage.getItem('return_star_save');
+        return raw ? JSON.parse(raw).world.day : null;
+      } catch { return null; }
+    });
+    result('11c. 站在床上按E 跨天睡觉', dayAfter === dayBefore + 1, `day=${dayBefore}→${dayAfter}`);
     await screenshot(page, 'step11-done');
 
     // ==================== 汇总 ====================
