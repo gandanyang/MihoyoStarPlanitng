@@ -126,6 +126,8 @@ export class MapScene extends Phaser.Scene {
   // 睡觉判定格集合：house 场景为真实床铺（Ground gid 9）；farm 场景为木屋地板（Walls gid 6）
   // 说明：教程提示"回到床前按 E 睡觉"显示在 farm，玩家在木屋内按 E 也应能睡（无需先进屋）
   private bedTiles = new Set<string>();
+  // 防重复睡觉：移动端触屏双击发防护（touchstart→mousedown 跨帧触发两次 trySleep）
+  private sleeping = false;
   // 矿洞矿脉精灵列表（mine 场景，id → sprite）
   private oreSprites: { deposit: OreDeposit; sprite: Phaser.GameObjects.Image }[] = [];
   // 农场树木精灵列表（farm 场景，key = "col,row"）
@@ -985,6 +987,7 @@ export class MapScene extends Phaser.Scene {
   /** 教程晚间睡觉 */
   private tryTutorialSleep(): boolean {
     if (getStoryStep() !== 'evening_talk') return false;
+    this.sleeping = true;
     advanceStory(); // → done
     addItem('old_axe', 1); // 完成教程赠送斧头（解锁砍树玩法）
     this.removeTutorialHint();
@@ -1003,6 +1006,7 @@ export class MapScene extends Phaser.Scene {
       dailyQuest: getDailyQuestSaveData(),
     } as any);
     this.updateHUD();
+    this.sleeping = false;
     return true;
   }
 
@@ -1210,7 +1214,15 @@ export class MapScene extends Phaser.Scene {
     if (this.mapKey === 'house' || this.mapKey === 'farm') {
       const pc = Math.floor(this.player.x / TILE_SIZE);
       const pr = Math.floor(this.player.y / TILE_SIZE);
-      if (this.bedTiles.has(`${pc},${pr}`) || this.isNearBedTile(pc, pr)) {
+      const onBed = this.bedTiles.has(`${pc},${pr}`);
+      const nearBed = this.isNearBedTile(pc, pr);
+      if (onBed || nearBed) {
+        console.log(`[MapScene] 床交互触发 player=(${this.player.x},${this.player.y}) tile=(${pc},${pr}) onBed=${onBed} nearBed=${nearBed} step=${getStoryStep()} sleeping=${this.sleeping}`);
+        // 防重复睡觉（移动端触屏双击发防护）
+        if (this.sleeping) {
+          console.log('[MapScene] 睡觉中，忽略重复触发');
+          return;
+        }
         // 教程中：只有 evening_talk 允许睡觉；提前睡觉不跨天（防止存档卡死：
         // 播种后未浇水就睡 → 次日作物已熟/无种子，教程永久无法完成）
         if (!isTutorialDone() && getStoryStep() !== 'evening_talk') {
@@ -1310,6 +1322,7 @@ export class MapScene extends Phaser.Scene {
    * 同时刷新 NPC 日程（次日 06:00 NPC 回到 farm 出生点）
    */
   private trySleep(): void {
+    this.sleeping = true;
     timeNextDay();
     // 体力恢复 + 矿脉刷新
     resetStamina();
@@ -1335,6 +1348,7 @@ export class MapScene extends Phaser.Scene {
       dailyQuest: getDailyQuestSaveData(),
     } as any);
     this.showDialogueText(treesRefreshed ? '已保存 Zzz... 树木也生长恢复了！' : '已保存 Zzz...');
+    this.sleeping = false;
   }
 
   /**

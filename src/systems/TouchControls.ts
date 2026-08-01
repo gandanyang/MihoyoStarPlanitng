@@ -94,16 +94,34 @@ function createDom(): void {
   });
 
   // 交互按钮（右下角）
+  // 事件策略（兼容小米等国产浏览器）：
+  //   pointerdown — 现代统一指针事件（触屏+鼠标统一，优先）
+  //   touchstart  — 旧触屏兜底
+  //   mousedown   — 旧鼠标兜底
+  //   click       — 终极兜底（所有浏览器都支持）
+  // 防抖：同一手势 500ms 内只触发一次（touchstart→mousedown 跨帧双击发防护）
   const btn = document.createElement('div');
   btn.style.cssText =
-    'position:absolute;right:30px;bottom:30px;width:90px;height:90px;border-radius:50%;background:rgba(76,175,80,0.5);border:2px solid rgba(255,255,255,0.6);pointer-events:auto;display:flex;align-items:center;justify-content:center;color:#fff;font:bold 18px Arial;touch-action:none;cursor:pointer';
+    'position:absolute;right:30px;bottom:30px;width:90px;height:90px;border-radius:50%;' +
+    'background:rgba(76,175,80,0.5);border:2px solid rgba(255,255,255,0.6);pointer-events:auto;' +
+    'display:flex;align-items:center;justify-content:center;color:#fff;font:bold 18px Arial;' +
+    'touch-action:none;cursor:pointer;user-select:none;-webkit-user-select:none';
   btn.textContent = '交互';
+  let lastActionTime = 0;
+  const ACTION_DEBOUNCE_MS = 500;
   const pressBtn = (e: Event) => {
     e.preventDefault();
+    e.stopPropagation();
+    const now = Date.now();
+    if (now - lastActionTime < ACTION_DEBOUNCE_MS) return;
+    lastActionTime = now;
+    console.log('[TouchControls] 交互按钮触发', e.type);
     if (currentInput) currentInput.queueAction();
   };
+  btn.addEventListener('pointerdown', pressBtn);
   btn.addEventListener('touchstart', pressBtn);
   btn.addEventListener('mousedown', pressBtn);
+  btn.addEventListener('click', pressBtn);
 
   // 背包按钮（仅移动端显示；桌面端用键盘 B）
   backpackBtn = document.createElement('div');
