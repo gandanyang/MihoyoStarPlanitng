@@ -144,6 +144,9 @@ const MINER_DIALOGUES: DialogueLine[] = [
   { speaker: '矿工老张', color: '#d8a050', text: '不过挖矿费体力，别把自个儿累趴下咯。' },
   { speaker: '', color: COLORS.system, text: hint('（靠近发光的矿脉，按 [E] 键开采。矿洞可从小镇进入。）', '（靠近发光的矿脉，点「交互」开采。矿洞可从小镇进入。）') },
   { speaker: '矿工老张', color: '#d8a050', text: '年轻的时候，我也想离开这里。' },
+  { speaker: '林澈', color: COLORS.linche, text: '那为什么没走？' },
+  { speaker: '矿工老张', color: '#d8a050', text: '（笑）……走不动了。路太长。' },
+  { speaker: '林澈', color: COLORS.linche, text: '有时候，路长不是坏事。至少路上还能想清楚一些事。' },
 ];
 
 /** 花匠小梅：种植话题 */
@@ -152,6 +155,10 @@ const GARDENER_DIALOGUES: DialogueLine[] = [
   { speaker: '花匠小梅', color: '#a0d888', text: '种东西啊，没什么秘诀。每天来看看它们，浇水、除草……' },
   { speaker: '花匠小梅', color: '#a0d888', text: '只要用心，土地就会用丰收回报你。你的庄园也会一样的。' },
   { speaker: '花匠小梅', color: '#a0d888', text: '这花不是卖的，是有人托我种的。' },
+  { speaker: '林澈', color: COLORS.linche, text: '托给谁？' },
+  { speaker: '花匠小梅', color: '#a0d888', text: '不知道。但那个人说，总有一天会有人来收。' },
+  { speaker: '林澈', color: COLORS.linche, text: '……这座岛上的事情，好像都是"总有一天"。' },
+  { speaker: '花匠小梅', color: '#a0d888', text: '（笑）你也感觉到了？' },
 ];
 
 /** 冒险家阿风：冒险与森林提示 */
@@ -160,6 +167,10 @@ const ADVENTURER_DIALOGUES: DialogueLine[] = [
   { speaker: '冒险家阿风', color: '#88b8e8', text: '告诉你个秘密——森林深处有东西在发光，镇长神神秘秘的不肯说。' },
   { speaker: '冒险家阿风', color: '#88b8e8', text: '想去探险的话，记得备足体力。森林可比看上去大得多！' },
   { speaker: '冒险家阿风', color: '#88b8e8', text: '森林深处……有些东西，最好别惊醒。' },
+  { speaker: '林澈', color: COLORS.linche, text: '（笑）你越这么说，我越想去看。' },
+  { speaker: '冒险家阿风', color: '#88b8e8', text: '嘿！你这小子，胆子不小啊！' },
+  { speaker: '林澈', color: COLORS.linche, text: '不是胆子大。只是觉得，既然来了这座岛，就该看看它藏着什么。' },
+  { speaker: '冒险家阿风', color: '#88b8e8', text: '说得对。有空来森林，我带你转转。' },
 ];
 
 /** 六个 NPC（贴图已独立，不再复用） */
