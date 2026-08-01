@@ -20,9 +20,11 @@ import {
   RADISH_PRICE,
   TOMATO_PRICE,
   CORN_PRICE,
+  STRAWBERRY_PRICE,
   STONE_PRICE,
   COPPER_PRICE,
   IRON_PRICE,
+  WOOD_PRICE,
   spendCoins,
 } from '../data/Economy';
 import { addItem, getItemCount } from '../data/Inventory';
@@ -59,6 +61,11 @@ const SHOP_ITEMS: ShopItem[] = [
     canDo: () => getItemCount('corn') > 0,
     do: () => { addItem('corn', -1); addCoins(CORN_PRICE); },
   },
+  {
+    id: 'strawberry', label: '🍓 草莓', price: STRAWBERRY_PRICE, action: 'sell-strawberry', type: 'sell',
+    canDo: () => getItemCount('strawberry') > 0,
+    do: () => { addItem('strawberry', -1); addCoins(STRAWBERRY_PRICE); },
+  },
   // 出售矿石
   {
     id: 'stone', label: '🪨 石头', price: STONE_PRICE, action: 'sell-stone', type: 'sell',
@@ -75,6 +82,12 @@ const SHOP_ITEMS: ShopItem[] = [
     canDo: () => getItemCount('iron') > 0,
     do: () => { addItem('iron', -1); addCoins(IRON_PRICE); },
   },
+  // 出售木材
+  {
+    id: 'wood', label: '🪵 木材', price: WOOD_PRICE, action: 'sell-wood', type: 'sell',
+    canDo: () => getItemCount('wood') > 0,
+    do: () => { addItem('wood', -1); addCoins(WOOD_PRICE); },
+  },
   // 购买（金币 → 种子）
   {
     id: 'radish_seed', label: '🌱 萝卜种子', price: 10, action: 'buy-radish-seed', type: 'buy',
@@ -90,6 +103,11 @@ const SHOP_ITEMS: ShopItem[] = [
     id: 'corn_seed', label: '🌱 玉米种子', price: 15, action: 'buy-corn-seed', type: 'buy',
     canDo: () => getCoins() >= 15,
     do: () => { if (spendCoins(15)) addItem('corn_seed', 1); },
+  },
+  {
+    id: 'strawberry_seed', label: '🍓 草莓种子', price: 50, action: 'buy-strawberry-seed', type: 'buy',
+    canDo: () => getCoins() >= 50,
+    do: () => { if (spendCoins(50)) addItem('strawberry_seed', 1); },
   },
 ];
 

@@ -7,7 +7,7 @@
  * 后续可替换为真实音频文件，只需修改 play() 内部实现。
  */
 
-type SfxName = 'hoe' | 'plant' | 'water' | 'harvest' | 'buy' | 'sell' | 'levelup';
+type SfxName = 'hoe' | 'plant' | 'water' | 'harvest' | 'buy' | 'sell' | 'levelup' | 'chop' | 'tree_fall';
 
 let ctx: AudioContext | null = null;
 
@@ -117,6 +117,21 @@ export function play(name: SfxName): void {
       tone(659, 0.1, 'triangle', 0.12, 0.08);
       tone(784, 0.1, 'triangle', 0.12, 0.16);
       tone(1047, 0.2, 'triangle', 0.15, 0.24);
+      break;
+
+    case 'chop':
+      // 砍树：斧头劈入木材的沉闷撞击 + 木屑碎裂感
+      tone(120, 0.08, 'square', 0.18);
+      tone(70, 0.12, 'triangle', 0.15, 0.01);
+      noise(0.06, 0.1);
+      break;
+
+    case 'tree_fall':
+      // 树倒：木质嘎吱声 → 坠地撞击
+      tone(200, 0.3, 'sawtooth', 0.06);
+      tone(150, 0.25, 'sawtooth', 0.05, 0.05);
+      tone(80, 0.2, 'triangle', 0.12, 0.25);
+      noise(0.15, 0.12, 0.3);
       break;
   }
 }

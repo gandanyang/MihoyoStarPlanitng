@@ -13,7 +13,7 @@
 export type TileState = 'empty' | 'tilled' | 'watered' | 'planted' | 'grown';
 
 /** 作物类型 */
-export type CropType = 'radish' | 'tomato' | 'corn';
+export type CropType = 'radish' | 'tomato' | 'corn' | 'strawberry';
 
 /** 作物基础属性 */
 export interface CropDef {
@@ -34,10 +34,11 @@ export const CROP_DEFS: Record<CropType, CropDef> = {
   radish: { name: '萝卜', icon: '🥕', seedItem: 'radish_seed', growthDays: 1, seedPrice: 10, sellPrice: 15 },
   tomato: { name: '番茄', icon: '🍅', seedItem: 'tomato_seed', growthDays: 2, seedPrice: 20, sellPrice: 35 },
   corn: { name: '玉米', icon: '🌽', seedItem: 'corn_seed', growthDays: 3, seedPrice: 15, sellPrice: 25 },
+  strawberry: { name: '草莓', icon: '🍓', seedItem: 'strawberry_seed', growthDays: 3, seedPrice: 50, sellPrice: 80 },
 };
 
 /** 所有作物类型列表（按索引顺序，与 spritesheet 行对应） */
-export const CROP_TYPES: CropType[] = ['radish', 'tomato', 'corn'];
+export const CROP_TYPES: CropType[] = ['radish', 'tomato', 'corn', 'strawberry'];
 
 /** 获取作物类型在 spritesheet 中的行索引（0=radish, 1=tomato, 2=corn） */
 export function getCropTypeIndex(cropType: CropType): number {
@@ -47,13 +48,13 @@ export function getCropTypeIndex(cropType: CropType): number {
 /**
  * 农田可耕区域（瓦片坐标，闭区间）
  * 与 tools/gen_map_assets.py 中 gen_farm 的 G_SOIL 填充一致：
- *   fill_rect(ground, 11, 8, 18, 12, G_SOIL)
+ *   fill_farm_rect(ground, 12, 8, 28, 16, G_SOIL)
  */
 export const FARM_AREA = {
-  col0: 11,
+  col0: 12,
   row0: 8,
-  col1: 18,
-  row1: 12,
+  col1: 28,
+  row1: 16,
 };
 
 /** 瓦片尺寸（像素） */
@@ -135,6 +136,93 @@ export function setCrop(
 }
 
 // ---------------- 存档序列化 ----------------
+
+/** 树木状态 */
+export interface TreeState {
+  col: number;
+  row: number;
+  health: number;
+  isStump: boolean;
+}
+
+/** 树木最大生命值（砍 3 次倒下） */
+export const TREE_MAX_HEALTH = 3;
+
+/** 树桩刷新间隔（每 3 天树桩恢复为树） */
+export const TREE_REFRESH_INTERVAL = 3;
+
+/** 农场树木固定位置（30 棵，沿地图边缘分布，避开出口/农田/睡觉区） */
+export const FARM_TREE_POSITIONS: { col: number; row: number }[] = [
+  // 顶部边缘（避开 cols 14-16 森林出口）
+  { col: 2, row: 3 }, { col: 4, row: 5 }, { col: 7, row: 5 },
+  { col: 10, row: 3 }, { col: 20, row: 3 }, { col: 24, row: 4 },
+  { col: 30, row: 3 }, { col: 33, row: 4 }, { col: 34, row: 5 }, { col: 37, row: 5 },
+  // 左侧边缘（避开 rows 12-14 睡觉区域）
+  { col: 2, row: 8 }, { col: 3, row: 10 }, { col: 4, row: 12 },
+  { col: 2, row: 16 }, { col: 4, row: 18 },
+  // 右侧边缘（避开 rows 9-11 小镇出口）
+  { col: 39, row: 4 }, { col: 38, row: 7 }, { col: 34, row: 12 },
+  { col: 37, row: 12 }, { col: 39, row: 13 }, { col: 38, row: 16 },
+  // 底部边缘（避开 cols 5-7 室内入口）
+  { col: 9, row: 17 }, { col: 10, row: 20 }, { col: 14, row: 21 },
+  { col: 20, row: 20 }, { col: 25, row: 21 }, { col: 30, row: 20 },
+  { col: 34, row: 18 }, { col: 35, row: 21 }, { col: 39, row: 20 },
+];
+
+/** 树木状态表：key = "col,row" */
+const trees = new Map<string, TreeState>();
+
+/** 初始化所有树木为满血状态 */
+export function initTrees(): void {
+  trees.clear();
+  for (const pos of FARM_TREE_POSITIONS) {
+    trees.set(`${pos.col},${pos.row}`, {
+      col: pos.col,
+      row: pos.row,
+      health: TREE_MAX_HEALTH,
+      isStump: false,
+    });
+  }
+}
+
+/** 获取某棵树的状态 */
+export function getTree(col: number, row: number): TreeState | undefined {
+  return trees.get(`${col},${row}`);
+}
+
+/** 砍树：减少生命值，返回是否砍倒 */
+export function chopTree(col: number, row: number): boolean {
+  const tree = trees.get(`${col},${row}`);
+  if (!tree || tree.isStump) return false;
+  tree.health--;
+  if (tree.health <= 0) {
+    tree.isStump = true;
+    return true; // 树倒了
+  }
+  return false; // 还没倒
+}
+
+/** 刷新所有树桩为满血树（每 TREE_REFRESH_INTERVAL 天调用一次） */
+export function refreshStumps(): void {
+  for (const tree of trees.values()) {
+    if (tree.isStump) {
+      tree.isStump = false;
+      tree.health = TREE_MAX_HEALTH;
+    }
+  }
+}
+
+/** 获取所有树木条目（存档序列化用） */
+export function getAllTreeEntries(): [string, TreeState][] {
+  return Array.from(trees.entries());
+}
+
+/** 恢复树木状态（存档恢复用） */
+export function restoreTreeEntries(entries: [string, TreeState][]): void {
+  for (const [key, state] of entries) {
+    trees.set(key, state);
+  }
+}
 
 /** 获取所有土地状态条目（存档序列化用） */
 export function getAllTileEntries(): [string, TileState][] {

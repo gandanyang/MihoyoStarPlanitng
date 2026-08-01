@@ -51,9 +51,15 @@ export const TOMATO_PRICE = 35;
 export const CORN_SEED_PRICE = 15;
 /** 玉米收购价 */
 export const CORN_PRICE = 25;
+/** 草莓种子售价 */
+export const STRAWBERRY_SEED_PRICE = 50;
+/** 草莓收购价 */
+export const STRAWBERRY_PRICE = 80;
 /** 石头收购价 */
 export const STONE_PRICE = 5;
 /** 铜矿收购价 */
 export const COPPER_PRICE = 15;
 /** 铁矿收购价 */
 export const IRON_PRICE = 30;
+/** 木材收购价 */
+export const WOOD_PRICE = 8;

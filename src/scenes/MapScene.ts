@@ -13,6 +13,13 @@ import {
   isInFarmArea,
   setCrop,
   setTileState,
+  FARM_TREE_POSITIONS,
+  TREE_MAX_HEALTH,
+  TREE_REFRESH_INTERVAL,
+  initTrees,
+  getTree,
+  chopTree,
+  refreshStumps,
 } from '../data/FarmState';
 import { addItem, getItemCount } from '../data/Inventory';
 import { formatTime, getTime, nextDay as timeNextDay, tick as timeTick } from '../data/TimeSystem';
@@ -43,8 +50,9 @@ import { BackpackPanel } from '../ui/BackpackPanel';
 import { StoryDialogue } from '../ui/StoryDialogue';
 import {
   getStoryStep, setStoryStep, advanceStory, isTutorialDone,
+  isCh1TownIntroDone, markCh1TownIntroDone,
   XIYA_DIALOGUE, GATE_OPENED_DIALOGUE, SOW_SEEDS_DIALOGUE,
-  WATER_CROPS_DIALOGUE, EVENING_DIALOGUE,
+  WATER_CROPS_DIALOGUE, EVENING_DIALOGUE, TOWN_INTRO_DIALOGUE,
 } from '../systems/StorySystem';
 import { hasSave, load, apply, save, getLastIncompatibleVersion, clearIncompatibleVersion } from '../systems/SaveSystem';
 import { play } from '../systems/AudioSystem';
@@ -74,6 +82,8 @@ export class MapScene extends Phaser.Scene {
   private spawn: { x: number; y: number } | undefined;
   // 切换中标记，防止同一帧重复触发
   private transitioning = false;
+  // create 阶段是否抛错（抛错时显示错误遮罩并停止更新，避免黑屏）
+  private createFailed = false;
   // 农田格子视觉对象（仅 farm 场景使用），key = "col,row"
   private tileRects = new Map<string, TileVisual>();
   // 输入管理器（统一键盘/触屏输入，Player 和交互共用）
@@ -106,6 +116,8 @@ export class MapScene extends Phaser.Scene {
   private shardSprite: Phaser.GameObjects.Ellipse | null = null;
   // 矿洞矿脉精灵列表（mine 场景，id → sprite）
   private oreSprites: { deposit: OreDeposit; sprite: Phaser.GameObjects.Ellipse }[] = [];
+  // 农场树木精灵列表（farm 场景，key = "col,row"）
+  private treeSprites = new Map<string, Phaser.GameObjects.Image>();
   // 当前选中的种子类型（R 键切换，用于播种）
   private selectedCropType: CropType = 'radish';
   // 种子类型切换冷却（防连发）
@@ -114,7 +126,7 @@ export class MapScene extends Phaser.Scene {
   private seedSelectorEl: HTMLDivElement | null = null;
   // 剧情对话 UI
   private storyDialogue: StoryDialogue | null = null;
-  // 教程：庄园大门墙壁（物理矩形，钥匙使用后销毁）
+  // 教程：大门墙壁（物理矩形，钥匙使用后销毁）
   private gateWall: Phaser.GameObjects.Rectangle | null = null;
   // 教程：夏雅精灵
   private xiyaSprite: Phaser.GameObjects.Sprite | null = null;
@@ -132,6 +144,7 @@ export class MapScene extends Phaser.Scene {
   init(data: SceneInitData): void {
     this.spawn = data?.spawn;
     this.transitioning = false;
+    this.createFailed = false;
   }
 
   preload(): void {
@@ -151,18 +164,44 @@ export class MapScene extends Phaser.Scene {
     if (!this.textures.exists('npc_elder')) this.load.image('npc_elder', 'assets/sprites/npc_elder.png');
     if (!this.textures.exists('npc_merchant')) this.load.image('npc_merchant', 'assets/sprites/npc_merchant.png');
     if (!this.textures.exists('npc_girl')) this.load.image('npc_girl', 'assets/sprites/npc_girl.png');
+    if (!this.textures.exists('npc_xiya')) this.load.image('npc_xiya', 'assets/sprites/npc_xiya.png');
     if (this.mapKey === 'farm' && !this.textures.exists('crops')) {
       this.load.spritesheet('crops', 'assets/sprites/crops.png', { frameWidth: 32, frameHeight: 32 });
+    }
+    // 砍树贴图：树1（阔叶）/树2（松树）/树桩（农场场景）
+    if (this.mapKey === 'farm') {
+      if (!this.textures.exists('tree1')) this.load.image('tree1', 'assets/sprites/tree1.png');
+      if (!this.textures.exists('tree2')) this.load.image('tree2', 'assets/sprites/tree2.png');
+      if (!this.textures.exists('stump')) this.load.image('stump', 'assets/sprites/stump.png');
     }
   }
 
   create(): void {
+    // 兜底：create 阶段任何未预期的异常（贴图缺失/地图数据异常等）都不允许演变成黑屏，
+    // 统一捕获并显示错误遮罩 + 刷新按钮
+    try {
+      this.createScene();
+    } catch (err) {
+      this.createFailed = true;
+      console.error(`[MapScene:${this.mapKey}] create() 抛出异常，已阻止黑屏`, err);
+      this.showFatalError(err);
+    }
+  }
+
+  private createScene(): void {
     // 创建 tilemap 并关联 tileset
     const map = this.make.tilemap({ key: this.mapKey });
-    const tileset = map.addTilesetImage('placeholder', 'tiles');
+    let tileset = map.addTilesetImage('placeholder', 'tiles');
     if (!tileset) {
-      console.error(`[MapScene:${this.mapKey}] tileset "placeholder" 关联失败`);
-      return;
+      // 兜底：tileset 纹理加载失败时用程序生成的占位瓦片，避免整个场景黑屏
+      console.error(`[MapScene:${this.mapKey}] tileset "placeholder" 关联失败，使用占位瓦片`);
+      this.createFallbackTilesTexture();
+      tileset = map.addTilesetImage('placeholder', 'fallback_tiles');
+      if (!tileset) {
+        console.error(`[MapScene:${this.mapKey}] 兜底 tileset 也失败，无法渲染地图`);
+        this.showDialogueText('地图资源加载失败，请刷新页面重试');
+        return;
+      }
     }
 
     // 渲染图层
@@ -171,8 +210,10 @@ export class MapScene extends Phaser.Scene {
     groundLayer?.setDepth(0);
     this.wallsLayer.setDepth(1);
 
-    // 碰撞：石墙(gid 3) 与水(gid 4)
+    // 碰撞：仅石墙(3)、水(4)、树木(9-12)、树桩(13) 参与碰撞
+    // 土壤(5)、木地板(6)、小路(7)、花(8) 不碰撞（木地板/花仅装饰）
     this.wallsLayer.setCollisionBetween(3, 4);
+    this.wallsLayer.setCollisionBetween(9, 13);
 
     // 存档恢复：仅在农场场景首次进入时检查
     // 若存档存在则加载数据，若玩家上次在其他场景则切换过去
@@ -203,6 +244,9 @@ export class MapScene extends Phaser.Scene {
     // 输入管理器（统一键盘/触屏输入）
     this.inputManager = new InputManager(this.input.keyboard!);
 
+    // 物理世界边界（必须在玩家创建之前设置，否则 setCollideWorldBounds 使用默认 800x600）
+    this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
+
     // 玩家出生点：传入的 spawn 或地图中央
     const sx = this.spawn?.x ?? map.widthInPixels / 2;
     const sy = this.spawn?.y ?? map.heightInPixels / 2;
@@ -211,9 +255,6 @@ export class MapScene extends Phaser.Scene {
 
     // 玩家与墙体碰撞
     this.physics.add.collider(this.player, this.wallsLayer);
-
-    // 物理世界边界
-    this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
 
     // 摄像机：跟随 + 限制在地图内 + 放大2倍
     this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
@@ -274,6 +315,11 @@ export class MapScene extends Phaser.Scene {
     // 农场场景：渲染农田格子覆盖层
     if (this.mapKey === 'farm') {
       this.setupFarmTiles();
+      // 砍树：创建树木精灵 + 兼容旧存档赠送斧头
+      this.setupTrees();
+      if (isTutorialDone() && getItemCount('old_axe') === 0) {
+        addItem('old_axe', 1);
+      }
 
       // 农田选中高亮（淡黄色边框，跟随玩家面向的格子）
       this.targetHighlight = this.add.rectangle(0, 0, TILE_SIZE, TILE_SIZE, 0xfff176, 0.15);
@@ -282,8 +328,22 @@ export class MapScene extends Phaser.Scene {
       this.targetHighlight.setVisible(false);
     }
 
+    // 出口指示箭头（所有地图场景，帮助玩家找到出口）
+    this.setupExitIndicators();
+
     // 创建当前场景的 NPC（根据 TimeSystem 时间判定 location）
     this.setupNPCs();
+
+    // 第一章：首次进入小镇触发剧情（教程完成后、且从未触发过）
+    if (this.mapKey === 'town' && isTutorialDone() && !isCh1TownIntroDone()) {
+      if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+      markCh1TownIntroDone();
+      this.time.delayedCall(600, () => {
+        this.storyDialogue!.play(TOWN_INTRO_DIALOGUE, () => {
+          this.updateHUD();
+        });
+      });
+    }
 
     // 森林场景：创建星之碎片采集点（仅 accepted 状态显示）
     if (this.mapKey === 'forest') {
@@ -295,8 +355,8 @@ export class MapScene extends Phaser.Scene {
       this.setupOres();
     }
 
-    // 农场场景：教程设置（庄园大门 + 夏雅）
-    if (this.mapKey === 'farm' && !isTutorialDone()) {
+    // 教程设置（大门地图 + 农场）
+    if ((this.mapKey === 'gate' || this.mapKey === 'farm') && !isTutorialDone()) {
       this.setupTutorial();
     }
 
@@ -349,9 +409,15 @@ export class MapScene extends Phaser.Scene {
       }
     };
     window.addEventListener('beforeunload', MapScene._beforeUnload);
+
+    // 淡入过渡（与出口切换的 fadeOut 配对，避免切图瞬间黑屏）
+    this.cameras.main.fadeIn(300, 0, 0, 0);
   }
 
   update(timeMs: number): void {
+    // create 失败：停止每帧逻辑（错误遮罩已显示，避免空引用持续抛错）
+    if (this.createFailed) return;
+
     // 商店打开：冻结时间/玩家移动/NPC/交互，只响应关闭
     // 关闭方式：E/空格/回车（consumeAction）或 Esc（ShopPanel DOM 监听）
     if (this.shopPanel.isOpen()) {
@@ -427,23 +493,6 @@ export class MapScene extends Phaser.Scene {
     // 切换中则不再检测出口
     if (this.transitioning) return;
 
-    // 教程期间锁定离开农场的出口（防止玩家跑出农场去其他地图）
-    // 但室内入口不受限
-    if (!isTutorialDone() && this.mapKey === 'farm') {
-      const exits = MAP_EXITS[this.mapKey] ?? [];
-      for (const ex of exits) {
-        if (ex.target === 'house') continue; // 允许进入室内
-        if (
-          this.player.x >= ex.x &&
-          this.player.x <= ex.x + ex.w &&
-          this.player.y >= ex.y &&
-          this.player.y <= ex.y + ex.h
-        ) {
-          return; // 锁定：不能离开农场
-        }
-      }
-    }
-
     const exits = MAP_EXITS[this.mapKey] ?? [];
     for (const ex of exits) {
       // 玩家中心点是否落在出口区域内
@@ -453,8 +502,24 @@ export class MapScene extends Phaser.Scene {
         this.player.y >= ex.y &&
         this.player.y <= ex.y + ex.h
       ) {
+        console.log(`[Exit] 触发出口: ${this.mapKey} → ${ex.target}`, {
+          player: { x: this.player.x, y: this.player.y },
+          zone: { x: ex.x, y: ex.y, w: ex.w, h: ex.h },
+        });
         this.transitioning = true;
-        this.scene.start(ex.target, { spawn: ex.spawn });
+        // 淡出过渡后切换场景，避免瞬间黑屏
+        this.cameras.main.fadeOut(250, 0, 0, 0);
+        const target = ex.target;
+        const spawn = ex.spawn;
+        this.cameras.main.once('camerafadeoutcomplete', () => {
+          this.scene.start(target, { spawn });
+        });
+        // 兜底：fade 事件异常（如场景被提前销毁）时强制切换
+        this.time.delayedCall(1500, () => {
+          if (this.transitioning && this.scene.isActive()) {
+            this.scene.start(target, { spawn });
+          }
+        });
         return;
       }
     }
@@ -548,44 +613,194 @@ export class MapScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * 创建程序化占位瓦片纹理（tileset 图片加载失败时兜底，防止黑屏）
+   * 14 个瓦片（16x16），简单配色模拟地面/墙/水/树
+   */
+  private createFallbackTilesTexture(): void {
+    if (this.textures.exists('fallback_tiles')) return;
+    const tex = this.textures.createCanvas('fallback_tiles', 14 * 16, 16);
+    if (!tex) return;
+    const ctx = tex.getContext();
+    const colors = [
+      '#3a5a3a', '#4a6a4a', '#4a4a4a', '#3a3a6a', // 1-4: 地面/深地/石墙/水
+      '#5a4a2a', '#8a7a5a', '#6a6a4a', '#2a8a2a', // 5-8: 土壤/木地板/小路/花
+      '#2a5a2a', '#2a6a2a', '#2a4a2a', '#1a4a2a', // 9-12: 树
+      '#5a4a3a', '#3a3a3a',                        // 13-14: 树桩/矿
+    ];
+    for (let i = 0; i < 14; i++) {
+      ctx.fillStyle = colors[i];
+      ctx.fillRect(i * 16, 0, 16, 16);
+    }
+    tex.refresh();
+  }
+
+  /**
+   * 致命错误遮罩（DOM）：场景构建异常时显示，避免黑屏且无任何反馈
+   * 提供错误信息 + 刷新按钮，便于用户自救与排查
+   */
+  private showFatalError(err: unknown): void {
+    const msg = err instanceof Error ? err.message : String(err);
+    let el = document.getElementById('fatal-error-overlay');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'fatal-error-overlay';
+      el.style.cssText =
+        'position:fixed;inset:0;background:#000;z-index:9999;' +
+        'display:flex;flex-direction:column;align-items:center;justify-content:center;' +
+        'font-family:Arial,sans-serif;text-align:center;padding:20px';
+      document.body.appendChild(el);
+    }
+    el.innerHTML = '';
+    const title = document.createElement('div');
+    title.textContent = '地图加载出错了';
+    title.style.cssText = 'font-size:18px;color:#ffe082;margin-bottom:12px';
+    el.appendChild(title);
+    const detail = document.createElement('div');
+    detail.textContent = msg;
+    detail.style.cssText = 'font-size:13px;color:#aaa;max-width:80%;word-break:break-all;margin-bottom:16px';
+    el.appendChild(detail);
+    const reloadBtn = document.createElement('button');
+    reloadBtn.textContent = '刷新页面重试';
+    reloadBtn.style.cssText = 'padding:8px 20px;font-size:14px;cursor:pointer';
+    reloadBtn.addEventListener('click', () => location.reload());
+    el.appendChild(reloadBtn);
+  }
+
+  /**
+   * 创建农场树木精灵
+   * 新游戏无存档时初始化树木状态；有存档时 FarmState 已由 apply() 恢复
+   * 树木贴图 32x32，缩放 0.5 与 16x16 瓦片协调；附带静态碰撞体
+   */
+  private setupTrees(): void {
+    // 新游戏：树木状态表为空时初始化（有存档时 apply() 已恢复）
+    if (!getTree(FARM_TREE_POSITIONS[0].col, FARM_TREE_POSITIONS[0].row)) {
+      initTrees();
+    }
+    // 按位置创建精灵（根据存档状态决定显示树或树桩）
+    for (const pos of FARM_TREE_POSITIONS) {
+      const tree = getTree(pos.col, pos.row);
+      if (!tree) continue;
+      const cx = pos.col * TILE_SIZE + TILE_SIZE / 2;
+      const cy = pos.row * TILE_SIZE + TILE_SIZE / 2;
+      const textureKey = tree.isStump
+        ? 'stump'
+        : (pos.col + pos.row) % 2 === 0 ? 'tree1' : 'tree2';
+      const sprite = this.add.image(cx, cy, textureKey);
+      sprite.setScale(0.5);
+      sprite.setDepth(4);
+      // 树木碰撞（静态物理体）；树桩保留碰撞避免穿模
+      this.physics.add.existing(sprite, true);
+      this.physics.add.collider(this.player, sprite);
+      this.treeSprites.set(`${pos.col},${pos.row}`, sprite);
+    }
+  }
+
+  /** 出口指示箭头：在每个出口区域边缘显示方向 + 目标名称 */
+  private setupExitIndicators(): void {
+    const exits = MAP_EXITS[this.mapKey] ?? [];
+    for (const ex of exits) {
+      const targetName = MAP_NAMES[ex.target] ?? ex.target;
+      const cx = ex.x + ex.w / 2;
+      const cy = ex.y + ex.h / 2;
+
+      // 根据出口在地图边缘的位置决定箭头方向
+      let arrow: string;
+      let labelY = cy;
+      if (ex.y <= 0) {
+        // 顶部出口 → 向上箭头，文字在下方
+        arrow = '▲';
+        labelY = cy + 14;
+      } else if (ex.y + ex.h >= this.physics.world.bounds.height) {
+        // 底部出口 → 向下箭头，文字在上方
+        arrow = '▼';
+        labelY = cy - 14;
+      } else if (ex.x <= 0) {
+        // 左侧出口 → 向左箭头
+        arrow = '◀';
+      } else if (ex.x + ex.w >= this.physics.world.bounds.width) {
+        // 右侧出口 → 向右箭头
+        arrow = '▶';
+      } else {
+        arrow = '◆';
+      }
+
+      const txt = this.add.text(cx, labelY, `${arrow} ${targetName}`, {
+        fontSize: '10px',
+        color: '#ffcc44',
+        stroke: '#000',
+        strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(9);
+
+      // 闪烁动画吸引注意
+      this.tweens.add({
+        targets: txt,
+        alpha: 0.4,
+        duration: 600,
+        yoyo: true,
+        repeat: -1,
+      });
+    }
+  }
+
   // ============ 新手教程 ============
 
   /**
-   * 教程设置：根据当前步骤创建门/夏雅/提示
+   * 教程设置：根据当前场景和步骤创建门/夏雅/提示
    */
   private setupTutorial(): void {
-    this.storyDialogue = new StoryDialogue();
+    // 复用 StoryDialogue 实例，避免场景切换时 DOM 累积
+    if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
     this.tutorialProgress = 0;
     const step = getStoryStep();
 
-    // 庄园大门墙壁（开门前挡住）
+    if (this.mapKey === 'gate') {
+      this.setupGateTutorial(step);
+    } else if (this.mapKey === 'farm') {
+      this.setupFarmTutorial(step);
+    }
+  }
+
+  /** 大门地图教程：门墙 + 夏雅 */
+  private setupGateTutorial(step: string): void {
+    // 庄园大门墙壁（物理阻挡，使用钥匙后销毁）
     const stepsBeforeGate = ['station_intro', 'station_move', 'arrive_manor', 'xiya_talk', 'get_key'];
     if (stepsBeforeGate.includes(step)) {
-      const gateY = 7 * TILE_SIZE + TILE_SIZE / 2;
-      this.gateWall = this.add.rectangle(15 * TILE_SIZE, gateY, 28 * TILE_SIZE, TILE_SIZE, 0x8b4513, 0.5);
+      // 大门在门柱之间（cols 14-15, rows 8-9），2格宽×2格高木门
+      const gateX = 15 * TILE_SIZE;  // 中心 x
+      const gateY = 9 * TILE_SIZE;   // 中心 y（row 9 = rows 8-9 中点）
+      this.gateWall = this.add.rectangle(gateX, gateY, 2 * TILE_SIZE, 2 * TILE_SIZE, 0x8b4513, 0.9);
       this.gateWall.setDepth(4);
       this.physics.add.existing(this.gateWall, true);
       this.physics.add.collider(this.player, this.gateWall);
-      this.add.text(15 * TILE_SIZE, gateY, '🔒 庄园大门', {
-        fontSize: '10px', color: '#ffcc00',
+      // 门锁标志
+      this.add.text(gateX, gateY, '🔒', {
+        fontSize: '12px',
       }).setOrigin(0.5).setDepth(5);
     }
 
-    // 夏雅 NPC（开门前显示在门北侧）
+    // 夏雅 NPC（开门前显示在门南侧，row 11-12）
     if (step === 'arrive_manor' || step === 'xiya_talk' || step === 'get_key') {
       const xiyaX = 15 * TILE_SIZE + TILE_SIZE / 2;
-      const xiyaY = 6 * TILE_SIZE + TILE_SIZE / 2;
-      this.xiyaSprite = this.add.sprite(xiyaX, xiyaY, 'npc_girl');
+      const xiyaY = 11 * TILE_SIZE + TILE_SIZE / 2;
+      this.xiyaSprite = this.add.sprite(xiyaX, xiyaY, 'npc_xiya');
       this.xiyaSprite.setDepth(5);
       this.add.text(xiyaX, xiyaY - 16, '夏雅', {
         fontSize: '10px', color: '#f0a050',
       }).setOrigin(0.5).setDepth(6);
     }
 
-    // 根据步骤显示提示
+    // 提示
     const hints: Partial<Record<string, string>> = {
       arrive_manor: '→ 靠近夏雅，按 [E] 键对话',
       get_key: '→ 按 [B] 键打开背包，选择钥匙使用',
+    };
+    if (hints[step]) this.showTutorialHint(hints[step]!);
+  }
+
+  /** 农场教程：锄地/播种/浇水/睡觉 */
+  private setupFarmTutorial(step: string): void {
+    const hints: Partial<Record<string, string>> = {
       clear_land: '→ 对着农田区域按 [E] 锄地，清理 3 块土地',
       sow_seeds: '→ 按 [R] 切换到萝卜种子，播种 3 块土地',
       water_crops: '→ 对已播种的土地按 [E] 浇水',
@@ -637,10 +852,12 @@ export class MapScene extends Phaser.Scene {
   /** 使用庄园钥匙（BackpackPanel 调用） */
   useManorKey(): boolean {
     if (getStoryStep() !== 'get_key') return false;
-    if (!this.gateWall) return false;
 
-    this.gateWall.destroy();
-    this.gateWall = null;
+    // 销毁大门物理墙
+    if (this.gateWall) {
+      this.gateWall.destroy();
+      this.gateWall = null;
+    }
     if (this.xiyaSprite) { this.xiyaSprite.destroy(); this.xiyaSprite = null; }
     this.removeTutorialHint();
     play('harvest');
@@ -651,7 +868,12 @@ export class MapScene extends Phaser.Scene {
       addItem('old_hoe', 1);
       advanceStory(); // → clear_land
       this.tutorialProgress = 0;
-      this.showTutorialHint('→ 对着农田区域按 [E] 锄地，清理 3 块土地');
+      // 大门地图 → 提示去农场；农场地图 → 提示锄地
+      if (this.mapKey === 'gate') {
+        this.showTutorialHint('→ 大门已开，穿过大门前往庄园');
+      } else {
+        this.showTutorialHint('→ 对着农田区域按 [E] 锄地，清理 3 块土地');
+      }
       this.updateHUD();
     });
     return true;
@@ -713,8 +935,9 @@ export class MapScene extends Phaser.Scene {
   private tryTutorialSleep(): boolean {
     if (getStoryStep() !== 'evening_talk') return false;
     advanceStory(); // → done
+    addItem('old_axe', 1); // 完成教程赠送斧头（解锁砍树玩法）
     this.removeTutorialHint();
-    this.showDialogueText('第一天：归乡 — 游戏保存中…');
+    this.showDialogueText('第一天：归乡 — 游戏保存中…（获得🪓旧斧头）');
     timeNextDay();
     resetStamina();
     resetOres();
@@ -785,49 +1008,17 @@ export class MapScene extends Phaser.Scene {
   }
 
   /**
-   * 显示对话框（靠近 NPC 按 E 触发，3 秒后自动消失）
-   * PC：玩家头顶跟随（不变）
-   * 移动端：屏幕底部固定居中（setScrollFactor 0），避开摇杆/按钮
+   * 播放 NPC 对话（靠近 NPC 按 E 触发，全屏打字机剧本）
+   * 使用 StoryDialogue 全屏播放 npc.dialogues
    */
   private showDialogue(npc: NPC): void {
-    // 已有对话框则先清除
-    if (this.dialogueText) {
-      this.dialogueText.destroy();
-      this.dialogueText = null;
-    }
-    if (this.dialogueTimer) {
-      this.dialogueTimer.remove();
-      this.dialogueTimer = null;
-    }
-    const mobile = isMobileLayout();
-    const text = `${npc.name}：${npc.dialogue}`;
-    // 移动端：屏幕底部居中；PC：玩家头顶跟随
-    const x = mobile ? this.scale.width / 2 : this.player.x;
-    const y = mobile ? this.scale.height - 180 : this.player.y - 24;
-    const originX = 0.5;
-    const originY = mobile ? 1 : 0.5;
-    const scrollFactor = mobile ? 0 : 1;
-    const fontSize = mobile ? '14px' : '12px';
-    const wrapWidth = mobile ? this.scale.width - 80 : 300;
-
-    this.dialogueText = this.add
-      .text(x, y, text, {
-        fontFamily: 'Arial',
-        fontSize,
-        color: '#ffffff',
-        backgroundColor: '#000000',
-        padding: { x: 6, y: 4 },
-        wordWrap: { width: wrapWidth },
-      })
-      .setOrigin(originX, originY)
-      .setScrollFactor(scrollFactor)
-      .setDepth(200);
-    this.dialogueTimer = this.time.delayedCall(3000, () => {
-      if (this.dialogueText) {
-        this.dialogueText.destroy();
-        this.dialogueText = null;
+    if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+    this.storyDialogue.play(npc.dialogues, () => {
+      // 商店老板：对话结束后自动打开商店
+      if (npc.id === 'shopkeeper') {
+        this.inputManager.clearAction();
+        this.shopPanel.open();
       }
-      this.dialogueTimer = null;
     });
   }
 
@@ -964,8 +1155,8 @@ export class MapScene extends Phaser.Scene {
       }
     }
 
-    // 0.3 教程：夏雅交互（农场教程阶段优先于普通 NPC）
-    if (this.mapKey === 'farm' && this.xiyaSprite) {
+    // 0.3 教程：夏雅交互（大门地图优先于普通 NPC）
+    if ((this.mapKey === 'gate' || this.mapKey === 'farm') && this.xiyaSprite) {
       if (this.tryXiyaInteract()) return;
     }
 
@@ -987,14 +1178,16 @@ export class MapScene extends Phaser.Scene {
       // 通知每日任务：与 NPC 对话 + 刷新面板
       onDQTAlkNpc(nearest.id);
       this.updateDailyQuestPanel();
-      // 村长对话由 QuestSystem 根据任务状态决定（含接受/交付推进）
+      // 村长对话：根据任务状态播放完整剧情剧本（StoryDialogue 全屏）
       if (nearest.id === 'elder') {
-        this.showDialogueText(getElderDialogue());
-        this.updateQuestHUD();
+        if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+        this.storyDialogue.play(getElderDialogue(), () => {
+          this.updateQuestHUD();
+          this.updateHUD();
+        });
       } else if (nearest.id === 'shopkeeper') {
-        // 商人：打开商店面板（Phase 0.2）；先清空本次 E 键队列，防止开门即关
-        this.inputManager.clearAction();
-        this.shopPanel.open();
+        // 商人：先播放欢迎剧本，对话结束后自动打开商店
+        this.showDialogue(nearest);
       } else {
         this.showDialogue(nearest);
       }
@@ -1026,6 +1219,9 @@ export class MapScene extends Phaser.Scene {
 
     if (this.mapKey !== 'farm') return;
 
+    // 砍树检测（农场树木，靠近按 E 砍伐，优先于农田交互）
+    if (this.tryChopTree()) return;
+
     // 农田交互：根据面前格子状态自动判断锄地/播种/浇水/收获
     this.tryFarmInteract();
   }
@@ -1040,6 +1236,13 @@ export class MapScene extends Phaser.Scene {
     // 体力恢复 + 矿脉刷新
     resetStamina();
     resetOres();
+    // 树木定期刷新（每 3 天树桩恢复为树）
+    let treesRefreshed = false;
+    if (getTime().day % TREE_REFRESH_INTERVAL === 0) {
+      refreshStumps();
+      if (this.mapKey === 'farm') this.refreshTreeVisuals();
+      treesRefreshed = true;
+    }
     // 每日任务：跨天刷新
     refreshDailyQuests();
     this.createDailyQuestPanel();
@@ -1053,7 +1256,23 @@ export class MapScene extends Phaser.Scene {
       scene: this.mapKey, facing: this.player.facing,
       dailyQuest: getDailyQuestSaveData(),
     } as any);
-    this.showDialogueText('已保存 Zzz...');
+    this.showDialogueText(treesRefreshed ? '已保存 Zzz... 树木也生长恢复了！' : '已保存 Zzz...');
+  }
+
+  /**
+   * 刷新树木视觉（树桩恢复为树后更新贴图）
+   * 仅更新当前贴图为 stump 但状态已恢复的精灵
+   */
+  private refreshTreeVisuals(): void {
+    for (const [key, sprite] of this.treeSprites) {
+      const [col, row] = key.split(',').map(Number);
+      const tree = getTree(col, row);
+      if (!tree) continue;
+      if (!tree.isStump && sprite.texture.key === 'stump') {
+        const textureKey = (col + row) % 2 === 0 ? 'tree1' : 'tree2';
+        sprite.setTexture(textureKey);
+      }
+    }
   }
 
   /**
@@ -1133,12 +1352,72 @@ export class MapScene extends Phaser.Scene {
     addXp(5, 'harvest');
     play('harvest');
 
-    // 矿脉消失 + 标记已开采
+    // 矿脉消失 + 标记已开采 + 从待开采列表移除（防止同一矿脉被重复开采/重复销毁）
     target.sprite.destroy();
-    markMined(target.deposit.id);
+    const minedId = target.deposit.id;
+    markMined(minedId);
+    this.oreSprites = this.oreSprites.filter((e) => e.deposit.id !== minedId);
 
     this.showDialogueText(`开采成功！获得 ${dropsText.join('、')}  体力 -${target.deposit.staminaCost}`);
     this.updateHUD();
+  }
+
+  /**
+   * 砍树：靠近树按 E 砍伐
+   * 需要背包内有「旧斧头」；每砍一次扣 1 血，3 次砍倒 → 掉落木材 + 变树桩
+   * @returns true 表示消费了本次动作（树在范围内）；false 表示附近没有可砍的树
+   */
+  private tryChopTree(): boolean {
+    // 找最近的可砍树木（24px 范围内，树桩跳过）
+    let targetPos: { col: number; row: number } | null = null;
+    let minDist = 24 * 24;
+    for (const pos of FARM_TREE_POSITIONS) {
+      const tree = getTree(pos.col, pos.row);
+      if (!tree || tree.isStump) continue;
+      const cx = pos.col * TILE_SIZE + TILE_SIZE / 2;
+      const cy = pos.row * TILE_SIZE + TILE_SIZE / 2;
+      const dx = this.player.x - cx;
+      const dy = this.player.y - cy;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < minDist) {
+        minDist = d2;
+        targetPos = pos;
+      }
+    }
+    if (!targetPos) return false; // 附近没有可砍的树
+
+    // 斧头检查
+    if (getItemCount('old_axe') <= 0) {
+      this.showDialogueText('需要斧头才能砍树！');
+      return true;
+    }
+
+    // 体力检查（每次砍击扣 5 点，一棵树 3 次 = 15 点）
+    if (!consumeStamina(5)) {
+      this.showDialogueText('体力不足，砍不动树！');
+      return true;
+    }
+
+    // 砍伐：扣血，满 3 次砍倒
+    const chopped = chopTree(targetPos.col, targetPos.row);
+    const key = `${targetPos.col},${targetPos.row}`;
+    const sprite = this.treeSprites.get(key);
+
+    if (chopped) {
+      // 树倒了：掉落 2 个木材 + 变树桩
+      addItem('wood', 2);
+      addXp(5, 'harvest');
+      play('tree_fall');
+      if (sprite) sprite.setTexture('stump');
+      this.showDialogueText('砍倒了树！获得木材 ×2');
+    } else {
+      // 还没倒：扣血 + 砍击音效
+      play('chop');
+      const tree = getTree(targetPos.col, targetPos.row)!;
+      this.showDialogueText(`砍树中… (剩余 ${tree.health}/${TREE_MAX_HEALTH})`);
+    }
+    this.updateHUD();
+    return true;
   }
 
   /**

@@ -5,7 +5,7 @@
  */
 
 /** 物品类型 */
-export type ItemType = 'radish' | 'tomato' | 'corn' | 'radish_seed' | 'tomato_seed' | 'corn_seed' | 'star_shard' | 'diamond' | 'stone' | 'copper' | 'iron' | 'manor_key' | 'old_hoe' | 'old_watering_can';
+export type ItemType = 'radish' | 'tomato' | 'corn' | 'strawberry' | 'radish_seed' | 'tomato_seed' | 'corn_seed' | 'strawberry_seed' | 'star_shard' | 'diamond' | 'stone' | 'copper' | 'iron' | 'manor_key' | 'old_hoe' | 'old_watering_can' | 'old_axe' | 'wood';
 
 /** 物品定义 */
 export interface ItemDef {
@@ -22,9 +22,11 @@ export const ITEM_DEFS: Record<ItemType, ItemDef> = {
   radish: { id: 'radish', name: '萝卜', desc: '农场种植的普通萝卜，可出售换取金币。', icon: '🥕' },
   tomato: { id: 'tomato', name: '番茄', desc: '红润饱满的番茄，比萝卜更值钱。', icon: '🍅' },
   corn: { id: 'corn', name: '玉米', desc: '金黄饱满的玉米，生长周期较长。', icon: '🌽' },
+  strawberry: { id: 'strawberry', name: '草莓', desc: '鲜红香甜的草莓，稀有作物价值很高。', icon: '🍓' },
   radish_seed: { id: 'radish_seed', name: '萝卜种子', desc: '种在锄过的土地上，浇水后1天成熟。', icon: '🌱' },
   tomato_seed: { id: 'tomato_seed', name: '番茄种子', desc: '种在锄过的土地上，浇水后2天成熟。', icon: '🌱' },
   corn_seed: { id: 'corn_seed', name: '玉米种子', desc: '种在锄过的土地上，浇水后3天成熟。', icon: '🌱' },
+  strawberry_seed: { id: 'strawberry_seed', name: '草莓种子', desc: '稀有种子，浇水后3天成熟，价值极高。', icon: '🌱' },
   star_shard: { id: 'star_shard', name: '星之碎片', desc: '星辰岛心脏的碎片，散发着微光。', icon: '💎' },
   diamond: { id: 'diamond', name: '钻石', desc: '完成每日任务获得的稀有货币，可在特殊商店兑换稀有物品。', icon: '💠' },
   stone: { id: 'stone', name: '石头', desc: '矿洞中开采的普通石材，可用于建筑或出售。', icon: '🪨' },
@@ -33,6 +35,8 @@ export const ITEM_DEFS: Record<ItemType, ItemDef> = {
   manor_key: { id: 'manor_key', name: '庄园钥匙', desc: '打开星黎庄园大门的钥匙。', icon: '🗝️' },
   old_hoe: { id: 'old_hoe', name: '旧锄头', desc: '一把老旧的锄头，用来翻地足够了。', icon: '⚒️' },
   old_watering_can: { id: 'old_watering_can', name: '旧水壶', desc: '给作物浇水用的旧水壶。', icon: '🚿' },
+  old_axe: { id: 'old_axe', name: '旧斧头', desc: '一把生锈的斧头，砍几棵树应该没问题。', icon: '🪓' },
+  wood: { id: 'wood', name: '木材', desc: '砍树获得的木材，可用于建筑或出售。', icon: '🪵' },
 };
 
 /** 库存数据：物品类型 → 数量 */
@@ -40,9 +44,11 @@ const inventory: Record<ItemType, number> = {
   radish: 0,
   tomato: 0,
   corn: 0,
+  strawberry: 0,
   radish_seed: 5,
   tomato_seed: 0,
   corn_seed: 0,
+  strawberry_seed: 0,
   star_shard: 0,
   diamond: 0,
   stone: 0,
@@ -51,6 +57,8 @@ const inventory: Record<ItemType, number> = {
   manor_key: 0,
   old_hoe: 0,
   old_watering_can: 0,
+  old_axe: 1, // 测试用：默认给一把斧头
+  wood: 0,
 };
 
 /** 读取某物品数量 */

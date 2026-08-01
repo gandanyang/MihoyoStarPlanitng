@@ -18,16 +18,19 @@ import {
   clearAllTiles,
   getAllCropEntries,
   getAllTileEntries,
+  getAllTreeEntries,
   restoreCropEntries,
   restoreTileEntries,
+  restoreTreeEntries,
   type CropData,
   type TileState,
+  type TreeState,
 } from '../data/FarmState';
 import { getAllInventoryEntries, restoreAllInventory, type ItemType } from '../data/Inventory';
 import { getTime, setTimeFull } from '../data/TimeSystem';
 import { getStamina, setStamina as restoreStamina } from '../data/Stamina';
 import { getMinedOreIds, restoreMinedOres } from '../data/MineState';
-import { getStoryStep, setStoryStep, type StoryStep } from '../systems/StorySystem';
+import { getStoryStep, setStoryStep, isCh1TownIntroDone, markCh1TownIntroDone, type StoryStep } from '../systems/StorySystem';
 import { getQuestState, setQuestState, type QuestState } from '../systems/QuestSystem';
 import { getDailyQuestSaveData, restoreDailyQuests, type DailyQuestSaveData } from '../systems/DailyQuestSystem';
 
@@ -35,7 +38,7 @@ import { getDailyQuestSaveData, restoreDailyQuests, type DailyQuestSaveData } fr
 export const SAVE_VERSION = '0.3';
 
 /** 存档 key */
-const STORAGE_KEY = 'starvalley_save';
+const STORAGE_KEY = 'return_star_save';
 
 /** 存档数据结构 */
 export interface SaveData {
@@ -49,6 +52,7 @@ export interface SaveData {
   inventory: Record<ItemType, number>;
   tiles: [string, TileState][];
   crops: [string, CropData][];
+  trees: [string, TreeState][];
   level: number;
   xp: number;
   questState: QuestState;
@@ -56,6 +60,8 @@ export interface SaveData {
   stamina: number;
   minedOres: string[];
   storyStep: StoryStep;
+  /** 第一章：是否已触发过小镇剧情 */
+  ch1TownIntroDone?: boolean;
   player: { x: number; y: number; scene: string; facing: string };
 }
 
@@ -91,6 +97,7 @@ export function save(player: {
     inventory: Object.fromEntries(getAllInventoryEntries()) as Record<ItemType, number>,
     tiles: getAllTileEntries(),
     crops: getAllCropEntries(),
+    trees: getAllTreeEntries(),
     level: getLevel(),
     xp: getXp(),
     questState: getQuestState(),
@@ -98,6 +105,7 @@ export function save(player: {
     stamina: getStamina(),
     minedOres: getMinedOreIds(),
     storyStep: getStoryStep(),
+    ch1TownIntroDone: isCh1TownIntroDone(),
     player: { x: player.x, y: player.y, scene: player.scene, facing: player.facing },
   };
 
@@ -196,7 +204,7 @@ function migrateInventory(
   }
 
   // 为新物品设置默认值（如果存档中没有）
-  const defaultItems: ItemType[] = ['tomato', 'corn', 'tomato_seed', 'corn_seed', 'stone', 'copper', 'iron', 'manor_key', 'old_hoe', 'old_watering_can'];
+  const defaultItems: ItemType[] = ['tomato', 'corn', 'strawberry', 'tomato_seed', 'corn_seed', 'strawberry_seed', 'stone', 'copper', 'iron', 'manor_key', 'old_hoe', 'old_watering_can', 'old_axe', 'wood'];
   for (const item of defaultItems) {
     if (migrated[item] === undefined) {
       migrated[item] = 0;
@@ -219,6 +227,8 @@ export function apply(data: SaveData): void {
   clearAllTiles();
   restoreTileEntries(data.tiles as [string, TileState][]);
   restoreCropEntries(data.crops as [string, CropData][]);
+  // 树木
+  restoreTreeEntries((data.trees as [string, TreeState][]) ?? []);
   // 经验等级
   setLevel(data.level);
   setXp(data.xp);
@@ -230,6 +240,7 @@ export function apply(data: SaveData): void {
   restoreMinedOres(data.minedOres ?? []);
   // 剧情进度
   setStoryStep(data.storyStep ?? 'done');
+  if (data.ch1TownIntroDone) markCh1TownIntroDone();
   // 玩家位置（由 MapScene 读取后设置 spawn）
 }
 

@@ -1238,16 +1238,16 @@
   "tilesets": [
     {
       "firstgid": 1,
-      "image": "../tiles/mine_tileset.png",
+      "image": "../tiles/placeholder_tileset.png",
       "imageheight": 16,
-      "imagewidth": 128,
+      "imagewidth": 224,
       "margin": 0,
       "name": "placeholder",
       "spacing": 0,
-      "tilecount": 8,
+      "tilecount": 14,
       "tileheight": 16,
       "tilewidth": 16,
-      "columns": 8
+      "columns": 14
     }
   ]
 }

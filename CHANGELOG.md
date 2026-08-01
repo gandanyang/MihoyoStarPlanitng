@@ -6,6 +6,33 @@
 
 ## [未发布]
 
+### 0.4 序章剧情 + 新手教程（v0.4-rc1）
+- **新增 `src/systems/StorySystem.ts`**：11 步序章状态机（`station_intro → station_move → arrive_manor → xiya_talk → get_key → gate_opened → clear_land → sow_seeds → water_crops → evening_talk → done`）
+- **新增车站场景 `StationScene.ts`**：纯 Phaser 图形场景（1120×600），三层视差远山+列车+晨雾粒子+手机通知动画+内心独白
+- **新增大门地图 `gate.json`**（30×20 Tiled）：庄园大门物理墙+夏雅 NPC，一次性教程地图，连接车站→农场
+- **新增剧情对话 UI `StoryDialogue.ts`**：全屏打字机效果（35ms/字），角色名+颜色，内心独白斜体灰，Skip 跳过按钮
+- **新增物品**：`manor_key`（庄园钥匙，背包「使用」按钮）、`old_hoe`（旧锄头）、`old_watering_can`（旧水壶）
+- **农场地图扩大**：30×20 → 40×25 瓦片，可耕区域 8×5=40 格 → 17×9=153 格（约 4 倍）
+- **大门/夏雅/钥匙逻辑**从农场移入独立大门地图，农场不再被门墙割裂
+- 车站出口根据教程进度分流：未完成→大门地图，已完成→农场
+- 开场 30 秒安全超时兜底，防止对话卡死
+- 教程锄地/播种/浇水各阶段自动给物品+推进剧情
+- 晚间睡觉结束第一天，自动存档
+
+### 0.3 每日任务 + 室内房屋 + 挖矿系统（v0.3-mining-basic）
+- **新增 `src/systems/DailyQuestSystem.ts`**：18 个任务模板池，每日随机 4 个，钻石奖励
+- **新增 `src/data/Stamina.ts`**：体力上限 100，挖矿消耗，睡觉恢复
+- **新增 `src/data/MineState.ts`**：6 处矿脉（石头×3/铜矿×2/铁矿×1），每日刷新
+- **新增室内地图 `house.json`**：木屋内部，床边睡觉区
+- **新增物品**：`stone`（石头）、`copper`（铜矿）、`iron`（铁矿）、`diamond`（钻石）
+- **Economy.ts**：新增矿石售价（石头 5G/铜矿 15G/铁矿 30G）
+- **MapScene.ts**：矿脉渲染+`tryMine()`+体力 HUD+睡觉重置；`tryTutorialSleep()` 教程睡觉
+- **ShopPanel.ts**：矿石出售条目
+- **SaveSystem.ts**：保存体力+矿脉+每日任务状态
+- **main.ts**：`window.debug.nextDay` 同步重置（体力+矿脉+每日任务）
+- **NPC 系统扩展**：从 3 个 NPC 扩展到 6 个（新增矿工老张、花匠小梅、冒险家阿飞）
+- **FarmProgress.ts**：新增 `marketMultiplier` 市场价倍率（预留）
+
 ### 0.2 商店 + 经济系统
 - **新增 `src/data/Economy.ts`**：金币系统（初始 50G），`getCoins`/`addCoins`/`spendCoins`；商品价格集中配置（种子 10G/颗、萝卜收购价 15G/个）
 - **新增 `src/ui/ShopPanel.ts`**：DOM 全屏覆盖层（非独立场景，沿用 TouchControls 模块级单例模式）

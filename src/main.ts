@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_CONFIG, GAME_TITLE } from './config';
+import { TitleScene } from './scenes/TitleScene';
 import { MapScene } from './scenes/MapScene';
 import { StationScene } from './scenes/StationScene';
 import { getTime, nextDay as timeNextDay, setTime as setGameTime, formatTime } from './data/TimeSystem';
@@ -34,7 +35,9 @@ const game = new Phaser.Game({
     },
   },
   scene: [
+    new TitleScene(),
     new StationScene(),
+    new MapScene('gate'),
     new MapScene('farm'),
     new MapScene('town'),
     new MapScene('forest'),

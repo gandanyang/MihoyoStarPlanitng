@@ -10,7 +10,7 @@ export const GAME_CONFIG = {
 };
 
 // 游戏标题
-export const GAME_TITLE = '星露谷二游 0.1';
+export const GAME_TITLE = '归星物语';
 
 /**
  * 判断是否为移动端布局（小屏）。

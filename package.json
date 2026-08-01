@@ -1,7 +1,7 @@
 {
   "name": "star-valley-anime",
   "version": "0.1.0",
-  "description": "星露谷二游版本 0.1 - Web小游戏Demo",
+  "description": "归星物语 - 像素风农场生活RPG浏览器游戏",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,6 +12,7 @@
     "phaser": "^3.80.0"
   },
   "devDependencies": {
+    "puppeteer-core": "^25.4.0",
     "typescript": "^5.4.0",
     "vite": "^5.2.0"
   }

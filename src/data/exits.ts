@@ -28,15 +28,21 @@ export interface ExitZone {
 const T = 16;
 
 export const MAP_EXITS: Record<string, ExitZone[]> = {
+  // 门厅：底→车站，顶→农场
+  gate: [
+    { x: 14 * T, y: 0,       w: 3 * T, h: 3 * T, target: 'farm',   spawn: { x: 15 * T, y: 6 * T } },
+  ],
   // 农场：顶→森林，右→小镇，左下木屋门→室内
+  // 出口区域 3x3 格，方便玩家触发
   farm: [
-    { x: 14 * T, y: 0,       w: 2 * T, h: 2 * T, target: 'forest', spawn: { x: 15 * T, y: 17 * T } },
-    { x: 28 * T, y: 9 * T,   w: 2 * T, h: 2 * T, target: 'town',   spawn: { x: 3 * T,  y: 10 * T } },
-    { x: 6 * T,  y: 12 * T,  w: 2 * T, h: 2 * T, target: 'house',  spawn: { x: 10 * T, y: 12 * T } },
+    { x: 14 * T, y: 0,       w: 3 * T, h: 3 * T, target: 'forest', spawn: { x: 15 * T, y: 17 * T } },
+    { x: 37 * T, y: 9 * T,   w: 3 * T, h: 3 * T, target: 'town',   spawn: { x: 3 * T,  y: 10 * T } },
+    { x: 5 * T,  y: 18 * T,  w: 3 * T, h: 3 * T, target: 'house',  spawn: { x: 10 * T, y: 12 * T } },
   ],
   // 森林：底→农场，右→矿洞
+  // 注意：返回农场的出生点 y 必须 > 农场顶部出口区域下边界(48px)，否则一帧内被弹回
   forest: [
-    { x: 14 * T, y: 18 * T,  w: 2 * T, h: 2 * T, target: 'farm',   spawn: { x: 15 * T, y: 3 * T } },
+    { x: 14 * T, y: 18 * T,  w: 2 * T, h: 2 * T, target: 'farm',   spawn: { x: 15 * T, y: 6 * T } },
     { x: 28 * T, y: 9 * T,   w: 2 * T, h: 2 * T, target: 'mine',   spawn: { x: 3 * T,  y: 10 * T } },
   ],
   // 小镇：左→农场，顶→矿洞

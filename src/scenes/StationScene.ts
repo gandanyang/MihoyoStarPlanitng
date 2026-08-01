@@ -36,6 +36,8 @@ export class StationScene extends Phaser.Scene {
   private exitTriggered = false;
   private canMove = false;
   private mistParticles: Phaser.GameObjects.Rectangle[] = [];
+  private introSkipped = false;
+  private trainInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     super('station');
@@ -71,14 +73,12 @@ export class StationScene extends Phaser.Scene {
     this.inputManager = new InputManager(this.input.keyboard!);
     this.touchControls = new TouchControls(this, this.inputManager);
 
-    // ---- 玩家（从列车旁出发） ----
-    this.player = new Player(this, 160, 400, this.inputManager);
-    // 注意：Player 自身已设置 physics + collideWorldBounds + body size
-    // 这里不再重复 setSize，避免覆盖默认 24x24 碰撞盒
+    // ---- 玩家（从站台中央出发，站在站台地面上） ----
+    this.player = new Player(this, 200, 460, this.inputManager);
 
-    // 世界边界：留出出口空间让玩家走到出口触发区域
-    this.physics.world.setBounds(120, 350, W - 120, 210);
-    this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
+    // 物理世界边界：限制在站台区域（y 轴对齐站台地面，x 轴留出出口空间）
+    this.physics.world.setBounds(80, 440, W - 160, 80);
+    this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.setBounds(0, 0, W, H);
 
     // ---- 剧情对话 ----
@@ -121,56 +121,59 @@ export class StationScene extends Phaser.Scene {
     this.drawMountains(0x1a2a20, 300, 0.2, 35, 60);    // 中
     this.drawMountains(0x2a3a20, 320, 0.3, 25, 50);    // 近
 
-    // ── 星黎庄园远景（模糊小房子） ──
+    // ── 星黎庄园远景 ──
     this.drawManorInDistance();
 
-    // ── 田野（站台外的草地） ──
+    // ── 站台外草地 ──
     const field = this.add.graphics();
     field.fillStyle(0x2a3a18, 1);
-    field.fillRect(0, 370, W, 120);
+    field.fillRect(0, 370, W, 75);
     field.setScrollFactor(0.5);
-
-    // 田野纹理
+    // 草地纹理
     for (let x = 0; x < W; x += 8) {
       field.fillStyle(0x2a4a10, 0.3);
       field.fillRect(x, 370 + (x % 16), 4, 10);
     }
 
-    // ── 站台主体 ──
+    // ── 站台地面 ──
     const platformGfx = this.add.graphics();
-    // 站台水泥面
+    // 站台主体
     platformGfx.fillStyle(0x4a4540, 1);
-    platformGfx.fillRect(0, 430, W, 170);
-    // 站台边缘
-    platformGfx.fillStyle(0x5a5550, 1);
-    platformGfx.fillRect(0, 430, W, 4);
-    // 站台砖缝
-    platformGfx.lineStyle(1, 0x3a3530, 0.5);
+    platformGfx.fillRect(0, 445, W, 155);
+    // 站台边缘（浅色镶边）
+    platformGfx.fillStyle(0x6a6560, 1);
+    platformGfx.fillRect(0, 445, W, 4);
+    // 站台砖缝纹理
+    platformGfx.lineStyle(1, 0x3a3530, 0.3);
     for (let x = 0; x < W; x += 32) {
-      platformGfx.lineBetween(x, 430, x, 600);
+      platformGfx.lineBetween(x, 449, x, 600);
     }
-    for (let y = 430; y < 600; y += 32) {
+    for (let y = 449; y < 600; y += 32) {
       platformGfx.lineBetween(0, y, W, y);
     }
+    // 站台边缘警戒线（黄色虚线）
+    platformGfx.lineStyle(2, 0x8a7a3a, 0.6);
+    for (let x = 0; x < W; x += 16) {
+      platformGfx.lineBetween(x, 449, x + 8, 449);
+    }
 
-    // ── 铁路轨道（左下方） ──
+    // ── 铁路轨道（站台左侧下方） ──
     this.drawRailway();
 
-    // ── 列车（左侧） ──
+    // ── 列车（左侧停靠） ──
     this.drawTrain();
+
+    // ── 站台设施 ──
+    this.drawPlatformFixtures();
 
     // ── 站牌 ──
     this.drawStationSign();
 
-    // ── 树木 ──
+    // ── 树木（背景层） ──
     this.drawTrees();
 
-    // ── 青苔 ──
-    for (let i = 0; i < 30; i++) {
-      const x = Phaser.Math.Between(0, W);
-      const y = Phaser.Math.Between(435, 590);
-      this.add.circle(x, y, Phaser.Math.Between(2, 6), 0x2a4a2a, 0.5);
-    }
+    // ── 站台装饰细节 ──
+    this.drawPlatformDetails();
 
     // ── 晨雾粒子 ──
     for (let i = 0; i < 12; i++) {
@@ -196,7 +199,7 @@ export class StationScene extends Phaser.Scene {
     }
 
     // ── 出口箭头（右侧） ──
-    const arrow = this.add.text(W - 60, 370, '▶ 庄园', {
+    const arrow = this.add.text(W - 80, 420, '▶ 庄园', {
       fontSize: '14px',
       color: '#ffcc44',
       stroke: '#000',
@@ -252,17 +255,17 @@ export class StationScene extends Phaser.Scene {
   /** 铁路轨道 */
   private drawRailway(): void {
     const gfx = this.add.graphics();
-    // 碎石路基
+    // 碎石路基（在站台左侧，与站台平齐）
     gfx.fillStyle(0x3a3530, 1);
-    gfx.fillRect(0, 395, 200, 40);
+    gfx.fillRect(0, 410, 180, 30);
     // 铁轨
     gfx.fillStyle(0x5a4a3a, 1);
-    gfx.fillRect(0, 405, 200, 3);
-    gfx.fillRect(0, 425, 200, 3);
+    gfx.fillRect(0, 420, 180, 3);
+    gfx.fillRect(0, 432, 180, 3);
     // 枕木
-    for (let x = 5; x < 200; x += 15) {
+    for (let x = 5; x < 180; x += 15) {
       gfx.fillStyle(0x4a3a2a, 1);
-      gfx.fillRect(x, 403, 4, 24);
+      gfx.fillRect(x, 418, 4, 18);
     }
   }
 
@@ -270,29 +273,29 @@ export class StationScene extends Phaser.Scene {
   private drawTrain(): void {
     const gfx = this.add.graphics();
     const tx = 20;
-    const ty = 365;
+    const ty = 380;
     // 车厢主体
     gfx.fillStyle(0x2a4a2a, 1);
-    gfx.fillRect(tx, ty, 100, 40);
+    gfx.fillRect(tx, ty, 100, 36);
     // 车顶
     gfx.fillStyle(0x1a3a1a, 1);
-    gfx.fillRect(tx - 2, ty - 6, 104, 8);
+    gfx.fillRect(tx - 2, ty - 5, 104, 6);
     // 窗户
     for (let wx = tx + 10; wx < tx + 90; wx += 22) {
       gfx.fillStyle(0x8ac8e8, 0.5);
-      gfx.fillRect(wx, ty + 8, 14, 16);
+      gfx.fillRect(wx, ty + 6, 14, 14);
       gfx.lineStyle(1, 0x1a3a1a, 0.8);
-      gfx.strokeRect(wx, ty + 8, 14, 16);
+      gfx.strokeRect(wx, ty + 6, 14, 14);
     }
     // 车轮
     for (let wx = tx + 15; wx < tx + 85; wx += 30) {
       gfx.fillStyle(0x1a1a1a, 1);
-      gfx.fillCircle(wx, ty + 42, 5);
+      gfx.fillCircle(wx, ty + 38, 5);
       gfx.fillStyle(0x4a4a4a, 1);
-      gfx.fillCircle(wx, ty + 42, 2);
+      gfx.fillCircle(wx, ty + 38, 2);
     }
     // 列车标签
-    this.add.text(tx + 50, ty - 14, '星火站', {
+    this.add.text(tx + 50, ty - 12, '星火站', {
       fontSize: '8px',
       color: '#8a9a8a',
     }).setOrigin(0.5);
@@ -301,19 +304,19 @@ export class StationScene extends Phaser.Scene {
   /** 站牌 */
   private drawStationSign(): void {
     const sx = 620;
-    const sy = 380;
+    const sy = 395;
     // 柱子
     const pole = this.add.graphics();
-    pole.fillStyle(0x5a4a3a, 1);
+    pole.fillStyle(0x6a5a4a, 1);
     pole.fillRect(sx + 18, sy, 4, 55);
     // 牌子
     const sign = this.add.graphics();
     sign.fillStyle(0x3a5a3a, 1);
-    sign.fillRoundedRect(sx, sy + 10, 40, 20, 3);
+    sign.fillRoundedRect(sx, sy + 8, 40, 22, 3);
     sign.lineStyle(2, 0x1a3a1a, 1);
-    sign.strokeRoundedRect(sx, sy + 10, 40, 20, 3);
-    this.add.text(sx + 20, sy + 20, '星火镇', {
-      fontSize: '9px',
+    sign.strokeRoundedRect(sx, sy + 8, 40, 22, 3);
+    this.add.text(sx + 20, sy + 19, '星火镇', {
+      fontSize: '10px',
       color: '#d0c8b0',
     }).setOrigin(0.5);
   }
@@ -321,12 +324,12 @@ export class StationScene extends Phaser.Scene {
   /** 树木 */
   private drawTrees(): void {
     const treePositions = [
-      { x: 300, y: 370, h: 50 },
-      { x: 400, y: 375, h: 40 },
-      { x: 550, y: 370, h: 55 },
-      { x: 800, y: 368, h: 45 },
-      { x: 900, y: 372, h: 50 },
-      { x: 1000, y: 370, h: 42 },
+      { x: 300, y: 380, h: 50 },
+      { x: 420, y: 385, h: 40 },
+      { x: 520, y: 380, h: 55 },
+      { x: 760, y: 378, h: 45 },
+      { x: 850, y: 382, h: 50 },
+      { x: 980, y: 380, h: 42 },
     ];
     for (const t of treePositions) {
       const gfx = this.add.graphics();
@@ -342,17 +345,115 @@ export class StationScene extends Phaser.Scene {
     }
   }
 
+  /** 站台设施：路灯、长椅、信息牌 */
+  private drawPlatformFixtures(): void {
+    const fixtures: { x: number; type: 'lamp' | 'bench' | 'signboard' | 'trash' }[] = [
+      { x: 350, type: 'lamp' },
+      { x: 500, type: 'bench' },
+      { x: 650, type: 'lamp' },
+      { x: 780, type: 'signboard' },
+      { x: 900, type: 'lamp' },
+    ];
+    for (const f of fixtures) {
+      if (f.type === 'lamp') {
+        // 路灯柱
+        const pole = this.add.graphics();
+        pole.fillStyle(0x5a5a5a, 1);
+        pole.fillRect(f.x, 430, 4, 28);
+        // 灯
+        pole.fillStyle(0x8a8a6a, 0.8);
+        pole.fillCircle(f.x + 2, 428, 5);
+        pole.fillStyle(0xaaa88a, 0.3);
+        pole.fillCircle(f.x + 2, 428, 3);
+      } else if (f.type === 'bench') {
+        // 长椅
+        const bench = this.add.graphics();
+        bench.fillStyle(0x6a5a3a, 1);
+        bench.fillRect(f.x, 448, 24, 5);
+        bench.fillStyle(0x5a4a2a, 1);
+        bench.fillRect(f.x + 3, 453, 4, 6);
+        bench.fillRect(f.x + 17, 453, 4, 6);
+      } else if (f.type === 'signboard') {
+        // 信息牌
+        const board = this.add.graphics();
+        board.fillStyle(0x4a4a4a, 1);
+        board.fillRect(f.x + 8, 430, 2, 26);
+        board.fillStyle(0x2a3a4a, 1);
+        board.fillRect(f.x, 428, 18, 12);
+        this.add.text(f.x + 9, 434, '→', {
+          fontSize: '8px', color: '#8ac8ff',
+        }).setOrigin(0.5);
+      } else if (f.type === 'trash') {
+        // 垃圾桶
+        const trash = this.add.graphics();
+        trash.fillStyle(0x3a3a3a, 1);
+        trash.fillRect(f.x, 445, 10, 12);
+        trash.fillStyle(0x4a4a4a, 1);
+        trash.fillRect(f.x - 1, 444, 12, 3);
+      }
+    }
+  }
+
+  /** 站台装饰细节：地砖缝隙、落叶、鸽子 */
+  private drawPlatformDetails(): void {
+    // 地砖裂缝
+    const cracks = this.add.graphics();
+    cracks.lineStyle(1, 0x3a3530, 0.2);
+    // 随机裂缝
+    for (let i = 0; i < 8; i++) {
+      const cx = Phaser.Math.Between(100, W - 50);
+      const cy = Phaser.Math.Between(455, 500);
+      cracks.lineBetween(cx, cy, cx + Phaser.Math.Between(-15, 15), cy + Phaser.Math.Between(5, 20));
+    }
+
+    // 落叶
+    for (let i = 0; i < 10; i++) {
+      const lx = Phaser.Math.Between(50, W - 30);
+      const ly = Phaser.Math.Between(450, 520);
+      this.add.circle(lx, ly, Phaser.Math.Between(1, 2), 0x6a5a2a, 0.5);
+    }
+
+    // 鸽子（简单动画）
+    for (let i = 0; i < 2; i++) {
+      const bx = Phaser.Math.Between(400, 800);
+      const by = 455 + i * 15;
+      const bird = this.add.circle(bx, by, 3, 0x5a4a3a, 1);
+      bird.setDepth(6);
+      this.tweens.add({
+        targets: bird,
+        x: bird.x + Phaser.Math.Between(-80, -40),
+        y: bird.y + Phaser.Math.Between(-20, -10),
+        alpha: 0,
+        duration: Phaser.Math.Between(4000, 6000),
+        delay: Phaser.Math.Between(0, 2000),
+        onComplete: () => {
+          bird.x = Phaser.Math.Between(600, 900);
+          bird.y = 455 + i * 15;
+          bird.alpha = 1;
+          this.tweens.add({ targets: bird, x: bird.x - 60, y: bird.y - 15, alpha: 0, duration: 5000 });
+        },
+      });
+    }
+  }
+
   // ============ 开场动画 ============
 
   private playOpeningSequence(): void {
+    // 跳过按钮（开场全程显示，点击后跳过所有动画直接进入可玩状态）
+    this.createSkipButton();
+
     // 阶段1：黑屏 + 列车声
     this.time.delayedCall(800, () => {
+      if (this.introSkipped) return;
       this.showTrainSoundText(() => {
+        if (this.introSkipped) return;
         // 阶段2：淡入
         this.cameras.main.fadeIn(1200, 0, 0, 0);
         this.time.delayedCall(1200, () => {
+          if (this.introSkipped) return;
           // 阶段3：手机通知
           this.showPhoneNotification(() => {
+            if (this.introSkipped) return;
             this.playStationDialogue();
           });
         });
@@ -360,9 +461,53 @@ export class StationScene extends Phaser.Scene {
     });
   }
 
+  /** 创建跳过按钮（DOM，右上角） */
+  private createSkipButton(): void {
+    const btn = document.createElement('div');
+    btn.id = 'intro-skip-btn';
+    Object.assign(btn.style, {
+      position: 'fixed', top: '16px', right: '16px',
+      padding: '8px 20px', background: 'rgba(0,0,0,0.6)',
+      color: '#ccc', fontSize: '14px', fontFamily: 'monospace',
+      border: '1px solid #555', borderRadius: '4px',
+      cursor: 'pointer', zIndex: '800',
+      userSelect: 'none', transition: 'background 0.2s',
+    });
+    btn.textContent = '跳过开场';
+    btn.addEventListener('mouseenter', () => { btn.style.background = 'rgba(80,80,80,0.8)'; });
+    btn.addEventListener('mouseleave', () => { btn.style.background = 'rgba(0,0,0,0.6)'; });
+    btn.addEventListener('click', () => this.skipIntro());
+    document.body.appendChild(btn);
+  }
+
+  /** 跳过开场动画，直接进入可玩状态 */
+  private skipIntro(): void {
+    if (this.introSkipped) return;
+    this.introSkipped = true;
+
+    // 清除列车声定时器
+    if (this.trainInterval) { clearInterval(this.trainInterval); this.trainInterval = null; }
+    // 移除列车声遮罩
+    const trainOverlay = document.getElementById('intro-train-overlay');
+    if (trainOverlay) trainOverlay.remove();
+    // 移除手机通知
+    if (this.phoneOverlay) { this.phoneOverlay.remove(); this.phoneOverlay = null as any; }
+    // 移除跳过按钮
+    const skipBtn = document.getElementById('intro-skip-btn');
+    if (skipBtn) skipBtn.remove();
+
+    // 立即淡入（消除黑屏）
+    this.cameras.main.fadeIn(300, 0, 0, 0);
+    // 进入可玩状态
+    this.canMove = true;
+    setStoryStep('station_move');
+    this.showMoveHint();
+  }
+
   /** 列车进站声（纯文字动画） */
   private showTrainSoundText(onDone: () => void): void {
     const overlay = document.createElement('div');
+    overlay.id = 'intro-train-overlay';
     Object.assign(overlay.style, {
       position: 'fixed', left: '0', top: '0', width: '100%', height: '100%',
       background: '#000', zIndex: '700',
@@ -380,15 +525,16 @@ export class StationScene extends Phaser.Scene {
 
     // 模拟列车减速
     let count = 0;
-    const interval = setInterval(() => {
+    this.trainInterval = setInterval(() => {
       count++;
       if (count === 1) text.textContent = '哐当……哐当……';
       else if (count === 2) text.textContent = '哐当…哐当…';
       else if (count === 3) text.textContent = '哐当..哐当..';
       else if (count === 4) {
         text.textContent = '—— 哧 ——';
-        clearInterval(interval);
+        if (this.trainInterval) { clearInterval(this.trainInterval); this.trainInterval = null; }
         setTimeout(() => {
+          if (this.introSkipped) return;
           overlay.style.opacity = '0';
           setTimeout(() => { overlay.remove(); onDone(); }, 600);
         }, 500);
@@ -502,7 +648,12 @@ export class StationScene extends Phaser.Scene {
         const hint = document.getElementById('station-move-hint');
         if (hint) hint.remove();
         advanceStory(); // station_move → arrive_manor
-        this.scene.start('farm', { spawn: { x: 15 * TILE, y: 3 * TILE } });
+        // 教程未完成时先进入大门地图，否则直接进农场
+        const isGate = getStoryStep() === 'arrive_manor';
+        const target = isGate ? 'gate' : 'farm';
+        // 注意：农场顶部出口区域 y∈[0,48]，出生点必须 > 48，否则一帧内被弹回
+        const spawn = isGate ? { x: 15 * TILE, y: 17 * TILE } : { x: 15 * TILE, y: 6 * TILE };
+        this.scene.start(target, { spawn });
       });
     }
   }

@@ -11,6 +11,7 @@
  */
 
 import Phaser from 'phaser';
+import { type DialogueLine } from '../systems/StorySystem';
 
 /** 单条日程：某时刻起，NPC 位于某场景的某坐标 */
 export interface ScheduleEntry {
@@ -45,20 +46,20 @@ export class NPC {
   /** 名字标签 */
   label: Phaser.GameObjects.Text | null = null;
 
-  /** 对话内容（靠近按 E 显示） */
-  readonly dialogue: string;
+  /** 对话剧本（靠近按 E 显示，StoryDialogue 全屏播放） */
+  readonly dialogues: DialogueLine[];
 
   constructor(
     id: string,
     name: string,
     textureKey: string,
-    dialogue: string,
+    dialogues: DialogueLine[],
     schedule: ScheduleEntry[]
   ) {
     this.id = id;
     this.name = name;
     this.textureKey = textureKey;
-    this.dialogue = dialogue;
+    this.dialogues = dialogues;
     this.schedule = schedule;
     // 初始位置取第一条日程（应是最早时刻 06:00 那条）
     this.currentLocation = schedule[0].location;

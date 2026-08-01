@@ -12,6 +12,7 @@
  */
 
 import { addXp } from '../data/FarmProgress';
+import { COLORS, ELDER_QUEST_DIALOGUE, SHARD_DELIVER_DIALOGUE, type DialogueLine } from './StorySystem';
 
 /** 任务状态 */
 export type QuestState = 'not_started' | 'accepted' | 'collected' | 'completed';
@@ -52,21 +53,22 @@ export function deliverQuest(): void {
 }
 
 /**
- * 根据任务状态返回村长对话
- * 不同状态对话不同，接受/交付在对话时自动推进状态
+ * 根据任务状态返回村长对话剧本
+ * 不同状态对话不同，接受/交付在获取剧本时自动推进状态
+ * 返回 DialogueLine[] 供 StoryDialogue 全屏播放
  */
-export function getElderDialogue(): string {
+export function getElderDialogue(): DialogueLine[] {
   switch (questState) {
     case 'not_started':
       acceptQuest();
-      return '村长：星辰岛的森林深处藏着一块「星之碎片」。能帮我取回吗？（任务已接受）';
+      return ELDER_QUEST_DIALOGUE;
     case 'accepted':
-      return '村长：去森林找到发光的星之碎片吧，孩子。';
+      return [{ speaker: '村长', color: COLORS.elder, text: '去森林找到发光的星之碎片吧，孩子。' }];
     case 'collected':
       deliverQuest();
-      return '村长：你拿到了！...这块碎片是岛屿心脏的一部分。传说当星辰归位，岛屿会苏醒。感谢你，冒险者。（任务完成）';
+      return SHARD_DELIVER_DIALOGUE;
     case 'completed':
-      return '村长：星辰岛的秘密才刚刚揭开...期待你的下一次冒险。';
+      return [{ speaker: '村长', color: COLORS.elder, text: '星辰岛的秘密才刚刚揭开……期待你的下一次冒险。' }];
   }
 }
 

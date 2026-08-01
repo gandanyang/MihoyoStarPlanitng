@@ -29,6 +29,7 @@ export interface DialogueLine {
 export const COLORS = {
   linche: '#7eb8da',
   xiya: '#f0a050',
+  elder: '#c8b898',
   system: '#aaaaaa',
 };
 
@@ -102,9 +103,55 @@ export const EVENING_DIALOGUE: DialogueLine[] = [
   { speaker: '', color: COLORS.system, text: '回到床上睡觉，结束第一天。' },
 ];
 
+// ============ 第一章：小镇的居民 ============
+
+/** 首次进入小镇 */
+export const TOWN_INTRO_DIALOGUE: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（清晨，林澈穿过庄园外的石桥，第一次踏上星火镇的街道。）' },
+  { speaker: '林澈', color: COLORS.linche, inner: true, text: '这就是星火镇……爷爷信里提起过的地方。' },
+  { speaker: '', color: COLORS.system, text: '（街道两旁是低矮的木屋，商店门口已经支起了摊子。一个老人正在清扫门前的台阶。）' },
+  { speaker: '', color: COLORS.system, text: '（镇长早就听说庄园来了一位新主人。他放下扫帚，朝林澈招了招手。）' },
+  { speaker: '', color: COLORS.system, text: '（靠近镇长、商人或居民，按 [E] 键与他们对话。镇长看起来有话想说。）' },
+];
+
+/** 村长委托星之碎片任务（第一章主线开启） */
+export const ELDER_QUEST_DIALOGUE: DialogueLine[] = [
+  { speaker: '村长', color: COLORS.elder, text: '你就是林澈吧？星黎庄园的新主人。' },
+  { speaker: '林澈', color: COLORS.linche, text: '您好，您是……' },
+  { speaker: '村长', color: COLORS.elder, text: '我是星火镇的镇长。你的爷爷，是这座岛上看星星看得最久的人。' },
+  { speaker: '村长', color: COLORS.elder, text: '他年轻时发现了这片土地的秘密——森林深处藏着一种会发光的「星之碎片」。' },
+  { speaker: '村长', color: COLORS.elder, text: '传说当所有碎片归位，这座岛会重新苏醒。可这些年，碎片散落各处，森林里那一块……我老了，走不动了。' },
+  { speaker: '村长', color: COLORS.elder, text: '年轻人，能帮我取回森林里的星之碎片吗？' },
+  { speaker: '林澈', color: COLORS.linche, text: '星之碎片……听起来像是爷爷留给我的一道题。好，我去看看。' },
+  { speaker: '', color: COLORS.system, text: '主线任务已接受：前往森林采集星之碎片。' },
+];
+
+/** 交付星之碎片（第一章完成） */
+export const SHARD_DELIVER_DIALOGUE: DialogueLine[] = [
+  { speaker: '林澈', color: COLORS.linche, text: '镇长，星之碎片……我拿到了。' },
+  { speaker: '', color: COLORS.system, text: '（林澈摊开手掌，一枚泛着幽蓝光芒的碎片静静躺在掌心。）' },
+  { speaker: '村长', color: COLORS.elder, text: '这光泽……没错，就是星之碎片。你已经能让它认主了。' },
+  { speaker: '村长', color: COLORS.elder, text: '岛屿在呼应你，林澈。你爷爷选择让这座庄园回到你手里，不是没有道理的。' },
+  { speaker: '村长', color: COLORS.elder, text: '把碎片收好吧。等集齐更多碎片，星辰岛真正苏醒的那一天，你会明白这一切。' },
+  { speaker: '', color: COLORS.system, text: '主线任务完成：星之碎片（1/…）。岛屿的秘密，才刚刚开始。' },
+];
+
 // ============ 状态管理 ============
 
 let currentStep: StoryStep = 'station_intro';
+
+/** 第一章：是否已触发过「首次进入小镇」剧情 */
+let ch1TownIntroDone = false;
+
+/** 第一章：是否已触发过小镇剧情 */
+export function isCh1TownIntroDone(): boolean {
+  return ch1TownIntroDone;
+}
+
+/** 标记小镇剧情已触发 */
+export function markCh1TownIntroDone(): void {
+  ch1TownIntroDone = true;
+}
 
 export function getStoryStep(): StoryStep {
   return currentStep;

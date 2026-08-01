@@ -21,6 +21,7 @@
 
 import { NPC, ScheduleEntry } from '../entities/NPC';
 import { getTime } from '../data/TimeSystem';
+import { COLORS, type DialogueLine } from './StorySystem';
 
 /** 瓦片尺寸 */
 const T = 16;
@@ -105,14 +106,60 @@ function buildSchedule(npcId: NpcId): ScheduleEntry[] {
   ];
 }
 
+// ============ NPC 对话剧本（新版 StoryDialogue 全屏播放） ============
+
+/** 村长：主线对话由 QuestSystem 驱动，此处为兜底台词 */
+const ELDER_DIALOGUES: DialogueLine[] = [
+  { speaker: '村长', color: COLORS.elder, text: '星火镇是个好地方。多和镇上的人聊聊吧。' },
+];
+
+/** 商店老板：欢迎 + 买卖引导 */
+const SHOPKEEPER_DIALOGUES: DialogueLine[] = [
+  { speaker: '商店老板', color: '#8ac8a0', text: '欢迎光临星辰杂货店！' },
+  { speaker: '商店老板', color: '#8ac8a0', text: '收获的作物、挖到的矿石都可以卖给我换金币。种子和工具也有卖。' },
+  { speaker: '', color: COLORS.system, text: '（按 [E] 键打开商店。）' },
+];
+
+/** 神秘少女：神秘感对话，暗示岛屿与星辰的关联 */
+const MYSTERY_DIALOGUES: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（一个少女站在树影下，她似乎一直在等着林澈。少女抬起头。）' },
+  { speaker: '神秘少女', color: '#b8a0e8', text: '……你来了。' },
+  { speaker: '林澈', color: COLORS.linche, text: '你认识我？' },
+  { speaker: '神秘少女', color: '#b8a0e8', text: '这座岛上的星星告诉我，会有一个从远方回来的人。' },
+  { speaker: '神秘少女', color: '#b8a0e8', text: '你身上……有那颗星的味道。夜深的时候，记得抬头看看。' },
+  { speaker: '', color: COLORS.system, text: '（少女说完，转身消失在林间。）' },
+];
+
+/** 矿工老张：挖矿引导 */
+const MINER_DIALOGUES: DialogueLine[] = [
+  { speaker: '矿工老张', color: '#d8a050', text: '哟，新来的小伙子！我是老张，矿洞这片归我管。' },
+  { speaker: '矿工老张', color: '#d8a050', text: '矿洞里能挖到石头、铜矿、铁矿。拿到镇上卖了能换钱。' },
+  { speaker: '矿工老张', color: '#d8a050', text: '不过挖矿费体力，别把自个儿累趴下咯。' },
+  { speaker: '', color: COLORS.system, text: '（靠近发光的矿脉，按 [E] 键开采。矿洞可从小镇进入。）' },
+];
+
+/** 花匠小梅：种植话题 */
+const GARDENER_DIALOGUES: DialogueLine[] = [
+  { speaker: '花匠小梅', color: '#a0d888', text: '你好呀，我叫小梅。这些花都是我亲手种的，漂亮吧？' },
+  { speaker: '花匠小梅', color: '#a0d888', text: '种东西啊，没什么秘诀。每天来看看它们，浇水、除草……' },
+  { speaker: '花匠小梅', color: '#a0d888', text: '只要用心，土地就会用丰收回报你。你的庄园也会一样的。' },
+];
+
+/** 冒险家阿飞：冒险与森林提示 */
+const ADVENTURER_DIALOGUES: DialogueLine[] = [
+  { speaker: '冒险家阿飞', color: '#88b8e8', text: '嘿！新来的庄园主！我叫阿飞，这座岛的每个角落我都跑遍了。' },
+  { speaker: '冒险家阿飞', color: '#88b8e8', text: '告诉你个秘密——森林深处有东西在发光，镇长神神秘秘的不肯说。' },
+  { speaker: '冒险家阿飞', color: '#88b8e8', text: '想去探险的话，记得备足体力。森林可比看上去大得多！' },
+];
+
 /** 六个 NPC（纹理暂时复用现有素材，后续替换） */
 const npcs: NPC[] = [
-  new NPC('elder', '村长', 'npc_elder', '欢迎来到星辰岛。', buildSchedule('elder')),
-  new NPC('shopkeeper', '商店老板', 'npc_merchant', '欢迎光临星辰杂货店！', buildSchedule('shopkeeper')),
-  new NPC('mystery', '神秘少女', 'npc_girl', '...你听得见岛的低语吗？', buildSchedule('mystery')),
-  new NPC('miner', '矿工老张', 'npc_elder', '矿洞里能找到好东西，不过要小心。', buildSchedule('miner')),
-  new NPC('gardener', '花匠小梅', 'npc_girl', '这些花都是我自己种的，漂亮吧？', buildSchedule('gardener')),
-  new NPC('adventurer', '冒险家阿飞', 'npc_merchant', '我走遍了整座岛，每个角落都有秘密。', buildSchedule('adventurer')),
+  new NPC('elder', '村长', 'npc_elder', ELDER_DIALOGUES, buildSchedule('elder')),
+  new NPC('shopkeeper', '商店老板', 'npc_merchant', SHOPKEEPER_DIALOGUES, buildSchedule('shopkeeper')),
+  new NPC('mystery', '神秘少女', 'npc_girl', MYSTERY_DIALOGUES, buildSchedule('mystery')),
+  new NPC('miner', '矿工老张', 'npc_elder', MINER_DIALOGUES, buildSchedule('miner')),
+  new NPC('gardener', '花匠小梅', 'npc_girl', GARDENER_DIALOGUES, buildSchedule('gardener')),
+  new NPC('adventurer', '冒险家阿飞', 'npc_merchant', ADVENTURER_DIALOGUES, buildSchedule('adventurer')),
 ];
 
 /** 读取全部 NPC（只读列表） */
