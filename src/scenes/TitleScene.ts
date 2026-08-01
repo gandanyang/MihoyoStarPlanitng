@@ -11,6 +11,7 @@
 import Phaser from 'phaser';
 import { hasSave } from '../systems/SaveSystem';
 import { play } from '../systems/AudioSystem';
+import { isMobileLayout } from '../config';
 
 export class TitleScene extends Phaser.Scene {
   private startPrompt!: Phaser.GameObjects.Text;
@@ -76,7 +77,7 @@ export class TitleScene extends Phaser.Scene {
     }
 
     // ── 操作提示 ──
-    this.startPrompt = this.add.text(W / 2, 380, '按 Enter 或点击 开始游戏', {
+    this.startPrompt = this.add.text(W / 2, 380, isMobileLayout() ? '点按屏幕 开始游戏' : '按 Enter 或点击 开始游戏', {
       fontSize: '20px',
       fontFamily: '"Microsoft YaHei", "SimHei", sans-serif',
       color: '#ffcc44',

@@ -8,6 +8,12 @@
 import { addItem, ItemType } from '../data/Inventory';
 import { getTime } from '../data/TimeSystem';
 import { isTutorialDone } from './StorySystem';
+import { isMobileLayout } from '../config';
+
+/** 操作提示文案：移动端（触屏）与桌面端（键盘）差异 */
+function hint(pc: string, mob: string): string {
+  return isMobileLayout() ? mob : pc;
+}
 
 // ============ 任务类型定义 ============
 
@@ -69,8 +75,8 @@ const QUEST_POOL: DailyQuestTemplate[] = [
   { id: 'collect_star', title: '星之碎片', desc: '收集 1 个星之碎片', objective: { type: 'collect', item: 'star_shard', count: 1 }, reward: 3 },
 
   // --- 挖矿/砍树引导类（首次刷新固定出现，见 refreshDailyQuests） ---
-  { id: 'mine_1', title: '初入矿洞', desc: '挖矿 1 次（矿洞可从小镇进入，靠近发光矿脉按 E）', objective: { type: 'mine', count: 1 }, reward: 2 },
-  { id: 'woodcut_2', title: '伐木初体验', desc: '砍倒 2 棵树（庄园里靠近树按 E，用旧斧头）', objective: { type: 'woodcut', count: 2 }, reward: 2 },
+  { id: 'mine_1', title: '初入矿洞', desc: hint('挖矿 1 次（矿洞可从小镇进入，靠近发光矿脉按 E）', '挖矿 1 次（矿洞可从小镇进入，靠近发光矿脉点「交互」）'), objective: { type: 'mine', count: 1 }, reward: 2 },
+  { id: 'woodcut_2', title: '伐木初体验', desc: hint('砍倒 2 棵树（庄园里靠近树按 E，用旧斧头）', '砍倒 2 棵树（庄园里靠近树点「交互」，用旧斧头）'), objective: { type: 'woodcut', count: 2 }, reward: 2 },
 
   // --- 对话类 ---
   { id: 'talk_elder', title: '拜访村长', desc: '与村长对话', objective: { type: 'talk_npc', npcId: 'elder', npcName: '村长' }, reward: 1 },

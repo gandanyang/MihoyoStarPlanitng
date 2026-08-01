@@ -22,6 +22,12 @@
 import { NPC, ScheduleEntry } from '../entities/NPC';
 import { getTime } from '../data/TimeSystem';
 import { COLORS, type DialogueLine } from './StorySystem';
+import { isMobileLayout } from '../config';
+
+/** 操作提示文案：移动端（触屏）与桌面端（键盘）差异 */
+function hint(pc: string, mob: string): string {
+  return isMobileLayout() ? mob : pc;
+}
 
 /** 瓦片尺寸 */
 const T = 16;
@@ -117,7 +123,7 @@ const ELDER_DIALOGUES: DialogueLine[] = [
 const SHOPKEEPER_DIALOGUES: DialogueLine[] = [
   { speaker: '商店老板', color: '#8ac8a0', text: '欢迎光临星辰杂货店！' },
   { speaker: '商店老板', color: '#8ac8a0', text: '收获的作物、挖到的矿石都可以卖给我换金币。种子和工具也有卖。' },
-  { speaker: '', color: COLORS.system, text: '（按 [E] 键打开商店。）' },
+  { speaker: '', color: COLORS.system, text: hint('（按 [E] 键打开商店。）', '（点「交互」打开商店。）') },
   { speaker: '商店老板', color: '#8ac8a0', text: '需要什么随便看。钱货两清，童叟无欺。' },
 ];
 
@@ -136,7 +142,7 @@ const MINER_DIALOGUES: DialogueLine[] = [
   { speaker: '矿工老张', color: '#d8a050', text: '哟，新来的小伙子！我是老张，矿洞这片归我管。' },
   { speaker: '矿工老张', color: '#d8a050', text: '矿洞里能挖到石头、铜矿、铁矿。拿到镇上卖了能换钱。' },
   { speaker: '矿工老张', color: '#d8a050', text: '不过挖矿费体力，别把自个儿累趴下咯。' },
-  { speaker: '', color: COLORS.system, text: '（靠近发光的矿脉，按 [E] 键开采。矿洞可从小镇进入。）' },
+  { speaker: '', color: COLORS.system, text: hint('（靠近发光的矿脉，按 [E] 键开采。矿洞可从小镇进入。）', '（靠近发光的矿脉，点「交互」开采。矿洞可从小镇进入。）') },
   { speaker: '矿工老张', color: '#d8a050', text: '年轻的时候，我也想离开这里。' },
 ];
 

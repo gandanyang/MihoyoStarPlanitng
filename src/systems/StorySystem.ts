@@ -6,6 +6,8 @@
  *   → gate_opened → clear_land → sow_seeds → water_crops → evening_talk → done
  */
 
+import { isMobileLayout } from '../config';
+
 export type StoryStep =
   | 'station_intro'       // 车站开场对话
   | 'station_move'        // 移动教学：前往星黎庄园
@@ -45,6 +47,11 @@ export const COLORS = {
   system: '#aaaaaa',
 };
 
+/** 操作提示文案：移动端（触屏）与桌面端（键盘）差异 */
+function hint(pc: string, mob: string): string {
+  return isMobileLayout() ? mob : pc;
+}
+
 // ============ 对话数据 ============
 
 /** 车站开场 */
@@ -60,7 +67,7 @@ export const STATION_DIALOGUE: DialogueLine[] = [
   { speaker: '', color: COLORS.system, text: '（林澈抬起头。远处，晨雾里有一座安静的庄园。）' },
   { speaker: '林澈', color: COLORS.linche, inner: true, text: '星黎庄园……爷爷留给我的那封信，写着这个地址。' },
   { speaker: '林澈', color: COLORS.linche, inner: true, text: '他说，如果有一天不知道往哪走，就回来看看。' },
-  { speaker: '', color: COLORS.system, text: '使用 [W/A/S/D] 或方向键控制林澈移动。前往星黎庄园。' },
+  { speaker: '', color: COLORS.system, text: hint('使用 [W/A/S/D] 或方向键控制林澈移动。前往星黎庄园。', '使用屏幕左下方摇杆控制林澈移动。前往星黎庄园。') },
 ];
 
 /** 初遇夏雅 */
@@ -73,7 +80,7 @@ export const XIYA_DIALOGUE: DialogueLine[] = [
   { speaker: '林澈', color: COLORS.linche, text: '我也没想到自己会回来。本来只是想处理一下庄园。然后……看看以后怎么办。' },
   { speaker: '夏雅', color: COLORS.xiya, text: '那就从这里开始吧。房子虽然旧了，田地虽然荒了。但是只要有人愿意重新照顾它，总会慢慢恢复的。' },
   { speaker: '', color: COLORS.system, text: '（夏雅递出钥匙。）' },
-  { speaker: '', color: COLORS.system, text: '获得物品：【庄园钥匙】  按 [B] 键打开背包，使用钥匙打开大门。' },
+  { speaker: '', color: COLORS.system, text: hint('获得物品：【庄园钥匙】  按 [B] 键打开背包，使用钥匙打开大门。', '获得物品：【庄园钥匙】  点按右下角「背包」按钮，使用钥匙打开大门。') },
 ];
 
 /** 开门后 → 整理庄园 */
@@ -84,7 +91,7 @@ export const GATE_OPENED_DIALOGUE: DialogueLine[] = [
   { speaker: '夏雅', color: COLORS.xiya, text: '这个应该还能用。虽然旧了点。' },
   { speaker: '林澈', color: COLORS.linche, text: '以前我每天面对的是电脑。现在突然让我种地……感觉跨度有点大。' },
   { speaker: '夏雅', color: COLORS.xiya, text: '放心。很多事情都是从第一次开始的。' },
-  { speaker: '', color: COLORS.system, text: '获得物品：【旧锄头】  对着农田区域按 [E] 键锄地，清理 3 块土地。' },
+  { speaker: '', color: COLORS.system, text: hint('获得物品：【旧锄头】  对着农田区域按 [E] 键锄地，清理 3 块土地。', '获得物品：【旧锄头】  对着农田区域点「交互」锄地，清理 3 块土地。') },
 ];
 
 /** 清理完成 → 播种 */
@@ -95,7 +102,7 @@ export const SOW_SEEDS_DIALOGUE: DialogueLine[] = [
   { speaker: '', color: COLORS.system, text: '获得物品：【萝卜种子】×3' },
   { speaker: '林澈', color: COLORS.linche, text: '种下一颗种子。然后等待它成长……这种感觉，好像和写代码完全不一样。' },
   { speaker: '夏雅', color: COLORS.xiya, text: '但是它们都有一点相同。需要时间。也需要耐心。' },
-  { speaker: '', color: COLORS.system, text: '按 [R] 键切换到萝卜种子，然后对着锄过的土地按 [E] 播种。播种 3 块土地。' },
+  { speaker: '', color: COLORS.system, text: hint('按 [R] 键切换到萝卜种子，然后对着锄过的土地按 [E] 播种。播种 3 块土地。', '对着锄过的土地点「交互」播种萝卜（默认种子）。播种 3 块土地。') },
 ];
 
 /** 播种完成 → 浇水 */
@@ -103,7 +110,7 @@ export const WATER_CROPS_DIALOGUE: DialogueLine[] = [
   { speaker: '', color: COLORS.system, text: '（井边。）' },
   { speaker: '夏雅', color: COLORS.xiya, text: '每天照顾它们。它们才会回应你的努力。' },
   { speaker: '', color: COLORS.system, text: '获得物品：【旧水壶】' },
-  { speaker: '', color: COLORS.system, text: '对已播种的土地按 [E] 键浇水。为所有作物浇水。' },
+  { speaker: '', color: COLORS.system, text: hint('对已播种的土地按 [E] 键浇水。为所有作物浇水。', '对已播种的土地点「交互」浇水。为所有作物浇水。') },
 ];
 
 /** 晚间结尾 */
@@ -125,7 +132,7 @@ export const TOWN_INTRO_DIALOGUE: DialogueLine[] = [
   { speaker: '林澈', color: COLORS.linche, inner: true, text: '这就是星火镇……爷爷信里提起过的地方。' },
   { speaker: '', color: COLORS.system, text: '（街道两旁是低矮的木屋，商店门口已经支起了摊子。一个老人正在清扫门前的台阶。）' },
   { speaker: '', color: COLORS.system, text: '（镇长早就听说庄园来了一位新主人。他放下扫帚，朝林澈招了招手。）' },
-  { speaker: '', color: COLORS.system, text: '（靠近镇长、商人或居民，按 [E] 键与他们对话。镇长看起来有话想说。）' },
+  { speaker: '', color: COLORS.system, text: hint('（靠近镇长、商人或居民，按 [E] 键与他们对话。镇长看起来有话想说。）', '（靠近镇长、商人或居民，点「交互」与他们对话。镇长看起来有话想说。）') },
 ];
 
 /** 村长委托星之碎片任务（第一章主线开启） */
