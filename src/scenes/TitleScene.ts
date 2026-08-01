@@ -155,6 +155,10 @@ export class TitleScene extends Phaser.Scene {
     if (!this.canStart) return;
     this.canStart = false;
 
+    // 移除清除存档按钮，避免跨场景残留挡住游戏内交互键
+    const clearBtn = document.getElementById('clear-save-btn');
+    if (clearBtn) clearBtn.remove();
+
     play('levelup');
     // 淡出后切换到车站场景
     this.cameras.main.fadeOut(400, 0, 0, 0);

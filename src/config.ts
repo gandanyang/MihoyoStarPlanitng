@@ -21,3 +21,13 @@ export const GAME_TITLE = '归星物语';
 export function isMobileLayout(): boolean {
   return window.innerWidth < 800;
 }
+
+/**
+ * 判断是否为触屏设备（用触屏能力判断，而非窗口宽度）。
+ * 用于"移动端专属控件"（背包按钮等）——手机横屏宽度可能 ≥800，不能用 isMobileLayout。
+ * 统一入口（原 TouchControls 内部 isTouchDevice，已收敛到此处）。
+ */
+export function isTouchDevice(): boolean {
+  return typeof navigator !== 'undefined'
+    && (navigator.maxTouchPoints > 0 || 'ontouchstart' in window);
+}

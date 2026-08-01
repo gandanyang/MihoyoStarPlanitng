@@ -20,6 +20,7 @@
  */
 
 import { InputManager } from './InputManager';
+import { isTouchDevice } from '../config';
 
 /** 当前活跃场景的 InputManager（DOM 事件回调操作它） */
 let currentInput: InputManager | null = null;
@@ -143,11 +144,7 @@ function createDom(): void {
   document.body.appendChild(container);
 }
 
-/** 是否触屏设备（用触屏能力判断，而非窗口宽度——手机横屏宽度可能 ≥800） */
-function isTouchDevice(): boolean {
-  return typeof navigator !== 'undefined'
-    && (navigator.maxTouchPoints > 0 || 'ontouchstart' in window);
-}
+/** 是否触屏设备（统一入口在 config.ts，用触屏能力判断，而非窗口宽度——手机横屏宽度可能 ≥800） */
 
 /** 背包按钮仅触屏设备显示（竖屏/横屏/平板都显示；桌面无触屏时用键盘 B） */
 function updateBackpackVisibility(): void {
