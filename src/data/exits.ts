@@ -28,10 +28,11 @@ export interface ExitZone {
 const T = 16;
 
 export const MAP_EXITS: Record<string, ExitZone[]> = {
-  // 农场：顶→森林，右→小镇
+  // 农场：顶→森林，右→小镇，左下木屋门→室内
   farm: [
     { x: 14 * T, y: 0,       w: 2 * T, h: 2 * T, target: 'forest', spawn: { x: 15 * T, y: 17 * T } },
     { x: 28 * T, y: 9 * T,   w: 2 * T, h: 2 * T, target: 'town',   spawn: { x: 3 * T,  y: 10 * T } },
+    { x: 6 * T,  y: 12 * T,  w: 2 * T, h: 2 * T, target: 'house',  spawn: { x: 10 * T, y: 12 * T } },
   ],
   // 森林：底→农场，右→矿洞
   forest: [
@@ -48,6 +49,10 @@ export const MAP_EXITS: Record<string, ExitZone[]> = {
     { x: 14 * T, y: 18 * T,  w: 2 * T, h: 2 * T, target: 'town',   spawn: { x: 15 * T, y: 3 * T } },
     { x: 0,      y: 9 * T,   w: 2 * T, h: 2 * T, target: 'forest', spawn: { x: 27 * T, y: 10 * T } },
   ],
+  // 室内：底部门→农场
+  house: [
+    { x: 9 * T,  y: 14 * T,  w: 2 * T, h: 1 * T, target: 'farm',   spawn: { x: 7 * T,  y: 10 * T } },
+  ],
 };
 
 /** 场景 key → 中文名称（HUD 显示用） */
@@ -56,4 +61,5 @@ export const MAP_NAMES: Record<string, string> = {
   town: '小镇',
   forest: '森林',
   mine: '矿洞',
+  house: '家中',
 };

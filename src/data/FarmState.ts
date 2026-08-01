@@ -12,6 +12,38 @@
 /** 土地格子状态 */
 export type TileState = 'empty' | 'tilled' | 'watered' | 'planted' | 'grown';
 
+/** 作物类型 */
+export type CropType = 'radish' | 'tomato' | 'corn';
+
+/** 作物基础属性 */
+export interface CropDef {
+  name: string;
+  icon: string;
+  /** 种子物品 ID */
+  seedItem: string;
+  /** 成熟所需天数（浇水后） */
+  growthDays: number;
+  /** 种子商店价格 */
+  seedPrice: number;
+  /** 作物出售价格 */
+  sellPrice: number;
+}
+
+/** 作物属性表 */
+export const CROP_DEFS: Record<CropType, CropDef> = {
+  radish: { name: '萝卜', icon: '🥕', seedItem: 'radish_seed', growthDays: 1, seedPrice: 10, sellPrice: 15 },
+  tomato: { name: '番茄', icon: '🍅', seedItem: 'tomato_seed', growthDays: 2, seedPrice: 20, sellPrice: 35 },
+  corn: { name: '玉米', icon: '🌽', seedItem: 'corn_seed', growthDays: 3, seedPrice: 15, sellPrice: 25 },
+};
+
+/** 所有作物类型列表（按索引顺序，与 spritesheet 行对应） */
+export const CROP_TYPES: CropType[] = ['radish', 'tomato', 'corn'];
+
+/** 获取作物类型在 spritesheet 中的行索引（0=radish, 1=tomato, 2=corn） */
+export function getCropTypeIndex(cropType: CropType): number {
+  return CROP_TYPES.indexOf(cropType);
+}
+
 /**
  * 农田可耕区域（瓦片坐标，闭区间）
  * 与 tools/gen_map_assets.py 中 gen_farm 的 G_SOIL 填充一致：
@@ -59,16 +91,24 @@ export function setTileState(
   tiles.set(tileKey(col, row), state);
 }
 
+// ---------------- 种子库存（已迁移到 Inventory 系统） ----------------
+
+/** @deprecated 请使用 Inventory.addItem/getItemCount */
+export function getSeedCount(): number { return 0; }
+export function useSeed(): boolean { return false; }
+export function addSeeds(_n: number): void { /* no-op */ }
+export function setSeedCount(_n: number): void { /* no-op */ }
+
 // ---------------- 作物数据（Phase 3.2 起） ----------------
 
 /**
  * 作物数据
- * plantDay：播种时的游戏天数（Phase 4 时间系统接入后由时间系统传入，0.1 暂记 0）
- * cropType：作物类型（0.1 只有萝卜 radish）
- * watered：当天是否已浇水（成长条件，Phase 3.3 起）
+ * plantDay：播种时的游戏天数
+ * cropType：作物类型
+ * watered：当天是否已浇水（成长条件）
  */
 export interface CropData {
-  cropType: 'radish';
+  cropType: CropType;
   plantDay: number;
   watered: boolean;
 }
@@ -94,42 +134,7 @@ export function setCrop(
   }
 }
 
-// ---------------- 种子库存（Phase 3.2） ----------------
-
-/** 初始萝卜种子数量（写死，0.1 不做背包/商店） */
-const INITIAL_SEEDS = 5;
-
-/** 当前萝卜种子数量 */
-let seedCount = INITIAL_SEEDS;
-
-/** 读取当前种子数量 */
-export function getSeedCount(): number {
-  return seedCount;
-}
-
-/**
- * 消耗一颗种子播种
- * @returns true 成功；false 种子不足
- */
-export function useSeed(): boolean {
-  if (seedCount <= 0) return false;
-  seedCount -= 1;
-  return true;
-}
-
-/**
- * 增加种子数量（商店购买后调用）
- * @param n 增加数量（必须 > 0）
- */
-export function addSeeds(n: number): void {
-  if (n <= 0) return;
-  seedCount += n;
-}
-
-/** 直接设置种子数量（存档恢复用） */
-export function setSeedCount(n: number): void {
-  seedCount = Math.max(0, Math.floor(n));
-}
+// ---------------- 存档序列化 ----------------
 
 /** 获取所有土地状态条目（存档序列化用） */
 export function getAllTileEntries(): [string, TileState][] {
@@ -161,27 +166,28 @@ export function restoreCropEntries(entries: [string, CropData][]): void {
   }
 }
 
-// ---------------- 成长结算（Phase 3.4 起） ----------------
+// ---------------- 成长结算 ----------------
 
 /**
  * 每日成长结算接口（由 TimeSystem.nextDay 调用）
  *
- * 天数由 TimeSystem 统一管理（唯一时间来源），
- * 本函数只负责作物成长判定，不自己存/改天数。
- *
  * 成长规则：
- *   萝卜：plantDay + 1 <= newDay 且 watered=true → 状态变 grown
- *   （即播种次日且已浇水即成熟）
+ *   每种作物需 plantDay + growthDays <= newDay 且 watered=true 才成熟
  *
- * @param newDay 推进后的新天数（TimeSystem 在 day+=1 后传入）
+ * @param newDay 推进后的新天数
  */
 export function advanceDay(newDay: number): void {
   for (const [key, crop] of crops) {
-    if (crop.watered && crop.plantDay + 1 <= newDay) {
-      const [col, row] = key.split(',').map(Number);
+    const def = CROP_DEFS[crop.cropType];
+    const [col, row] = key.split(',').map(Number);
+    if (crop.watered && crop.plantDay + def.growthDays <= newDay) {
       if (getTileState(col, row) !== 'grown') {
         setTileState(col, row, 'grown');
       }
+    } else if (crop.watered) {
+      // 多日作物：已浇水但未成熟，重置为 planted 以便次日再浇水
+      setTileState(col, row, 'planted');
+      setCrop(col, row, { ...crop, watered: false });
     }
   }
 }

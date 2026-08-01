@@ -8,7 +8,7 @@
  */
 
 /** 初始金币 */
-const INITIAL_COINS = 50;
+const INITIAL_COINS = 100;
 
 /** 当前金币 */
 let coins = INITIAL_COINS;
@@ -39,7 +39,21 @@ export function setCoins(n: number): void {
 }
 
 // ---- 商品价格（集中配置，方便调整） ----
-/** 萝卜种子售价（买 1 颗） */
+/** 萝卜种子售价 */
 export const SEED_PRICE = 10;
-/** 萝卜收购价（卖 1 个） */
+/** 萝卜收购价 */
 export const RADISH_PRICE = 15;
+/** 番茄种子售价 */
+export const TOMATO_SEED_PRICE = 20;
+/** 番茄收购价 */
+export const TOMATO_PRICE = 35;
+/** 玉米种子售价 */
+export const CORN_SEED_PRICE = 15;
+/** 玉米收购价 */
+export const CORN_PRICE = 25;
+/** 石头收购价 */
+export const STONE_PRICE = 5;
+/** 铜矿收购价 */
+export const COPPER_PRICE = 15;
+/** 铁矿收购价 */
+export const IRON_PRICE = 30;

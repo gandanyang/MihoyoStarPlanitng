@@ -5,21 +5,37 @@ import { isMobileLayout } from '../config';
 import {
   FARM_AREA,
   TILE_SIZE,
+  CropType,
+  CROP_TYPES,
+  CROP_DEFS,
   getCrop,
-  getSeedCount,
   getTileState,
   isInFarmArea,
   setCrop,
   setTileState,
-  useSeed,
 } from '../data/FarmState';
 import { addItem, getItemCount } from '../data/Inventory';
 import { formatTime, getTime, nextDay as timeNextDay, tick as timeTick } from '../data/TimeSystem';
 import { getCoins } from '../data/Economy';
 import { addXp, getLevel, getXp, getXpToNext, setOnLevelUp } from '../data/FarmProgress';
+import { getStamina, consumeStamina, resetStamina, MAX_STAMINA } from '../data/Stamina';
+import { ORE_DEPOSITS, OreDeposit, isOreMined, markMined, resetOres } from '../data/MineState';
 import { NPC } from '../entities/NPC';
 import { getNPCsForScene, refreshSchedule, updateNPCs } from '../systems/NPCSystem';
 import { collectShard, getElderDialogue, getQuestObjective, getQuestState } from '../systems/QuestSystem';
+import {
+  getDailyQuests,
+  refreshDailyQuests,
+  onHarvest as onDQHarvest,
+  onWater as onDQWater,
+  onPlant as onDQPlant,
+  onCollect as onDQCollect,
+  onTalkNpc as onDQTAlkNpc,
+  onBuyShop as onDQBuyShop,
+  onSellShop as onDQSellShop,
+  claimReward,
+  getDailyQuestSaveData,
+} from '../systems/DailyQuestSystem';
 import { InputManager } from '../systems/InputManager';
 import { TouchControls } from '../systems/TouchControls';
 import { ShopPanel } from '../ui/ShopPanel';
@@ -34,7 +50,7 @@ interface SceneInitData {
 /** 农田格子的视觉对象：土地底色 + 作物标记 */
 interface TileVisual {
   rect: Phaser.GameObjects.Rectangle;
-  crop: Phaser.GameObjects.Ellipse;
+  crop: Phaser.GameObjects.Image;
 }
 
 /**
@@ -82,6 +98,14 @@ export class MapScene extends Phaser.Scene {
   private dialogueTimer: Phaser.Time.TimerEvent | null = null;
   // 森林采集点：星之碎片（accepted 状态时显示，采集后销毁）
   private shardSprite: Phaser.GameObjects.Ellipse | null = null;
+  // 矿洞矿脉精灵列表（mine 场景，id → sprite）
+  private oreSprites: { deposit: OreDeposit; sprite: Phaser.GameObjects.Ellipse }[] = [];
+  // 当前选中的种子类型（R 键切换，用于播种）
+  private selectedCropType: CropType = 'radish';
+  // 种子类型切换冷却（防连发）
+  private seedSwitchCooldown = 0;
+  // 种子选择器 DOM
+  private seedSelectorEl: HTMLDivElement | null = null;
 
   constructor(key: string) {
     super(key);
@@ -110,6 +134,9 @@ export class MapScene extends Phaser.Scene {
     if (!this.textures.exists('npc_elder')) this.load.image('npc_elder', 'assets/sprites/npc_elder.png');
     if (!this.textures.exists('npc_merchant')) this.load.image('npc_merchant', 'assets/sprites/npc_merchant.png');
     if (!this.textures.exists('npc_girl')) this.load.image('npc_girl', 'assets/sprites/npc_girl.png');
+    if (this.mapKey === 'farm' && !this.textures.exists('crops')) {
+      this.load.spritesheet('crops', 'assets/sprites/crops.png', { frameWidth: 32, frameHeight: 32 });
+    }
   }
 
   create(): void {
@@ -246,6 +273,11 @@ export class MapScene extends Phaser.Scene {
       this.setupShard();
     }
 
+    // 矿洞场景：创建矿脉精灵
+    if (this.mapKey === 'mine') {
+      this.setupOres();
+    }
+
     // 触屏控件（摇杆+交互按钮，DOM 单例，PC 和手机都显示）
     this.touchControls = new TouchControls(this, this.inputManager);
     // 商店面板（DOM 覆盖层；数据变化时刷新 HUD 金币显示；关店时清理输入残留）
@@ -257,6 +289,10 @@ export class MapScene extends Phaser.Scene {
         // 重置帧计时，防止关店后时间跳跃（lastFrameTime 仍停在开店前）
         this.lastFrameTime = performance.now();
       },
+      // 购买回调：通知每日任务
+      (count: number) => { onDQBuyShop(count); this.updateDailyQuestPanel(); },
+      // 卖出回调：通知每日任务
+      (count: number) => { onDQSellShop(count); this.updateDailyQuestPanel(); },
     );
 
     // 背包面板（DOM 覆盖层；关包时清理 B 键残留）
@@ -270,13 +306,21 @@ export class MapScene extends Phaser.Scene {
       this.updateTimeHUD();
     });
 
+    // 每日任务：刷新并渲染面板
+    refreshDailyQuests();
+    this.createDailyQuestPanel();
+
     // 离开页面前自动存档（beforeunload，只注册一次，后续场景切换复用）
     if (MapScene._beforeUnload) {
       window.removeEventListener('beforeunload', MapScene._beforeUnload);
     }
     MapScene._beforeUnload = () => {
       if (this.player && this.player.active) {
-        save({ x: this.player.x, y: this.player.y, scene: this.mapKey, facing: this.player.facing });
+        save({
+          x: this.player.x, y: this.player.y,
+          scene: this.mapKey, facing: this.player.facing,
+          dailyQuest: getDailyQuestSaveData(),
+        });
       }
     };
     window.addEventListener('beforeunload', MapScene._beforeUnload);
@@ -311,11 +355,21 @@ export class MapScene extends Phaser.Scene {
       return;
     }
 
+    // R 键切换种子类型（仅农场，300ms 冷却）
+    if (this.mapKey === 'farm' && Phaser.Input.Keyboard.JustDown(this.inputManager.keyR) && this.seedSwitchCooldown <= 0) {
+      this.seedSwitchCooldown = 300;
+      const idx = CROP_TYPES.indexOf(this.selectedCropType);
+      this.selectedCropType = CROP_TYPES[(idx + 1) % CROP_TYPES.length];
+      this.updateHUD();
+    }
+
     // 计算 dt（ms），推进游戏时间；上限 1000ms 防止切后台回来一次性跳太多
     const rawDt = timeMs - this.lastFrameTime;
     const dtMs = Math.max(0, Math.min(rawDt, 1000));
     this.lastFrameTime = timeMs;
     timeTick(dtMs);
+    // 种子切换冷却递减
+    if (this.seedSwitchCooldown > 0) this.seedSwitchCooldown -= dtMs;
 
     // 每帧更新输入（从键盘读移动向量到 moveX/moveY）
     this.inputManager.update();
@@ -420,6 +474,26 @@ export class MapScene extends Phaser.Scene {
     const cy = 10 * TILE_SIZE + TILE_SIZE / 2;
     this.shardSprite = this.add.ellipse(cx, cy, 14, 14, 0xb388ff, 1);
     this.shardSprite.setDepth(5);
+  }
+
+  /**
+   * 创建矿洞矿脉精灵
+   * 已开采的矿脉不显示（当日不可重复开采）
+   */
+  private setupOres(): void {
+    this.oreSprites = [];
+    for (const deposit of ORE_DEPOSITS) {
+      if (isOreMined(deposit.id)) continue;
+      const cx = deposit.col * TILE_SIZE + TILE_SIZE / 2;
+      const cy = deposit.row * TILE_SIZE + TILE_SIZE / 2;
+      // 不同矿石大小略有差异
+      const size = deposit.oreType === 'iron' ? 16 : deposit.oreType === 'copper' ? 14 : 12;
+      const sprite = this.add.ellipse(cx, cy, size, size, deposit.color, 1);
+      sprite.setDepth(5);
+      // 矿脉边框
+      sprite.setStrokeStyle(2, 0x000000, 0.4);
+      this.oreSprites.push({ deposit, sprite });
+    }
   }
 
   /**
@@ -536,8 +610,10 @@ export class MapScene extends Phaser.Scene {
         const rect = this.add.rectangle(cx, cy, TILE_SIZE, TILE_SIZE, 0x6b4423, 0.8);
         rect.setDepth(2);
         // 作物标记（绿色小椭圆，planted/watered/grown 时显示）
-        const crop = this.add.ellipse(cx, cy, 6, 6, 0x4caf50, 0.95);
+        const crop = this.add.image(cx, cy, 'crops', 0);
+        crop.setScale(0.5);
         crop.setDepth(3);
+        crop.setVisible(false);
         const visual: TileVisual = { rect, crop };
         // 从全局状态恢复显示（场景切换回来时保留已锄/已种地块）
         this.updateTileVisual(c, r, visual);
@@ -566,16 +642,19 @@ export class MapScene extends Phaser.Scene {
       state === 'watered' ? 0x3d2817 : 0x6b4423,
       0.85
     );
-    // 作物标记：planted/watered/grown 显示幼苗
+    // 作物标记：planted/watered/grown 显示像素作物
     const hasCrop = state === 'planted' || state === 'watered' || state === 'grown';
     visual.crop.setVisible(hasCrop);
     if (hasCrop) {
+      const cropData = getCrop(col, row);
+      const cropType = cropData?.cropType ?? 'radish';
+      const cropIdx = CROP_TYPES.indexOf(cropType);
       if (state === 'grown') {
-        visual.crop.setSize(11, 11);
-        visual.crop.setFillStyle(0x2e7d32, 0.95);
+        visual.crop.setFrame(cropIdx * 3 + 2);
+      } else if (state === 'watered') {
+        visual.crop.setFrame(cropIdx * 3 + 1);
       } else {
-        visual.crop.setSize(6, 6);
-        visual.crop.setFillStyle(0x4caf50, 0.95);
+        visual.crop.setFrame(cropIdx * 3 + 0);
       }
     }
   }
@@ -591,19 +670,24 @@ export class MapScene extends Phaser.Scene {
     const name = MAP_NAMES[this.mapKey] ?? this.mapKey;
     const day = `第${getTime().day}天`;
     const coins = `金币:${getCoins()}`;
+    const diamonds = `💠${getItemCount('diamond')}`;
+    const stamina = `⚡${getStamina()}/${MAX_STAMINA}`;
     const lv = `Lv.${getLevel()}`;
+    const seedDef = CROP_DEFS[this.selectedCropType];
+    const seedItem = seedDef.seedItem as any;
+    const seedInfo = `${seedDef.icon}${seedDef.name}:${getItemCount(seedItem)}`;
     if (isMobileLayout()) {
       if (this.mapKey === 'farm') {
-        this.hudAreaDom.textContent = `${name} ${day} ${lv} | 种子${getSeedCount()} 萝卜${getItemCount('radish')} ${coins}`;
+        this.hudAreaDom.textContent = `${name} ${day} ${lv} | ${seedInfo} ${coins} ${diamonds}`;
       } else {
-        this.hudAreaDom.textContent = `${name} ${day} ${lv} | ${coins}`;
+        this.hudAreaDom.textContent = `${name} ${day} ${lv} | ${stamina} ${coins} ${diamonds}`;
       }
     } else {
       if (this.mapKey === 'farm') {
         this.hudAreaDom.textContent =
-          `${name} | ${day} | ${lv} | WASD/E交互 | 种子:${getSeedCount()} 萝卜:${getItemCount('radish')} | ${coins} | 出口切换`;
+          `${name} | ${day} | ${lv} | WASD/E交互 | R切换:${seedInfo} | ${coins} | ${diamonds} | 出口切换`;
       } else {
-        this.hudAreaDom.textContent = `${name} | ${day} | ${lv} | WASD 移动 | ${coins} | 出口切换`;
+        this.hudAreaDom.textContent = `${name} | ${day} | ${lv} | ${stamina} | WASD 移动 | ${coins} | ${diamonds} | 出口切换`;
       }
     }
   }
@@ -628,11 +712,16 @@ export class MapScene extends Phaser.Scene {
    *   2. 否则 → 农田交互（锄地/播种/浇水/收获）
    */
   private tryInteract(): void {
-    // 1. 睡觉点检测（农场专有，优先于 NPC 交互，避免 NPC 站在入口挡住）
-    if (this.mapKey === 'farm') {
+    // 1. 睡觉点检测（农场室外旧点 + 室内床边，优先于 NPC 交互）
+    if (this.mapKey === 'farm' || this.mapKey === 'house') {
       const pc = Math.floor(this.player.x / TILE_SIZE);
       const pr = Math.floor(this.player.y / TILE_SIZE);
-      if (pc >= 2 && pc <= 4 && pr >= 12 && pr <= 14) {
+      // 农场：左下木屋区域（cols 2-4, rows 12-14）
+      // 室内：床边（cols 1-4, rows 1-4，床在 cols 2-3, rows 2-3）
+      const isSleepArea = this.mapKey === 'farm'
+        ? (pc >= 2 && pc <= 4 && pr >= 12 && pr <= 14)
+        : (pc >= 1 && pc <= 4 && pr >= 1 && pr <= 4);
+      if (isSleepArea) {
         this.trySleep();
         return;
       }
@@ -653,6 +742,9 @@ export class MapScene extends Phaser.Scene {
       }
     }
     if (nearest) {
+      // 通知每日任务：与 NPC 对话 + 刷新面板
+      onDQTAlkNpc(nearest.id);
+      this.updateDailyQuestPanel();
       // 村长对话由 QuestSystem 根据任务状态决定（含接受/交付推进）
       if (nearest.id === 'elder') {
         this.showDialogueText(getElderDialogue());
@@ -676,10 +768,18 @@ export class MapScene extends Phaser.Scene {
         this.shardSprite.destroy();
         this.shardSprite = null;
         addItem('star_shard', 1);
+        onDQCollect('star_shard');
+        this.updateDailyQuestPanel();
         this.showDialogueText('采集到「星之碎片」！返回村长交付任务。');
         this.updateQuestHUD();
         return;
       }
+    }
+
+    // 0.6 矿洞挖矿：靠近矿脉 E 键开采
+    if (this.mapKey === 'mine') {
+      this.tryMine();
+      return;
     }
 
     if (this.mapKey !== 'farm') return;
@@ -695,12 +795,22 @@ export class MapScene extends Phaser.Scene {
    */
   private trySleep(): void {
     timeNextDay();
+    // 体力恢复 + 矿脉刷新
+    resetStamina();
+    resetOres();
+    // 每日任务：跨天刷新
+    refreshDailyQuests();
+    this.createDailyQuestPanel();
     // 刷新农田视觉（成长后 grown 作物变大）和 HUD
     this.refreshFarmVisual();
     // 刷新 NPC 日程：次日 06:00，所有 NPC 应在 farm
     this.rebuildNPCs();
-    // 睡觉后自动存档
-    save({ x: this.player.x, y: this.player.y, scene: this.mapKey, facing: this.player.facing });
+    // 睡觉后自动存档（含每日任务数据）
+    save({
+      x: this.player.x, y: this.player.y,
+      scene: this.mapKey, facing: this.player.facing,
+      dailyQuest: getDailyQuestSaveData(),
+    } as any);
     this.showDialogueText('已保存 Zzz...');
   }
 
@@ -747,6 +857,49 @@ export class MapScene extends Phaser.Scene {
   }
 
   /**
+   * 挖矿：靠近矿脉按 E 开采
+   * 消耗体力 → 获得矿石 → 矿脉消失（当日不再刷新）
+   */
+  private tryMine(): void {
+    // 找最近的矿脉（24px 范围内）
+    let target: { deposit: OreDeposit; sprite: Phaser.GameObjects.Ellipse } | null = null;
+    let minDist = 24 * 24;
+    for (const entry of this.oreSprites) {
+      if (!entry.sprite.visible) continue;
+      const dx = this.player.x - entry.sprite.x;
+      const dy = this.player.y - entry.sprite.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < minDist) {
+        minDist = d2;
+        target = entry;
+      }
+    }
+    if (!target) return;
+
+    // 体力检查
+    if (!consumeStamina(target.deposit.staminaCost)) {
+      this.showDialogueText('体力不足，无法开采！');
+      return;
+    }
+
+    // 产出矿石
+    const dropsText: string[] = [];
+    for (const drop of target.deposit.drops) {
+      addItem(drop.item, drop.count);
+      dropsText.push(`${drop.count}个${drop.item === 'stone' ? '石头' : drop.item === 'copper' ? '铜矿' : '铁矿'}`);
+    }
+    addXp(5, 'harvest');
+    play('harvest');
+
+    // 矿脉消失 + 标记已开采
+    target.sprite.destroy();
+    markMined(target.deposit.id);
+
+    this.showDialogueText(`开采成功！获得 ${dropsText.join('、')}  体力 -${target.deposit.staminaCost}`);
+    this.updateHUD();
+  }
+
+  /**
    * 农田交互（按 Player.facing 决定面前格子）：
    *   empty   → tilled   （锄地）
    *   tilled  → planted  （播种，消耗一颗萝卜种子，记录 CropData）
@@ -784,12 +937,27 @@ export class MapScene extends Phaser.Scene {
       setTileState(tc, tr, 'tilled');
       play('hoe');
     } else if (state === 'tilled') {
-      // 播种：耕地 → 已种，消耗一颗萝卜种子
-      if (!useSeed()) return; // 种子不足，静默不处理
-      setTileState(tc, tr, 'planted');
-      setCrop(tc, tr, { cropType: 'radish', plantDay: getTime().day, watered: false });
-      addXp(3, 'plant');
-      play('plant');
+      // 播种：优先使用 R 键选中的种子，不足时才弹出选择器
+      const selectedSeedItem = CROP_DEFS[this.selectedCropType].seedItem as any;
+      const selectedCount = getItemCount(selectedSeedItem);
+      if (selectedCount > 0) {
+        // 选中的种子有库存，直接种
+        this.doPlant(tc, tr, this.selectedCropType);
+      } else {
+        // 选中的种子没了，检查其他种子
+        const availableSeeds: { cropType: CropType; count: number }[] = [];
+        for (const ct of CROP_TYPES) {
+          const seedItem = CROP_DEFS[ct].seedItem as any;
+          const count = getItemCount(seedItem);
+          if (count > 0) availableSeeds.push({ cropType: ct, count });
+        }
+        if (availableSeeds.length === 0) return;
+        if (availableSeeds.length === 1) {
+          this.doPlant(tc, tr, availableSeeds[0].cropType);
+        } else {
+          this.showSeedSelector(tc, tr, availableSeeds);
+        }
+      }
     } else if (state === 'planted') {
       // 浇水：已种 → 已浇水（成长前置条件）
       setTileState(tc, tr, 'watered');
@@ -797,21 +965,154 @@ export class MapScene extends Phaser.Scene {
       if (crop) setCrop(tc, tr, { ...crop, watered: true });
       addXp(1, 'water');
       play('water');
+      onDQWater();
+      this.updateDailyQuestPanel();
     } else if (state === 'grown') {
-      // 收获：成熟 → 耕地（保留已耕状态，可重新播种），清除作物，获得萝卜 +1
+      // 收获：成熟 → 耕地，获得作物
+      const crop = getCrop(tc, tr);
+      const cropType = crop?.cropType ?? 'radish';
       setTileState(tc, tr, 'tilled');
       setCrop(tc, tr, undefined);
-      addItem('radish', 1);
+      addItem(cropType, 1);
       addXp(10, 'harvest');
       play('harvest');
+      onDQHarvest(cropType);
+      this.updateDailyQuestPanel();
     } else {
       // watered 已浇水未成熟，暂不处理
       return;
     }
 
-    // 刷新该格视觉 + HUD 种子数
+    // 刷新该格视觉 + HUD
     const visual = this.tileRects.get(`${tc},${tr}`);
     if (visual) this.updateTileVisual(tc, tr, visual);
     this.updateHUD();
+  }
+
+  /** 执行播种 */
+  private doPlant(col: number, row: number, cropType: CropType): void {
+    const seedItem = CROP_DEFS[cropType].seedItem as any;
+    addItem(seedItem, -1);
+    setTileState(col, row, 'planted');
+    setCrop(col, row, { cropType, plantDay: getTime().day, watered: false });
+    addXp(3, 'plant');
+    play('plant');
+    onDQPlant();
+    this.updateDailyQuestPanel();
+    const visual = this.tileRects.get(`${col},${row}`);
+    if (visual) this.updateTileVisual(col, row, visual);
+    this.updateHUD();
+  }
+
+  /** 种子选择器（多种种子可选时弹出） */
+  private showSeedSelector(
+    col: number,
+    row: number,
+    seeds: { cropType: CropType; count: number }[],
+  ): void {
+    this.closeSeedSelector();
+
+    const el = document.createElement('div');
+    el.style.cssText =
+      'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;' +
+      'background:rgba(0,0,0,0.5);z-index:220;user-select:none;';
+
+    const cardStyle =
+      'width:min(300px,85vw);background:#3d3226;border:3px solid #8a6a45;border-radius:10px;' +
+      'padding:16px;color:#fff;font-family:Arial;box-shadow:0 4px 20px rgba(0,0,0,0.6);';
+
+    const btnStyle = 'font-size:14px;padding:6px 14px;border:none;border-radius:6px;cursor:pointer;color:#fff;background:#c79a5b;';
+
+    let itemsHtml = '';
+    for (const s of seeds) {
+      const def = CROP_DEFS[s.cropType];
+      itemsHtml += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:15px;">${def.icon} ${def.name} ×${s.count}</span>
+        <button class="seed-opt" data-crop="${s.cropType}" style="${btnStyle}">播种</button>
+      </div>`;
+    }
+
+    el.innerHTML = `<div style="${cardStyle}">
+      <div style="text-align:center;font-size:16px;font-weight:bold;margin-bottom:10px;">选择种子</div>
+      ${itemsHtml}
+      <div style="text-align:center;margin-top:10px;">
+        <button id="seed-sel-close" style="font-size:13px;padding:5px 20px;background:#8a6a45;border:none;border-radius:4px;color:#fff;cursor:pointer;">取消 (Esc)</button>
+      </div>
+    </div>`;
+    document.body.appendChild(el);
+    this.seedSelectorEl = el;
+
+    el.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (target.id === 'seed-sel-close') { this.closeSeedSelector(); return; }
+      if (target.classList.contains('seed-opt')) {
+        const ct = target.dataset.crop as CropType;
+        this.closeSeedSelector();
+        this.doPlant(col, row, ct);
+      }
+    });
+
+    const escHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); this.closeSeedSelector(); window.removeEventListener('keydown', escHandler); }
+    };
+    window.addEventListener('keydown', escHandler);
+  }
+
+  /** 关闭种子选择器 */
+  private closeSeedSelector(): void {
+    this.seedSelectorEl?.remove();
+    this.seedSelectorEl = null;
+  }
+
+  /** 创建/刷新每日任务面板（public：debug API 调用） */
+  createDailyQuestPanel(): void {
+    const old = document.getElementById('daily-quest-panel');
+    if (old) old.remove();
+
+    const quests = getDailyQuests();
+    if (quests.length === 0) return;
+
+    const el = document.createElement('div');
+    el.id = 'daily-quest-panel';
+    el.style.cssText =
+      'position:fixed;right:4px;top:70px;width:min(200px,40vw);background:rgba(30,25,20,0.9);' +
+      'border:2px solid #8a6a45;border-radius:8px;padding:8px;color:#fff;font-size:11px;' +
+      'font-family:Arial;z-index:10;user-select:none;pointer-events:auto;';
+
+    let html = '<div style="text-align:center;font-weight:bold;font-size:13px;margin-bottom:4px;color:#ffd700;">每日任务 💠</div>';
+
+    for (const q of quests) {
+      const done = q.claimed;
+      const canClaim = q.completed && !q.claimed;
+      const progress = q.target > 1 ? ` ${q.progress}/${q.target}` : '';
+      const color = done ? '#6a6a6a' : canClaim ? '#ffd700' : '#ccc';
+      const status = done ? '✅' : canClaim ? '🎁' : '⬜';
+      const btnHtml = canClaim
+        ? `<button class="dq-claim" data-id="${q.id}" style="font-size:10px;padding:1px 4px;background:#ffd700;color:#000;border:none;border-radius:3px;cursor:pointer;">领奖</button>`
+        : '';
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;color:${color};">
+        <span>${status} ${q.desc}${progress}</span>
+        ${btnHtml}
+      </div>`;
+    }
+
+    el.innerHTML = html;
+    document.body.appendChild(el);
+
+    el.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (target.classList.contains('dq-claim')) {
+        const id = target.dataset.id!;
+        if (claimReward(id)) {
+          this.updateDailyQuestPanel();
+          this.showDialogueText('💠+奖励已领取！');
+        }
+      }
+    });
+  }
+
+  /** 刷新每日任务面板 */
+  private updateDailyQuestPanel(): void {
+    this.createDailyQuestPanel();
   }
 }

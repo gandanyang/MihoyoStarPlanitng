@@ -18,16 +18,17 @@ import {
   clearAllTiles,
   getAllCropEntries,
   getAllTileEntries,
-  getSeedCount,
   restoreCropEntries,
   restoreTileEntries,
-  setSeedCount,
   type CropData,
   type TileState,
 } from '../data/FarmState';
 import { getAllInventoryEntries, restoreAllInventory, type ItemType } from '../data/Inventory';
 import { getTime, setTimeFull } from '../data/TimeSystem';
+import { getStamina, setStamina as restoreStamina } from '../data/Stamina';
+import { getMinedOreIds, restoreMinedOres } from '../data/MineState';
 import { getQuestState, setQuestState, type QuestState } from '../systems/QuestSystem';
+import { getDailyQuestSaveData, restoreDailyQuests, type DailyQuestSaveData } from '../systems/DailyQuestSystem';
 
 /** 当前存档格式版本（语义化：格式不兼容时递增） */
 export const SAVE_VERSION = '0.3';
@@ -45,12 +46,14 @@ export interface SaveData {
   time: { day: number; hour: number; minute: number };
   coins: number;
   inventory: Record<ItemType, number>;
-  seeds: number;
   tiles: [string, TileState][];
   crops: [string, CropData][];
   level: number;
   xp: number;
   questState: QuestState;
+  dailyQuest?: DailyQuestSaveData;
+  stamina: number;
+  minedOres: string[];
   player: { x: number; y: number; scene: string; facing: string };
 }
 
@@ -73,6 +76,7 @@ export function save(player: {
   y: number;
   scene: string;
   facing: string;
+  dailyQuest?: DailyQuestSaveData;
 }): void {
   const t = getTime();
   const now = new Date();
@@ -83,13 +87,15 @@ export function save(player: {
     time: { day: t.day, hour: t.hour, minute: t.minute },
     coins: getCoins(),
     inventory: Object.fromEntries(getAllInventoryEntries()) as Record<ItemType, number>,
-    seeds: getSeedCount(),
     tiles: getAllTileEntries(),
     crops: getAllCropEntries(),
     level: getLevel(),
     xp: getXp(),
     questState: getQuestState(),
-    player,
+    dailyQuest: player.dailyQuest ?? getDailyQuestSaveData(),
+    stamina: getStamina(),
+    minedOres: getMinedOreIds(),
+    player: { x: player.x, y: player.y, scene: player.scene, facing: player.facing },
   };
 
   try {
@@ -163,16 +169,49 @@ export function load(): SaveData | null {
   }
 }
 
+/**
+ * 向后兼容：将旧存档格式的背包数据迁移到新格式
+ *
+ * 旧格式：{ radish, seed, star_shard }
+ * 新格式：{ radish, tomato, corn, radish_seed, tomato_seed, corn_seed, star_shard }
+ *
+ * 迁移规则：
+ *   1. old 'seed' → 'radish_seed'
+ *   2. 新物品（tomato, corn, tomato_seed, corn_seed）缺失时补 0
+ */
+function migrateInventory(
+  inventory: Record<string, number>,
+): Partial<Record<ItemType, number>> {
+  const migrated: Record<string, number> = { ...inventory };
+
+  // 旧格式 'seed' → 'radish_seed'
+  if (migrated['seed'] !== undefined) {
+    if (migrated['radish_seed'] === undefined) {
+      migrated['radish_seed'] = migrated['seed'];
+    }
+    delete migrated['seed'];
+  }
+
+  // 为新物品设置默认值（如果存档中没有）
+  const defaultItems: ItemType[] = ['tomato', 'corn', 'tomato_seed', 'corn_seed', 'stone', 'copper', 'iron'];
+  for (const item of defaultItems) {
+    if (migrated[item] === undefined) {
+      migrated[item] = 0;
+    }
+  }
+
+  return migrated as Partial<Record<ItemType, number>>;
+}
+
 /** 应用存档到各模块（读取后调用） */
 export function apply(data: SaveData): void {
   // 时间
   setTimeFull(data.time.day, data.time.hour, data.time.minute);
   // 金币
   setCoins(data.coins);
-  // 背包（兼容旧存档只有 radish 字段）
-  restoreAllInventory(data.inventory);
-  // 种子
-  setSeedCount(data.seeds);
+  // 背包（兼容旧存档格式迁移）
+  const migratedInventory = migrateInventory(data.inventory as Record<string, number>);
+  restoreAllInventory(migratedInventory);
   // 农田
   clearAllTiles();
   restoreTileEntries(data.tiles as [string, TileState][]);
@@ -182,6 +221,10 @@ export function apply(data: SaveData): void {
   setXp(data.xp);
   // 任务
   setQuestState(data.questState as QuestState);
+  if (data.dailyQuest) restoreDailyQuests(data.dailyQuest);
+  // 体力 + 矿脉
+  restoreStamina(data.stamina ?? 100);
+  restoreMinedOres(data.minedOres ?? []);
   // 玩家位置（由 MapScene 读取后设置 spawn）
 }
 

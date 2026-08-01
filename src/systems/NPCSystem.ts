@@ -32,28 +32,71 @@ const T = 16;
  * 各点均避开碰撞区（farm 木屋上墙 row12、town 石屋、forest 四角石簇）。
  */
 type Spot = { x: number; y: number };
-type NpcId = 'elder' | 'shopkeeper' | 'mystery';
+type NpcId = 'elder' | 'shopkeeper' | 'mystery' | 'miner' | 'gardener' | 'adventurer';
 type SpotMap = Record<NpcId, Spot>;
-const SPOTS: { farm: SpotMap; town: SpotMap; forest: SpotMap } = {
+const SPOTS: { farm: SpotMap; town: SpotMap; forest: SpotMap; mine: SpotMap } = {
   farm: {
-    elder: { x: 3 * T + 8, y: 11 * T + 8 },      // 木屋左上方
-    shopkeeper: { x: 7 * T + 8, y: 11 * T + 8 }, // 木屋正前
-    mystery: { x: 3 * T + 8, y: 8 * T + 8 },     // 木屋上方远处
+    elder: { x: 3 * T + 8, y: 11 * T + 8 },
+    shopkeeper: { x: 7 * T + 8, y: 11 * T + 8 },
+    mystery: { x: 3 * T + 8, y: 8 * T + 8 },
+    miner: { x: 10 * T + 8, y: 11 * T + 8 },
+    gardener: { x: 5 * T + 8, y: 8 * T + 8 },
+    adventurer: { x: 8 * T + 8, y: 8 * T + 8 },
   },
   town: {
-    elder: { x: 13 * T + 8, y: 10 * T + 8 },     // 十字路左
-    shopkeeper: { x: 16 * T + 8, y: 10 * T + 8 },// 十字路右
-    mystery: { x: 15 * T + 8, y: 8 * T + 8 },    // 纵向路中段
+    elder: { x: 13 * T + 8, y: 10 * T + 8 },
+    shopkeeper: { x: 16 * T + 8, y: 10 * T + 8 },
+    mystery: { x: 15 * T + 8, y: 8 * T + 8 },
+    miner: { x: 14 * T + 8, y: 12 * T + 8 },
+    gardener: { x: 18 * T + 8, y: 10 * T + 8 },
+    adventurer: { x: 12 * T + 8, y: 12 * T + 8 },
   },
   forest: {
     elder: { x: 13 * T + 8, y: 10 * T + 8 },
     shopkeeper: { x: 17 * T + 8, y: 10 * T + 8 },
     mystery: { x: 15 * T + 8, y: 8 * T + 8 },
+    miner: { x: 14 * T + 8, y: 12 * T + 8 },
+    gardener: { x: 18 * T + 8, y: 8 * T + 8 },
+    adventurer: { x: 12 * T + 8, y: 10 * T + 8 },
+  },
+  mine: {
+    elder: { x: 8 * T + 8, y: 10 * T + 8 },
+    shopkeeper: { x: 10 * T + 8, y: 10 * T + 8 },
+    mystery: { x: 8 * T + 8, y: 8 * T + 8 },
+    miner: { x: 12 * T + 8, y: 10 * T + 8 },
+    gardener: { x: 10 * T + 8, y: 8 * T + 8 },
+    adventurer: { x: 6 * T + 8, y: 10 * T + 8 },
   },
 };
 
-/** 构建日程（按 NPC id 查专属站位，三 NPC 共用时间表） */
+/** 构建日程（按 NPC id 查专属站位） */
 function buildSchedule(npcId: NpcId): ScheduleEntry[] {
+  // 矿工：上午在矿洞，下午在农场
+  if (npcId === 'miner') {
+    return [
+      { time: '06:00', location: 'farm', ...SPOTS.farm.miner },
+      { time: '08:00', location: 'mine', ...SPOTS.mine.miner },
+      { time: '16:00', location: 'farm', ...SPOTS.farm.miner },
+    ];
+  }
+  // 花匠：全天在农场附近
+  if (npcId === 'gardener') {
+    return [
+      { time: '06:00', location: 'farm', ...SPOTS.farm.gardener },
+      { time: '10:00', location: 'forest', ...SPOTS.forest.gardener },
+      { time: '14:00', location: 'farm', ...SPOTS.farm.gardener },
+    ];
+  }
+  // 冒险家：上午在小镇，下午在森林
+  if (npcId === 'adventurer') {
+    return [
+      { time: '06:00', location: 'farm', ...SPOTS.farm.adventurer },
+      { time: '08:00', location: 'town', ...SPOTS.town.adventurer },
+      { time: '14:00', location: 'forest', ...SPOTS.forest.adventurer },
+      { time: '18:00', location: 'farm', ...SPOTS.farm.adventurer },
+    ];
+  }
+  // 原有 NPC：老日程
   return [
     { time: '06:00', location: 'farm', ...SPOTS.farm[npcId] },
     { time: '08:00', location: 'town', ...SPOTS.town[npcId] },
@@ -62,11 +105,14 @@ function buildSchedule(npcId: NpcId): ScheduleEntry[] {
   ];
 }
 
-/** 三个 NPC（textureKey 对应 preload 加载的贴图；站位互不重叠） */
+/** 六个 NPC（纹理暂时复用现有素材，后续替换） */
 const npcs: NPC[] = [
   new NPC('elder', '村长', 'npc_elder', '欢迎来到星辰岛。', buildSchedule('elder')),
-  new NPC('shopkeeper', '商店老板', 'npc_merchant', '欢迎光临星辰杂货店！靠近我按 E 就能买卖。', buildSchedule('shopkeeper')),
+  new NPC('shopkeeper', '商店老板', 'npc_merchant', '欢迎光临星辰杂货店！', buildSchedule('shopkeeper')),
   new NPC('mystery', '神秘少女', 'npc_girl', '...你听得见岛的低语吗？', buildSchedule('mystery')),
+  new NPC('miner', '矿工老张', 'npc_elder', '矿洞里能找到好东西，不过要小心。', buildSchedule('miner')),
+  new NPC('gardener', '花匠小梅', 'npc_girl', '这些花都是我自己种的，漂亮吧？', buildSchedule('gardener')),
+  new NPC('adventurer', '冒险家阿飞', 'npc_merchant', '我走遍了整座岛，每个角落都有秘密。', buildSchedule('adventurer')),
 ];
 
 /** 读取全部 NPC（只读列表） */

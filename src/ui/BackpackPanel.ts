@@ -12,8 +12,7 @@
  */
 
 import { getCoins } from '../data/Economy';
-import { getNonEmptyItems, ITEM_DEFS } from '../data/Inventory';
-import { getSeedCount } from '../data/FarmState';
+import { getNonEmptyItems } from '../data/Inventory';
 
 /** 关店回调 */
 type OnClose = () => void;
@@ -83,7 +82,6 @@ function refresh(): void {
   if (!panelEl) return;
   const items = getNonEmptyItems();
   const coins = getCoins();
-  const seeds = getSeedCount();
 
   // 金币
   const coinsEl = panelEl.querySelector('#bp-coins');
@@ -95,7 +93,7 @@ function refresh(): void {
   const gridEl = panelEl.querySelector('#bp-grid');
   if (!gridEl) return;
 
-  if (items.length === 0 && seeds === 0) {
+  if (items.length === 0) {
     gridEl.innerHTML =
       '<div style="width:100%;text-align:center;color:#9a8a72;padding:20px;font-size:14px;">背包空空如也</div>';
     return;
@@ -113,18 +111,6 @@ function refresh(): void {
         <div style="font-size:28px;margin-bottom:4px;">${def.icon}</div>
         <div style="font-size:13px;font-weight:bold;color:#e0d5c1;">${def.name}</div>
         <div style="font-size:12px;color:#a5d6a7;">×${count}</div>
-      </div>
-    `;
-  }
-
-  // 种子（来自 FarmState，不在 Inventory 里）
-  if (seeds > 0) {
-    const seedDef = ITEM_DEFS.seed;
-    html += `
-      <div style="${cellStyle}">
-        <div style="font-size:28px;margin-bottom:4px;">${seedDef.icon}</div>
-        <div style="font-size:13px;font-weight:bold;color:#e0d5c1;">${seedDef.name}</div>
-        <div style="font-size:12px;color:#a5d6a7;">×${seeds}</div>
       </div>
     `;
   }

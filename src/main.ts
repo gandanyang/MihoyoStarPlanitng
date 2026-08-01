@@ -3,6 +3,10 @@ import { GAME_CONFIG, GAME_TITLE } from './config';
 import { MapScene } from './scenes/MapScene';
 import { getTime, nextDay as timeNextDay, setTime as setGameTime, formatTime } from './data/TimeSystem';
 import { refreshSchedule } from './systems/NPCSystem';
+import { refreshDailyQuests as refreshDQ, getDailyQuestSaveData } from './systems/DailyQuestSystem';
+import { resetStamina } from './data/Stamina';
+import { resetOres } from './data/MineState';
+import { save } from './systems/SaveSystem';
 
 // 创建 Phaser 游戏实例
 // 4 个区域各注册一个 MapScene 实例，首个（农场）自动启动
@@ -32,6 +36,7 @@ const game = new Phaser.Game({
     new MapScene('town'),
     new MapScene('forest'),
     new MapScene('mine'),
+    new MapScene('house'),
   ],
 });
 
@@ -46,9 +51,27 @@ const game = new Phaser.Game({
   nextDay: () => {
     // Phase 4 起统一走 TimeSystem.nextDay，它内调 FarmState.advanceDay
     const newDay = timeNextDay();
+    // 体力恢复 + 矿脉刷新 + 每日任务刷新
+    resetStamina();
+    resetOres();
+    refreshDQ();
     const scene = game.scene.getScenes(true)[0] as MapScene | undefined;
-    if (scene && typeof scene.refreshFarmVisual === 'function') {
-      scene.refreshFarmVisual();
+    if (scene) {
+      if (typeof scene.createDailyQuestPanel === 'function') {
+        scene.createDailyQuestPanel();
+      }
+      if (typeof scene.refreshFarmVisual === 'function') {
+        scene.refreshFarmVisual();
+      }
+    }
+    // 睡觉后自动存档（含每日任务数据）
+    const player = (scene as unknown as { player?: { x: number; y: number; scene: string; facing: string } })?.player;
+    if (player) {
+      save({
+        x: player.x, y: player.y,
+        scene: player.scene, facing: player.facing,
+        dailyQuest: getDailyQuestSaveData(),
+      } as any);
     }
     console.log(`[debug] nextDay → Day ${newDay} 06:00`);
     return newDay;

@@ -1,0 +1,258 @@
+/**
+ * 每日任务系统
+ *
+ * 每日从任务池随机抽取 4 个任务，玩家完成可领钻石奖励。
+ * 隔天睡觉后自动刷新，未完成的任务也会被替换。
+ */
+
+import { addItem, ItemType } from '../data/Inventory';
+import { getTime } from '../data/TimeSystem';
+
+// ============ 任务类型定义 ============
+
+/** 任务目标类型 */
+export type QuestObjective =
+  | { type: 'harvest'; cropType?: ItemType; count: number }
+  | { type: 'water'; count: number }
+  | { type: 'plant'; count: number }
+  | { type: 'collect'; item: ItemType; count: number }
+  | { type: 'talk_npc'; npcId: string; npcName: string }
+  | { type: 'buy_shop'; count: number }
+  | { type: 'sell_shop'; count: number };
+
+/** 任务模板 */
+export interface DailyQuestTemplate {
+  id: string;
+  title: string;
+  desc: string;
+  objective: QuestObjective;
+  reward: number; // 钻石数量
+}
+
+/** 每日任务实例（含进度） */
+export interface DailyQuestInstance {
+  id: string;
+  title: string;
+  desc: string;
+  objective: QuestObjective;
+  reward: number;
+  progress: number; // 当前进度
+  target: number; // 目标数量
+  completed: boolean; // 已完成（可领奖）
+  claimed: boolean; // 已领奖
+}
+
+// ============ 任务池 ============
+
+const QUEST_POOL: DailyQuestTemplate[] = [
+  // --- 收获类 ---
+  { id: 'harvest_radish_3', title: '萝卜丰收', desc: '收获 3 个萝卜', objective: { type: 'harvest', cropType: 'radish', count: 3 }, reward: 2 },
+  { id: 'harvest_tomato_2', title: '番茄采摘', desc: '收获 2 个番茄', objective: { type: 'harvest', cropType: 'tomato', count: 2 }, reward: 3 },
+  { id: 'harvest_corn_2', title: '玉米丰收', desc: '收获 2 个玉米', objective: { type: 'harvest', cropType: 'corn', count: 2 }, reward: 4 },
+  { id: 'harvest_any_5', title: '大丰收', desc: '收获任意作物 5 个', objective: { type: 'harvest', count: 5 }, reward: 3 },
+
+  // --- 浇水类 ---
+  { id: 'water_3', title: '细心浇灌', desc: '浇水 3 次', objective: { type: 'water', count: 3 }, reward: 1 },
+  { id: 'water_5', title: '勤劳园丁', desc: '浇水 5 次', objective: { type: 'water', count: 5 }, reward: 2 },
+
+  // --- 播种类 ---
+  { id: 'plant_2', title: '播种希望', desc: '播种 2 颗种子', objective: { type: 'plant', count: 2 }, reward: 1 },
+  { id: 'plant_4', title: '开荒先锋', desc: '播种 4 颗种子', objective: { type: 'plant', count: 4 }, reward: 2 },
+
+  // --- 睡觉类 ---
+  // 已移除：睡觉会触发 nextDay → refreshDailyQuests，任务在领奖前就被刷新，逻辑上无法完成
+
+  // --- 采集类 ---
+  { id: 'collect_star', title: '星之碎片', desc: '收集 1 个星之碎片', objective: { type: 'collect', item: 'star_shard', count: 1 }, reward: 3 },
+
+  // --- 对话类 ---
+  { id: 'talk_elder', title: '拜访村长', desc: '与村长对话', objective: { type: 'talk_npc', npcId: 'elder', npcName: '村长' }, reward: 1 },
+  { id: 'talk_shopkeeper', title: '光顾商店', desc: '与商店老板对话', objective: { type: 'talk_npc', npcId: 'shopkeeper', npcName: '商店老板' }, reward: 1 },
+  { id: 'talk_miner', title: '矿工闲谈', desc: '与矿工老张对话', objective: { type: 'talk_npc', npcId: 'miner', npcName: '矿工老张' }, reward: 1 },
+  { id: 'talk_gardener', title: '花匠私语', desc: '与花匠小梅对话', objective: { type: 'talk_npc', npcId: 'gardener', npcName: '花匠小梅' }, reward: 1 },
+  { id: 'talk_adventurer', title: '冒险传说', desc: '与冒险家阿飞对话', objective: { type: 'talk_npc', npcId: 'adventurer', npcName: '冒险家阿飞' }, reward: 1 },
+
+  // --- 商店类 ---
+  { id: 'buy_1', title: '小小消费', desc: '在商店购买 1 件物品', objective: { type: 'buy_shop', count: 1 }, reward: 1 },
+  { id: 'buy_3', title: '购物达人', desc: '在商店购买 3 件物品', objective: { type: 'buy_shop', count: 3 }, reward: 2 },
+  { id: 'sell_3', title: '小本生意', desc: '在商店卖出 3 个作物', objective: { type: 'sell_shop', count: 3 }, reward: 2 },
+  { id: 'sell_5', title: '贸易达人', desc: '在商店卖出 5 个作物', objective: { type: 'sell_shop', count: 5 }, reward: 3 },
+];
+
+// ============ 每日任务状态 ============
+
+let dailyQuests: DailyQuestInstance[] = [];
+let currentDay: number = 0;
+
+/** 随机选取 n 个不重复的任务 */
+function pickRandom(n: number): DailyQuestTemplate[] {
+  const pool = [...QUEST_POOL];
+  const result: DailyQuestTemplate[] = [];
+  for (let i = 0; i < n && pool.length > 0; i++) {
+    const idx = Math.floor(Math.random() * pool.length);
+    result.push(pool[idx]);
+    pool.splice(idx, 1);
+  }
+  return result;
+}
+
+/** 从模板创建实例 */
+function createInstance(t: DailyQuestTemplate): DailyQuestInstance {
+  const target = (t.objective as any).count ?? 1;
+  return {
+    id: t.id,
+    title: t.title,
+    desc: t.desc,
+    objective: { ...t.objective } as QuestObjective,
+    reward: t.reward,
+    progress: 0,
+    target,
+    completed: false,
+    claimed: false,
+  };
+}
+
+/** 刷新每日任务（隔天调用） */
+export function refreshDailyQuests(): void {
+  const day = getTime().day;
+  if (day === currentDay && dailyQuests.length > 0) return; // 同一天不重复刷新
+  currentDay = day;
+  const picked = pickRandom(4);
+  dailyQuests = picked.map(createInstance);
+}
+
+/** 获取当前每日任务 */
+export function getDailyQuests(): readonly DailyQuestInstance[] {
+  return dailyQuests;
+}
+
+/** 获取每日任务天数 */
+export function getDailyQuestDay(): number {
+  return currentDay;
+}
+
+// ============ 进度更新 ============
+
+/** 通知收获作物 */
+export function onHarvest(cropType: ItemType, count = 1): void {
+  for (const q of dailyQuests) {
+    if (q.claimed) continue;
+    const obj = q.objective;
+    if (obj.type === 'harvest') {
+      if (obj.cropType && obj.cropType !== cropType) continue;
+      q.progress = Math.min(q.target, q.progress + count);
+      if (q.progress >= q.target) q.completed = true;
+    }
+  }
+}
+
+/** 通知浇水 */
+export function onWater(): void {
+  for (const q of dailyQuests) {
+    if (q.claimed || q.completed) continue;
+    if (q.objective.type === 'water') {
+      q.progress = Math.min(q.target, q.progress + 1);
+      if (q.progress >= q.target) q.completed = true;
+    }
+  }
+}
+
+/** 通知播种 */
+export function onPlant(): void {
+  for (const q of dailyQuests) {
+    if (q.claimed || q.completed) continue;
+    if (q.objective.type === 'plant') {
+      q.progress = Math.min(q.target, q.progress + 1);
+      if (q.progress >= q.target) q.completed = true;
+    }
+  }
+}
+
+/** 通知采集物品 */
+export function onCollect(item: ItemType, count = 1): void {
+  for (const q of dailyQuests) {
+    if (q.claimed || q.completed) continue;
+    if (q.objective.type === 'collect' && q.objective.item === item) {
+      q.progress = Math.min(q.target, q.progress + count);
+      if (q.progress >= q.target) q.completed = true;
+    }
+  }
+}
+
+/** 通知与 NPC 对话 */
+export function onTalkNpc(npcId: string): void {
+  for (const q of dailyQuests) {
+    if (q.claimed || q.completed) continue;
+    if (q.objective.type === 'talk_npc' && q.objective.npcId === npcId) {
+      q.progress = 1;
+      q.completed = true;
+    }
+  }
+}
+
+/** 通知商店购买 */
+export function onBuyShop(count = 1): void {
+  for (const q of dailyQuests) {
+    if (q.claimed || q.completed) continue;
+    if (q.objective.type === 'buy_shop') {
+      q.progress = Math.min(q.target, q.progress + count);
+      if (q.progress >= q.target) q.completed = true;
+    }
+  }
+}
+
+/** 通知商店卖出 */
+export function onSellShop(count = 1): void {
+  for (const q of dailyQuests) {
+    if (q.claimed || q.completed) continue;
+    if (q.objective.type === 'sell_shop') {
+      q.progress = Math.min(q.target, q.progress + count);
+      if (q.progress >= q.target) q.completed = true;
+    }
+  }
+}
+
+// ============ 领奖 ============
+
+/** 领取任务奖励，返回是否成功 */
+export function claimReward(questId: string): boolean {
+  const q = dailyQuests.find((dq) => dq.id === questId);
+  if (!q || !q.completed || q.claimed) return false;
+  q.claimed = true;
+  addItem('diamond', q.reward);
+  return true;
+}
+
+// ============ 存档 ============
+
+export interface DailyQuestSaveData {
+  currentDay: number;
+  quests: { id: string; progress: number; completed: boolean; claimed: boolean }[];
+}
+
+/** 导出存档数据 */
+export function getDailyQuestSaveData(): DailyQuestSaveData {
+  return {
+    currentDay,
+    quests: dailyQuests.map((q) => ({
+      id: q.id,
+      progress: q.progress,
+      completed: q.completed,
+      claimed: q.claimed,
+    })),
+  };
+}
+
+/** 恢复存档数据 */
+export function restoreDailyQuests(data: DailyQuestSaveData): void {
+  currentDay = data.currentDay;
+  dailyQuests = data.quests.map((sq) => {
+    const tpl = QUEST_POOL.find((t) => t.id === sq.id);
+    if (!tpl) return null!;
+    const inst = createInstance(tpl);
+    inst.progress = sq.progress;
+    inst.completed = sq.completed;
+    inst.claimed = sq.claimed;
+    return inst;
+  }).filter(Boolean);
+}

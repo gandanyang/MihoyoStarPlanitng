@@ -2,11 +2,11 @@
  * 物品库存（Phase 0.25 背包系统）
  *
  * 模块级单例：物品数量跨场景保留。
- * 当前支持：萝卜、种子、星之碎片。
+ * 当前支持：萝卜、番茄、玉米、各类种子、星之碎片。
  */
 
 /** 物品类型 */
-export type ItemType = 'radish' | 'seed' | 'star_shard';
+export type ItemType = 'radish' | 'tomato' | 'corn' | 'radish_seed' | 'tomato_seed' | 'corn_seed' | 'star_shard' | 'diamond' | 'stone' | 'copper' | 'iron';
 
 /** 物品定义 */
 export interface ItemDef {
@@ -21,15 +21,31 @@ export interface ItemDef {
 /** 物品定义表 */
 export const ITEM_DEFS: Record<ItemType, ItemDef> = {
   radish: { id: 'radish', name: '萝卜', desc: '农场种植的普通萝卜，可出售换取金币。', icon: '🥕' },
-  seed: { id: 'seed', name: '萝卜种子', desc: '种在锄过的土地上，浇水后第二天成熟。', icon: '🌱' },
+  tomato: { id: 'tomato', name: '番茄', desc: '红润饱满的番茄，比萝卜更值钱。', icon: '🍅' },
+  corn: { id: 'corn', name: '玉米', desc: '金黄饱满的玉米，生长周期较长。', icon: '🌽' },
+  radish_seed: { id: 'radish_seed', name: '萝卜种子', desc: '种在锄过的土地上，浇水后1天成熟。', icon: '🌱' },
+  tomato_seed: { id: 'tomato_seed', name: '番茄种子', desc: '种在锄过的土地上，浇水后2天成熟。', icon: '🌱' },
+  corn_seed: { id: 'corn_seed', name: '玉米种子', desc: '种在锄过的土地上，浇水后3天成熟。', icon: '🌱' },
   star_shard: { id: 'star_shard', name: '星之碎片', desc: '星辰岛心脏的碎片，散发着微光。', icon: '💎' },
+  diamond: { id: 'diamond', name: '钻石', desc: '完成每日任务获得的稀有货币，可在特殊商店兑换稀有物品。', icon: '💠' },
+  stone: { id: 'stone', name: '石头', desc: '矿洞中开采的普通石材，可用于建筑或出售。', icon: '🪨' },
+  copper: { id: 'copper', name: '铜矿', desc: '铜色矿石，可用于工具升级或出售。', icon: '🟤' },
+  iron: { id: 'iron', name: '铁矿', desc: '稀有的铁矿石，价值较高。', icon: '⚪' },
 };
 
 /** 库存数据：物品类型 → 数量 */
 const inventory: Record<ItemType, number> = {
   radish: 0,
-  seed: 5,
+  tomato: 0,
+  corn: 0,
+  radish_seed: 5,
+  tomato_seed: 0,
+  corn_seed: 0,
   star_shard: 0,
+  diamond: 0,
+  stone: 0,
+  copper: 0,
+  iron: 0,
 };
 
 /** 读取某物品数量 */
