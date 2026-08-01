@@ -1616,10 +1616,9 @@ export class MapScene extends Phaser.Scene {
     }
     if (!targetPos) return false; // 附近没有可砍的树
 
-    // 斧头检查
+    // 斧头检查：无斧头时不吞交互（教程期玩家本无斧头，让操作落到农田交互）
     if (getItemCount('old_axe') <= 0) {
-      this.showDialogueText('需要斧头才能砍树！');
-      return true;
+      return false;
     }
 
     // 体力检查（每次砍击扣 5 点，一棵树 3 次 = 15 点）
