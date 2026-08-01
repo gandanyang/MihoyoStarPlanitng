@@ -44,11 +44,10 @@ async function teleport(page, sceneKey, x, y, facing = 'up') {
   await sleep(200);
 }
 
-/** 触屏"交互"按钮（等同玩家点按钮） */
+/** 触屏"交互/使用工具"按钮（等同玩家点按钮；农场场景文字为"使用工具"） */
 async function pressInteract(page) {
   await page.evaluate(() => {
-    const btns = [...document.querySelectorAll('#touch-controls div')];
-    const b = btns.find(x => x.textContent?.trim() === '交互');
+    const b = document.querySelector('#touch-controls [data-action="interact"]');
     if (b) b.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
   });
   await sleep(600);

@@ -47,7 +47,7 @@ import {
   injectGuideQuests,
 } from '../systems/DailyQuestSystem';
 import { InputManager } from '../systems/InputManager';
-import { TouchControls } from '../systems/TouchControls';
+import { TouchControls, setActionButtonLabel } from '../systems/TouchControls';
 import { ShopPanel } from '../ui/ShopPanel';
 import { BackpackPanel } from '../ui/BackpackPanel';
 import { StoryDialogue } from '../ui/StoryDialogue';
@@ -366,9 +366,9 @@ export class MapScene extends Phaser.Scene {
       // Demo 结尾：观星点视觉（主线完成 + 夜晚时显示）
       this.createStargazePoint();
 
-      // 农田选中高亮（淡黄色边框，跟随玩家面向的格子）
-      this.targetHighlight = this.add.rectangle(0, 0, TILE_SIZE, TILE_SIZE, 0xfff176, 0.15);
-      this.targetHighlight.setStrokeStyle(1, 0xfff176, 0.7);
+      // 农田选中高亮（亮黄色边框 + 填充，跟随玩家面向的格子；可操作时才显示）
+      this.targetHighlight = this.add.rectangle(0, 0, TILE_SIZE, TILE_SIZE, 0xfff176, 0.35);
+      this.targetHighlight.setStrokeStyle(2, 0xffffff, 0.9);
       this.targetHighlight.setDepth(8);
       this.targetHighlight.setVisible(false);
     }
@@ -407,6 +407,8 @@ export class MapScene extends Phaser.Scene {
 
     // 触屏控件（摇杆+交互按钮，DOM 单例；移动端额外显示背包按钮）
     this.touchControls = new TouchControls(this, this.inputManager, () => this.tryOpenBackpack());
+    // 农场场景操作按钮语义为「使用工具」，其余场景保持「交互」（仅影响按钮文字，逻辑不变）
+    setActionButtonLabel(this.mapKey === 'farm' ? '使用工具' : '交互');
     // 商店面板（DOM 覆盖层；数据变化时刷新 HUD 金币显示；关店时清理输入残留）
     this.shopPanel = new ShopPanel(
       () => this.updateHUD(),
@@ -1558,7 +1560,8 @@ export class MapScene extends Phaser.Scene {
 
   /**
    * 更新农田选中高亮（每帧跟随玩家面向的格子）
-   * 仅农场场景生效，非农场或目标不在耕地区时隐藏
+   * 仅农场场景生效，且仅在目标格可执行操作时显示（锄地/播种/浇水/收获）
+   * 移动端：让玩家明确"当前操作会影响哪一格"
    */
   private updateTargetHighlight(): void {
     if (this.mapKey !== 'farm' || !this.targetHighlight) return;
@@ -1572,12 +1575,39 @@ export class MapScene extends Phaser.Scene {
       case 'left': tc = pc - 1; break;
       case 'right': tc = pc + 1; break;
     }
-    if (!isInFarmArea(tc, tr)) {
+    // 不在耕地区或该格当前无操作可执行 → 隐藏高亮
+    if (!isInFarmArea(tc, tr) || !this.isTileActionable(tc, tr)) {
       this.targetHighlight.setVisible(false);
       return;
     }
     this.targetHighlight.setVisible(true);
     this.targetHighlight.setPosition(tc * TILE_SIZE + TILE_SIZE / 2, tr * TILE_SIZE + TILE_SIZE / 2);
+    // 呼吸脉动：让目标框更醒目（玩家注意力集中在目标格）
+    const pulse = 0.5 + 0.5 * Math.sin(this.time.now / 220);
+    this.targetHighlight.setAlpha(0.35 + 0.2 * pulse);
+  }
+
+  /**
+   * 目标格当前是否可执行操作（与 tryFarmInteract 的判定一致）：
+   *   empty   → 可锄地
+   *   tilled  → 有种子才可播种
+   *   planted → 可浇水
+   *   grown   → 可收获
+   *   watered → 等待次日成长，不可操作
+   */
+  private isTileActionable(col: number, row: number): boolean {
+    const state = getTileState(col, row);
+    if (state === 'empty') return true;
+    if (state === 'tilled') {
+      // 播种需要至少一种种子库存（与 tryFarmInteract 的播种分支一致）
+      for (const ct of CROP_TYPES) {
+        if (getItemCount(CROP_DEFS[ct].seedItem as any) > 0) return true;
+      }
+      return false;
+    }
+    if (state === 'planted') return true;
+    if (state === 'grown') return true;
+    return false;
   }
 
   /**

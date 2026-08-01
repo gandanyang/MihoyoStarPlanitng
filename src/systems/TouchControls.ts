@@ -107,6 +107,8 @@ function createDom(): void {
     'background:rgba(76,175,80,0.5);border:2px solid rgba(255,255,255,0.6);pointer-events:auto;' +
     'display:flex;align-items:center;justify-content:center;color:#fff;font:bold 18px Arial;' +
     'touch-action:none;cursor:pointer;user-select:none;-webkit-user-select:none';
+  // 稳定标识：探针/测试按 data-action 查找按钮，不依赖文字（文字会随场景变化）
+  btn.dataset.action = 'interact';
   btn.textContent = '交互';
   let lastActionTime = 0;
   const ACTION_DEBOUNCE_MS = 500;
@@ -145,6 +147,12 @@ function createDom(): void {
 }
 
 /** 是否触屏设备（统一入口在 config.ts，用触屏能力判断，而非窗口宽度——手机横屏宽度可能 ≥800） */
+
+/** 设置交互/使用工具按钮文字（农场场景为"使用工具"，其余为"交互"） */
+export function setActionButtonLabel(label: string): void {
+  const btn = document.querySelector<HTMLElement>('#touch-controls [data-action="interact"]');
+  if (btn) btn.textContent = label;
+}
 
 /** 背包按钮仅触屏设备显示（竖屏/横屏/平板都显示；桌面无触屏时用键盘 B） */
 function updateBackpackVisibility(): void {
