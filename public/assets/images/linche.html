@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>林澈 · 像素角色生成器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #1a1a2e;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', 'PingFang SC', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            padding: 30px 20px 60px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            background: #16213e;
+            border-radius: 32px;
+            padding: 30px 35px 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+            border: 1px solid #2a3a5e;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            color: #c8e6d9;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+        h1 small {
+            font-size: 16px;
+            font-weight: 400;
+            color: #7a9a8a;
+            letter-spacing: 0;
+        }
+        .subtitle {
+            color: #7a9a8a;
+            font-size: 14px;
+            border-left: 3px solid #4aefca;
+            padding-left: 16px;
+            margin-bottom: 28px;
+            line-height: 1.6;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px 14px;
+            background: #1a2a3e;
+            padding: 14px 20px;
+            border-radius: 20px;
+            margin-bottom: 28px;
+            align-items: center;
+            border: 1px solid #2a3a5e;
+        }
+        .toolbar label {
+            font-size: 14px;
+            color: #aabaca;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .toolbar select,
+        .toolbar button {
+            background: #0f1a2a;
+            color: #e0e8f0;
+            border: 1px solid #3a5a6a;
+            border-radius: 12px;
+            padding: 6px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .toolbar select:hover,
+        .toolbar button:hover {
+            background: #1a3a4a;
+            border-color: #4aefca;
+        }
+        .toolbar button.primary {
+            background: #2a6a5a;
+            border-color: #4aefca;
+            color: #e0fff0;
+            font-weight: 500;
+        }
+        .toolbar button.primary:hover {
+            background: #3a8a7a;
+            box-shadow: 0 0 20px rgba(74, 239, 202, 0.15);
+        }
+        .toolbar .sep {
+            width: 1px;
+            height: 28px;
+            background: #2a3a5e;
+            margin: 0 4px;
+        }
+        .toolbar .hint {
+            font-size: 12px;
+            color: #5a7a7a;
+            margin-left: auto;
+        }
+
+        .main-area {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+        }
+        .left-panel {
+            flex: 1 1 320px;
+            min-width: 260px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .right-panel {
+            flex: 2 1 540px;
+            min-width: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .card {
+            background: #0f1a2a;
+            border-radius: 20px;
+            padding: 18px 20px 20px;
+            border: 1px solid #2a3a5e;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        .card h3 {
+            font-size: 16px;
+            font-weight: 500;
+            color: #aacaca;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .card h3 span {
+            font-size: 12px;
+            color: #5a7a7a;
+            font-weight: 400;
+        }
+
+        .canvas-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #0a0f1a;
+            border-radius: 16px;
+            padding: 8px;
+            border: 1px solid #1a2a3a;
+            position: relative;
+            min-height: 200px;
+        }
+        .canvas-wrapper canvas {
+            display: block;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            border-radius: 8px;
+            max-width: 100%;
+            height: auto;
+        }
+        .canvas-label {
+            position: absolute;
+            bottom: 14px;
+            right: 18px;
+            font-size: 11px;
+            color: #3a5a5a;
+            background: rgba(10, 15, 26, 0.7);
+            padding: 2px 12px;
+            border-radius: 20px;
+            border: 1px solid #1a2a3a;
+            pointer-events: none;
+        }
+
+        .sprite-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: center;
+            margin-top: 6px;
+        }
+        .sprite-grid .frame-box {
+            background: #0a0f1a;
+            border-radius: 6px;
+            padding: 4px;
+            border: 1px solid #1a2a3a;
+            transition: border-color 0.2s;
+        }
+        .sprite-grid .frame-box:hover {
+            border-color: #4aefca;
+        }
+        .sprite-grid .frame-box canvas {
+            display: block;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            width: 64px;
+            height: 64px;
+            border-radius: 2px;
+        }
+        .sprite-grid .frame-label {
+            text-align: center;
+            font-size: 10px;
+            color: #5a7a7a;
+            margin-top: 2px;
+        }
+
+        .info-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px 30px;
+            font-size: 13px;
+            color: #8aaaba;
+            padding: 6px 0 2px;
+        }
+        .info-row .tag {
+            background: #1a2a3a;
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            color: #6a8a8a;
+        }
+
+        .footer-note {
+            margin-top: 24px;
+            text-align: center;
+            font-size: 12px;
+            color: #3a5a5a;
+            border-top: 1px solid #1a2a3a;
+            padding-top: 18px;
+            letter-spacing: 0.5px;
+        }
+        .footer-note a {
+            color: #4aefca;
+            text-decoration: none;
+        }
+        .footer-note a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 700px) {
+            .container {
+                padding: 16px 12px 30px;
+            }
+            .toolbar {
+                padding: 12px 14px;
+                gap: 8px;
+            }
+            .main-area {
+                flex-direction: column;
+            }
+            .left-panel,
+            .right-panel {
+                flex: 1 1 auto;
+                min-width: 0;
+            }
+            h1 {
+                font-size: 22px;
+            }
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0f1a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2a4a5a;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3a6a7a;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container" id="app">
+        <h1>
+            🌾 林澈 · 像素角色
+            <small>二次元版星露谷物语</small>
+        </h1>
+        <div class="subtitle">
+            「不是逃离城市，而是在寻找自己真正想要的生活。」 —— 落魄小少爷的庄园物语
+        </div>
+
+        <div class="toolbar">
+            <label>🎬 动作:
+                <select id="actionSelect">
+                    <option value="idle">Idle 待机</option>
+                    <option value="walk">Walk 行走</option>
+                    <option value="run">Run 奔跑</option>
+                    <option value="tool_hoe">Tool 锄头</option>
+                    <option value="tool_water">Tool 水壶</option>
+                    <option value="tool_axe">Tool 斧头</option>
+                </select>
+            </label>
+            <label>📦 帧:
+                <select id="frameSelect">
+                    <option value="0">帧 0</option>
+                    <option value="1">帧 1</option>
+                    <option value="2">帧 2</option>
+                    <option value="3">帧 3</option>
+                </select>
+            </label>
+            <div class="sep"></div>
+            <button class="primary" id="playBtn">▶ 播放动画</button>
+            <button id="stopBtn">⏹ 停止</button>
+            <div class="sep"></div>
+            <button id="exportSpriteBtn">📥 导出 Sprite Sheet</button>
+            <button id="exportGameBtn">🎮 导出游戏 Sprite (32×32)</button>
+            <span class="hint">48×48 · 16-bit 像素</span>
+        </div>
+
+        <div class="main-area">
+            <!-- 左侧：角色预览 + 信息 -->
+            <div class="left-panel">
+                <div class="card">
+                    <h3>🧑 角色预览 <span>48×48 (6× 放大)</span></h3>
+                    <div class="canvas-wrapper">
+                        <canvas id="mainCanvas" width="288" height="288"></canvas>
+                        <div class="canvas-label">林澈 · 像素</div>
+                    </div>
+                    <div class="info-row">
+                        <span>💎 青色玉佩</span>
+                        <span>🧥 青绿外套</span>
+                        <span>👟 旅行靴</span>
+                        <span class="tag">v1.0</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>📋 角色档案</h3>
+                    <div style="font-size:13px;color:#8aaaba;line-height:1.8;padding:0 4px;">
+                        <strong style="color:#c8e6d9;">林澈</strong> · 18岁 · 半吊子继承人<br>
+                        黑色偏蓝短发 · 浅米色立领衬衫 · 青绿短外套<br>
+                        深色长裤 · 旅行靴 · 祖传青色玉佩
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：Sprite Sheet + 帧预览 -->
+            <div class="right-panel">
+                <div class="card">
+                    <h3>📜 Sprite Sheet · 动作精灵图 <span>所有帧 · 可导出PNG</span></h3>
+                    <div class="canvas-wrapper" style="min-height:140px;">
+                        <canvas id="spriteCanvas" width="576" height="384"></canvas>
+                        <div class="canvas-label">Sprite Sheet · 6行 × 4列</div>
+                    </div>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:8px;font-size:12px;color:#5a7a7a;">
+                        <span>🟦 Idle (3帧)</span>
+                        <span>🟩 Walk (4帧)</span>
+                        <span>🟧 Run (4帧)</span>
+                        <span>🟪 Tool·锄 (3帧)</span>
+                        <span>🟫 Tool·水 (3帧)</span>
+                        <span>⬛ Tool·斧 (3帧)</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>🖼️ 帧序列预览 <span>当前动作</span></h3>
+                    <div class="sprite-grid" id="frameGrid">
+                        <!-- 由 js 动态生成 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-note">
+            🎮 Canvas 像素角色生成器 · 可直接用于 Web 游戏 · 设计：青绿外套 · 玉佩 · 少年感
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        //  林澈 · 像素角色数据 & 渲染引擎
+        //  48×48 像素 · 16-bit 风格
+        // ============================================================
+
+        // ---- 调色板 ----
+        const PAL = {
+            // 头发 (黑蓝)
+            hairDark: '#0f0f2a',
+            hairMid: '#1a1a4a',
+            hairLight: '#2a2a6a',
+            hairHighlight: '#3a4a8a',
+            // 皮肤
+            skinLight: '#f0e0c8',
+            skinMid: '#e0c8a8',
+            skinShadow: '#c8a888',
+            // 衬衫 (浅米色)
+            shirtLight: '#f0e8d8',
+            shirtMid: '#e0d8c0',
+            shirtShadow: '#c8c0a8',
+            // 外套 (青绿)
+            coatDark: '#2a6a5a',
+            coatMid: '#3a8a7a',
+            coatLight: '#5aaa8a',
+            coatHighlight: '#7acaaa',
+            // 裤子 (深色)
+            pantDark: '#1a1a2e',
+            pantMid: '#2a2a4a',
+            pantLight: '#3a3a5a',
+            // 靴子 (棕色)
+            bootDark: '#4a2a1a',
+            bootMid: '#6a4a2a',
+            bootLight: '#8a6a4a',
+            // 玉佩 (青色)
+            jadeDark: '#2aaf9a',
+            jadeMid: '#4aefca',
+            jadeLight: '#6affea',
+            jadeGlow: '#a0fff0',
+            // 工具
+            toolWood: '#8a6a4a',
+            toolMetal: '#aabaca',
+            toolHandle: '#6a4a2a',
+            // 其他
+            eyeWhite: '#f0f0f0',
+            eyePupil: '#1a2a3a',
+            mouth: '#c88870',
+            outline: '#0a0a1a',
+            trans: 'transparent',
+        };
+
+        // ---- 工具函数 ----
+        function hexToRgba(hex, alpha = 1) {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return `rgba(${r},${g},${b},${alpha})`;
+        }
+
+        // ---- 像素角色绘制器 ----
+        class PixelCharacter {
+            constructor() {
+                this.size = 48;
+                this.scale = 6;
+                this.canvas = document.createElement('canvas');
+                this.canvas.width = this.size;
+                this.canvas.height = this.size;
+                this.ctx = this.canvas.getContext('2d');
+                this.imageData = null;
+            }
+
+            // 清空画布
+            clear() {
+                this.ctx.clearRect(0, 0, this.size, this.size);
+            }
+
+            // 设置像素 (x, y) 颜色 (支持透明度)
+            setPixel(x, y, color) {
+                if (x < 0 || x >= this.size || y < 0 || y >= this.size) return;
+                const ctx = this.ctx;
+                ctx.fillStyle = color;
+                ctx.fillRect(x, y, 1, 1);
+            }
+
+            // 绘制矩形区域
+            fillRect(x, y, w, h, color) {
+                for (let i = x; i < x + w; i++) {
+                    for (let j = y; j < y + h; j++) {
+                        this.setPixel(i, j, color);
+                    }
+                }
+            }
+
+            // 绘制圆点 (用于高光等)
+            dot(x, y, color) {
+                this.setPixel(x, y, color);
+            }
+
+            // ---- 基础角色绘制 (idle 帧0) ----
+            drawBase(frame = 0, action = 'idle') {
+                this.clear();
+                const s = this.size;
+                const P = PAL;
+
+                // ---- 背景透明 ----
+
+                // ===== 身体 =====
+                // 裤子 (深色)
+                this.fillRect(16, 34, 16, 10, P.pantDark);
+                this.fillRect(17, 34, 14, 10, P.pantMid);
+                // 裤腿阴影
+                this.fillRect(16, 36, 16, 2, P.pantDark);
+                this.fillRect(18, 38, 12, 4, P.pantLight);
+
+                // 靴子
+                // 左靴
+                this.fillRect(16, 42, 7, 6, P.bootDark);
+                this.fillRect(17, 42, 5, 6, P.bootMid);
+                this.fillRect(18, 44, 3, 4, P.bootLight);
+                // 右靴
+                this.fillRect(25, 42, 7, 6, P.bootDark);
+                this.fillRect(26, 42, 5, 6, P.bootMid);
+                this.fillRect(27, 44, 3, 4, P.bootLight);
+
+                // 身体 / 衬衫 (浅米色)
+                this.fillRect(17, 20, 14, 16, P.shirtLight);
+                this.fillRect(18, 20, 12, 16, P.shirtMid);
+                // 衬衫阴影
+                this.fillRect(17, 24, 14, 2, P.shirtShadow);
+                this.fillRect(18, 30, 12, 2, P.shirtShadow);
+
+                // 立领
+                this.fillRect(20, 18, 8, 4, P.shirtLight);
+                this.fillRect(21, 18, 6, 4, P.shirtMid);
+                this.fillRect(20, 19, 8, 1, P.shirtShadow);
+
+                // ===== 外套 (青绿色) =====
+                // 左衣摆
+                this.fillRect(14, 22, 4, 14, P.coatDark);
+                this.fillRect(15, 22, 3, 14, P.coatMid);
+                // 右衣摆
+                this.fillRect(30, 22, 4, 14, P.coatDark);
+                this.fillRect(30, 22, 3, 14, P.coatMid);
+                // 外套主体
+                this.fillRect(16, 20, 16, 16, P.coatMid);
+                this.fillRect(17, 20, 14, 16, P.coatLight);
+                // 外套高光
+                this.fillRect(18, 21, 12, 2, P.coatHighlight);
+                this.fillRect(18, 26, 10, 1, P.coatHighlight);
+                // 袖口纹样 (简单)
+                this.fillRect(14, 32, 4, 2, P.coatDark);
+                this.fillRect(30, 32, 4, 2, P.coatDark);
+                this.fillRect(15, 33, 2, 1, P.coatHighlight);
+                this.fillRect(31, 33, 2, 1, P.coatHighlight);
+
+                // ===== 玉佩 (胸口) =====
+                // 挂绳
+                this.fillRect(23, 20, 2, 4, P.jadeDark);
+                this.fillRect(24, 20, 1, 5, P.jadeMid);
+                // 玉佩主体
+                this.fillRect(22, 24, 4, 4, P.jadeDark);
+                this.fillRect(23, 24, 2, 4, P.jadeMid);
+                this.fillRect(23, 25, 2, 2, P.jadeLight);
+                // 玉佩高光
+                this.dot(23, 25, P.jadeGlow);
+                this.dot(24, 26, P.jadeGlow);
+                // 玉佩晃动 (根据帧)
+                const jadeOffset = Math.sin(frame * 0.8) * 0.6;
+                if (Math.abs(jadeOffset) > 0.3) {
+                    this.fillRect(22 + (jadeOffset > 0 ? 1 : -1), 24, 4, 4, P.jadeDark);
+                    this.fillRect(23 + (jadeOffset > 0 ? 1 : -1), 24, 2, 4, P.jadeMid);
+                    this.fillRect(23 + (jadeOffset > 0 ? 1 : -1), 25, 2, 2, P.jadeLight);
+                    this.dot(23 + (jadeOffset > 0 ? 1 : -1), 25, P.jadeGlow);
+                }
+
+                // ===== 头部 =====
+                // 面部 (皮肤)
+                this.fillRect(18, 8, 12, 12, P.skinLight);
+                this.fillRect(19, 8, 10, 12, P.skinMid);
+                // 下巴阴影
+                this.fillRect(19, 18, 10, 2, P.skinShadow);
+                // 脸颊 (轻微)
+                this.fillRect(17, 13, 2, 3, P.skinShadow);
+                this.fillRect(29, 13, 2, 3, P.skinShadow);
+
+                // 眼睛
+                // 左眼
+                this.fillRect(20, 12, 3, 2, P.eyeWhite);
+                this.fillRect(21, 12, 1, 2, P.eyePupil);
+                this.dot(22, 12, P.eyePupil);
+                // 右眼
+                this.fillRect(25, 12, 3, 2, P.eyeWhite);
+                this.fillRect(26, 12, 1, 2, P.eyePupil);
+                this.dot(27, 12, P.eyePupil);
+                // 眼睛高光
+                this.dot(21, 12, '#ffffff');
+                this.dot(26, 12, '#ffffff');
+
+                // 眉毛
+                this.fillRect(19, 10, 5, 1, P.hairDark);
+                this.fillRect(24, 10, 5, 1, P.hairDark);
+
+                // 嘴巴
+                this.fillRect(22, 16, 4, 1, P.mouth);
+                this.fillRect(23, 17, 2, 1, P.mouth);
+
+                // ===== 头发 (黑色偏蓝) =====
+                // 主要头发
+                this.fillRect(16, 4, 16, 8, P.hairDark);
+                this.fillRect(17, 4, 14, 8, P.hairMid);
+                this.fillRect(18, 4, 12, 8, P.hairLight);
+                // 头顶高光
+                this.fillRect(19, 4, 10, 2, P.hairHighlight);
+                this.fillRect(20, 4, 8, 1, '#4a5a9a');
+
+                // 前额碎发
+                this.fillRect(18, 7, 4, 2, P.hairMid);
+                this.fillRect(19, 7, 3, 2, P.hairLight);
+                this.fillRect(26, 7, 4, 2, P.hairMid);
+                this.fillRect(27, 7, 3, 2, P.hairLight);
+                // 刘海
+                this.fillRect(20, 6, 8, 3, P.hairDark);
+                this.fillRect(21, 6, 6, 3, P.hairMid);
+                this.fillRect(22, 6, 4, 3, P.hairLight);
+
+                // 侧面发梢 (左)
+                this.fillRect(14, 8, 3, 6, P.hairDark);
+                this.fillRect(15, 8, 2, 6, P.hairMid);
+                this.fillRect(15, 10, 2, 4, P.hairLight);
+                // 侧面发梢 (右)
+                this.fillRect(31, 8, 3, 6, P.hairDark);
+                this.fillRect(31, 8, 2, 6, P.hairMid);
+                this.fillRect(31, 10, 2, 4, P.hairLight);
+
+                // 后脑头发 (延伸)
+                this.fillRect(16, 6, 2, 6, P.hairDark);
+                this.fillRect(30, 6, 2, 6, P.hairDark);
+                this.fillRect(16, 8, 2, 4, P.hairMid);
+                this.fillRect(30, 8, 2, 4, P.hairMid);
+
+                // ===== 手臂 =====
+                // 左臂 (自然下垂)
+                this.fillRect(13, 22, 3, 10, P.coatMid);
+                this.fillRect(14, 22, 2, 10, P.coatLight);
+                this.fillRect(13, 30, 3, 2, P.coatDark);
+                // 右臂
+                this.fillRect(32, 22, 3, 10, P.coatMid);
+                this.fillRect(32, 22, 2, 10, P.coatLight);
+                this.fillRect(32, 30, 3, 2, P.coatDark);
+
+                // 手 (皮肤)
+                this.fillRect(14, 32, 2, 2, P.skinLight);
+                this.fillRect(32, 32, 2, 2, P.skinLight);
+
+                // ===== 细节调整 =====
+                // 外套扣子 (装饰)
+                this.fillRect(23, 22, 2, 1, P.coatDark);
+                this.fillRect(23, 26, 2, 1, P.coatDark);
+                this.fillRect(23, 30, 2, 1, P.coatDark);
+
+                // 玉佩绳子修正
+                this.fillRect(23, 20, 2, 2, P.jadeDark);
+                this.fillRect(24, 20, 1, 2, P.jadeMid);
+
+                // 裤脚收口
+                this.fillRect(17, 40, 14, 2, P.pantDark);
+                this.fillRect(18, 40, 12, 2, P.pantMid);
+
+                // 靴子细节
+                this.fillRect(16, 44, 7, 2, P.bootDark);
+                this.fillRect(25, 44, 7, 2, P.bootDark);
+                this.fillRect(17, 45, 5, 1, P.bootMid);
+                this.fillRect(26, 45, 5, 1, P.bootMid);
+
+                // ---- 动作特定调整 ----
+                if (action === 'walk' || action === 'run') {
+                    this._applyWalkRun(frame, action);
+                } else if (action === 'tool_hoe' || action === 'tool_water' || action === 'tool_axe') {
+                    this._applyTool(frame, action);
+                } else if (action === 'idle') {
+                    this._applyIdle(frame);
+                }
+
+                return this.canvas;
+            }
+
+            // ---- Idle 待机动画 ----
+            _applyIdle(frame) {
+                const breath = Math.sin(frame * 0.5) * 0.8;
+                const offset = Math.round(breath);
+                // 轻微呼吸 (胸口起伏)
+                if (offset !== 0) {
+                    const chestY = 24 + offset;
+                    this.fillRect(22, chestY, 4, 2, PAL.coatHighlight);
+                    this.fillRect(23, chestY, 2, 2, PAL.jadeMid);
+                }
+                // 玉佩晃动 (已在上层处理)
+                // 手整理衣服 (每4帧一次)
+                if (frame % 4 === 0) {
+                    this.fillRect(14, 30, 2, 2, PAL.coatLight);
+                    this.fillRect(14, 31, 2, 1, PAL.skinLight);
+                }
+                if (frame % 4 === 2) {
+                    this.fillRect(32, 30, 2, 2, PAL.coatLight);
+                    this.fillRect(32, 31, 2, 1, PAL.skinLight);
+                }
+                // 头发微微飘动
+                const hairWave = Math.sin(frame * 0.3) * 0.6;
+                if (Math.abs(hairWave) > 0.4) {
+                    const side = hairWave > 0 ? 1 : -1;
+                    this.fillRect(14 + side, 8, 2, 4, PAL.hairMid);
+                    this.fillRect(31 + side, 8, 2, 4, PAL.hairMid);
+                }
+            }
+
+            // ---- Walk 行走动画 (4帧) ----
+            _applyWalkRun(frame, action) {
+                const speed = action === 'run' ? 1.6 : 1.0;
+                const f = frame % 4;
+                const step = Math.sin(f * Math.PI / 2) * 3 * speed;
+                const stepInt = Math.round(step);
+
+                // 腿步动作
+                const legOffset = Math.round(Math.sin(f * Math.PI / 2) * 4 * speed);
+                // 左腿
+                this.fillRect(16, 34, 6, 10, PAL.pantDark);
+                this.fillRect(17, 34, 4, 10, PAL.pantMid);
+                if (legOffset > 0) {
+                    this.fillRect(16, 34 + legOffset, 6, 10 - legOffset, PAL.pantDark);
+                    this.fillRect(17, 34 + legOffset, 4, 10 - legOffset, PAL.pantMid);
+                }
+                // 右腿
+                this.fillRect(26, 34, 6, 10, PAL.pantDark);
+                this.fillRect(27, 34, 4, 10, PAL.pantMid);
+                if (legOffset < 0) {
+                    this.fillRect(26, 34 - legOffset, 6, 10 + legOffset, PAL.pantDark);
+                    this.fillRect(27, 34 - legOffset, 4, 10 + legOffset, PAL.pantMid);
+                }
+
+                // 靴子跟随
+                const bootOff = Math.round(Math.sin(f * Math.PI / 2) * 3 * speed);
+                this.fillRect(16, 42, 7, 6, PAL.bootDark);
+                this.fillRect(17, 42, 5, 6, PAL.bootMid);
+                this.fillRect(25, 42, 7, 6, PAL.bootDark);
+                this.fillRect(26, 42, 5, 6, PAL.bootMid);
+                if (bootOff > 0) {
+                    this.fillRect(16, 42 + bootOff, 7, 6, PAL.bootDark);
+                    this.fillRect(17, 42 + bootOff, 5, 6, PAL.bootMid);
+                } else if (bootOff < 0) {
+                    this.fillRect(25, 42 - bootOff, 7, 6, PAL.bootDark);
+                    this.fillRect(26, 42 - bootOff, 5, 6, PAL.bootMid);
+                }
+
+                // 手臂摆动
+                const armSwing = Math.round(Math.sin(f * Math.PI / 2) * 3 * speed);
+                // 左臂
+                this.fillRect(13, 22, 3, 10, PAL.coatMid);
+                this.fillRect(14, 22, 2, 10, PAL.coatLight);
+                if (armSwing > 0) {
+                    this.fillRect(13, 22 + armSwing, 3, 10 - armSwing, PAL.coatMid);
+                    this.fillRect(14, 22 + armSwing, 2, 10 - armSwing, PAL.coatLight);
+                }
+                // 右臂
+                this.fillRect(32, 22, 3, 10, PAL.coatMid);
+                this.fillRect(32, 22, 2, 10, PAL.coatLight);
+                if (armSwing < 0) {
+                    this.fillRect(32, 22 - armSwing, 3, 10 + armSwing, PAL.coatMid);
+                    this.fillRect(32, 22 - armSwing, 2, 10 + armSwing, PAL.coatLight);
+                }
+
+                // 外套摆动 (奔跑时更明显)
+                if (action === 'run') {
+                    const coatSwing = Math.round(Math.sin(f * Math.PI / 2) * 2);
+                    this.fillRect(14, 22 + coatSwing, 4, 14, PAL.coatDark);
+                    this.fillRect(30, 22 - coatSwing, 4, 14, PAL.coatDark);
+                    this.fillRect(15, 22 + coatSwing, 3, 14, PAL.coatMid);
+                    this.fillRect(30, 22 - coatSwing, 3, 14, PAL.coatMid);
+                }
+
+                // 头发飘动
+                const hairSwing = Math.round(Math.sin(f * Math.PI / 2) * 1.5);
+                this.fillRect(14 + hairSwing, 8, 3, 6, PAL.hairDark);
+                this.fillRect(15 + hairSwing, 8, 2, 6, PAL.hairMid);
+                this.fillRect(31 - hairSwing, 8, 3, 6, PAL.hairDark);
+                this.fillRect(31 - hairSwing, 8, 2, 6, PAL.hairMid);
+            }
+
+            // ---- Tool 工具动作 ----
+            _applyTool(frame, action) {
+                const f = frame % 3;
+                const toolType = action.replace('tool_', '');
+                // 工具颜色
+                const woodColor = PAL.toolWood;
+                const metalColor = PAL.toolMetal;
+                const handleColor = PAL.toolHandle;
+
+                // 手臂举起 (工具动作)
+                const lift = 4 + f * 2;
+                // 左臂举起
+                this.fillRect(13, 22 - lift, 3, 10, PAL.coatMid);
+                this.fillRect(14, 22 - lift, 2, 10, PAL.coatLight);
+                // 右臂举起
+                this.fillRect(32, 22 - lift, 3, 10, PAL.coatMid);
+                this.fillRect(32, 22 - lift, 2, 10, PAL.coatLight);
+
+                // 手部
+                this.fillRect(14, 22 - lift + 8, 2, 2, PAL.skinLight);
+                this.fillRect(32, 22 - lift + 8, 2, 2, PAL.skinLight);
+
+                // 绘制工具
+                if (toolType === 'hoe') {
+                    // 锄头
+                    this.fillRect(28, 14 - lift, 8, 3, handleColor);
+                    this.fillRect(29, 14 - lift, 6, 3, woodColor);
+                    this.fillRect(30, 12 - lift, 4, 4, metalColor);
+                    this.fillRect(31, 11 - lift, 2, 5, '#8a9aaa');
+                    this.fillRect(29, 15 - lift, 6, 1, handleColor);
+                } else if (toolType === 'water') {
+                    // 水壶
+                    this.fillRect(28, 14 - lift, 7, 5, metalColor);
+                    this.fillRect(29, 14 - lift, 5, 5, '#8a9aaa');
+                    this.fillRect(30, 13 - lift, 3, 6, '#6a8a9a');
+                    // 壶嘴
+                    this.fillRect(34, 16 - lift, 3, 2, metalColor);
+                    this.fillRect(35, 16 - lift, 2, 2, '#8a9aaa');
+                    // 把手
+                    this.fillRect(27, 15 - lift, 2, 3, handleColor);
+                    this.fillRect(27, 15 - lift, 1, 3, woodColor);
+                } else if (toolType === 'axe') {
+                    // 斧头
+                    this.fillRect(28, 14 - lift, 7, 3, handleColor);
+                    this.fillRect(29, 14 - lift, 5, 3, woodColor);
+                    this.fillRect(30, 11 - lift, 5, 5, metalColor);
+                    this.fillRect(31, 10 - lift, 3, 6, '#8a9aaa');
+                    // 斧刃
+                    this.fillRect(29, 12 - lift, 2, 3, '#c0d0e0');
+                    this.fillRect(33, 13 - lift, 2, 2, '#c0d0e0');
+                }
+
+                // 外套随动作微动
+                const coatShift = Math.sin(f * 1.2) * 1.5;
+                this.fillRect(14, 22 + Math.round(coatShift), 4, 14, PAL.coatDark);
+                this.fillRect(30, 22 - Math.round(coatShift), 4, 14, PAL.coatDark);
+            }
+
+            // ---- 获取当前帧的像素数据 (用于导出) ----
+            getFrameData(action, frame) {
+                this.drawBase(frame, action);
+                return this.ctx.getImageData(0, 0, this.size, this.size);
+            }
+
+            // ---- 渲染到目标Canvas (带缩放) ----
+            renderTo(targetCanvas, action, frame, scale = 6) {
+                const src = this.drawBase(frame, action);
+                const tCtx = targetCanvas.getContext('2d');
+                const tW = targetCanvas.width;
+                const tH = targetCanvas.height;
+                tCtx.clearRect(0, 0, tW, tH);
+                tCtx.imageSmoothingEnabled = false;
+                tCtx.drawImage(src, 0, 0, this.size, this.size, 0, 0, tW, tH);
+            }
+
+            // ---- 生成 Sprite Sheet ----
+            generateSpriteSheet() {
+                const actions = ['idle', 'walk', 'run', 'tool_hoe', 'tool_water', 'tool_axe'];
+                const framesPerAction = [3, 4, 4, 3, 3, 3];
+                const totalFrames = framesPerAction.reduce((a, b) => a + b, 0);
+                const cols = 4;
+                const rows = Math.ceil(totalFrames / cols);
+                const cellW = this.size;
+                const cellH = this.size;
+
+                const sheetW = cols * cellW;
+                const sheetH = rows * cellH;
+
+                const sheetCanvas = document.createElement('canvas');
+                sheetCanvas.width = sheetW;
+                sheetCanvas.height = sheetH;
+                const sCtx = sheetCanvas.getContext('2d');
+                sCtx.clearRect(0, 0, sheetW, sheetH);
+
+                let idx = 0;
+                for (let a = 0; a < actions.length; a++) {
+                    const action = actions[a];
+                    const numFrames = framesPerAction[a];
+                    for (let f = 0; f < numFrames; f++) {
+                        const col = idx % cols;
+                        const row = Math.floor(idx / cols);
+                        const x = col * cellW;
+                        const y = row * cellH;
+                        const src = this.drawBase(f, action);
+                        sCtx.drawImage(src, 0, 0, cellW, cellH, x, y, cellW, cellH);
+                        idx++;
+                    }
+                }
+                return sheetCanvas;
+            }
+        }
+
+        // ============================================================
+        //  主程序
+        // ============================================================
+        (function() {
+            const character = new PixelCharacter();
+
+            // DOM 元素
+            const mainCanvas = document.getElementById('mainCanvas');
+            const spriteCanvas = document.getElementById('spriteCanvas');
+            const actionSelect = document.getElementById('actionSelect');
+            const frameSelect = document.getElementById('frameSelect');
+            const playBtn = document.getElementById('playBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const exportSpriteBtn = document.getElementById('exportSpriteBtn');
+            const exportGameBtn = document.getElementById('exportGameBtn');
+            const frameGrid = document.getElementById('frameGrid');
+
+            let currentAction = 'idle';
+            let currentFrame = 0;
+            let isPlaying = false;
+            let animTimer = null;
+            let animFrame = 0;
+
+            // 动作对应的帧数
+            const actionFrames = {
+                'idle': 3,
+                'walk': 4,
+                'run': 4,
+                'tool_hoe': 3,
+                'tool_water': 3,
+                'tool_axe': 3
+            };
+
+            // 更新帧选择下拉
+            function updateFrameSelect(action) {
+                const maxFrames = actionFrames[action] || 3;
+                frameSelect.innerHTML = '';
+                for (let i = 0; i < maxFrames; i++) {
+                    const opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = `帧 ${i}`;
+                    frameSelect.appendChild(opt);
+                }
+                if (currentFrame >= maxFrames) currentFrame = 0;
+                frameSelect.value = currentFrame;
+            }
+
+            // 渲染主视图
+            function renderMain() {
+                character.renderTo(mainCanvas, currentAction, currentFrame, 6);
+            }
+
+            // 渲染 Sprite Sheet
+            function renderSpriteSheet() {
+                const sheet = character.generateSpriteSheet();
+                const sCtx = spriteCanvas.getContext('2d');
+                sCtx.clearRect(0, 0, spriteCanvas.width, spriteCanvas.height);
+                sCtx.imageSmoothingEnabled = false;
+                // 缩放显示到 spriteCanvas
+                const scale = Math.min(
+                    spriteCanvas.width / sheet.width,
+                    spriteCanvas.height / sheet.height
+                );
+                const dw = sheet.width * scale;
+                const dh = sheet.height * scale;
+                const dx = (spriteCanvas.width - dw) / 2;
+                const dy = (spriteCanvas.height - dh) / 2;
+                sCtx.drawImage(sheet, 0, 0, sheet.width, sheet.height, dx, dy, dw, dh);
+                // 存储 sheet 数据用于导出
+                window._spriteSheet = sheet;
+            }
+
+            // 渲染帧预览网格
+            function renderFrameGrid() {
+                const maxFrames = actionFrames[currentAction] || 3;
+                frameGrid.innerHTML = '';
+                for (let i = 0; i < maxFrames; i++) {
+                    const box = document.createElement('div');
+                    box.className = 'frame-box';
+                    const c = document.createElement('canvas');
+                    c.width = 48;
+                    c.height = 48;
+                    c.style.width = '64px';
+                    c.style.height = '64px';
+                    const ctx = c.getContext('2d');
+                    ctx.imageSmoothingEnabled = false;
+                    const src = character.drawBase(i, currentAction);
+                    ctx.drawImage(src, 0, 0, 48, 48, 0, 0, 48, 48);
+                    box.appendChild(c);
+                    const label = document.createElement('div');
+                    label.className = 'frame-label';
+                    label.textContent = `帧${i}`;
+                    box.appendChild(label);
+                    box.addEventListener('click', () => {
+                        currentFrame = i;
+                        frameSelect.value = i;
+                        renderMain();
+                        // 高亮当前
+                        document.querySelectorAll('.frame-box').forEach((b, idx) => {
+                            b.style.borderColor = idx === i ? '#4aefca' : '#1a2a3a';
+                        });
+                    });
+                    frameGrid.appendChild(box);
+                    if (i === currentFrame) {
+                        box.style.borderColor = '#4aefca';
+                    }
+                }
+            }
+
+            // 完整刷新
+            function refreshAll() {
+                renderMain();
+                renderSpriteSheet();
+                renderFrameGrid();
+            }
+
+            // 切换动作
+            function setAction(action) {
+                currentAction = action;
+                updateFrameSelect(action);
+                currentFrame = 0;
+                frameSelect.value = 0;
+                refreshAll();
+                // 高亮帧预览中的第一帧
+                document.querySelectorAll('.frame-box').forEach((b, idx) => {
+                    b.style.borderColor = idx === 0 ? '#4aefca' : '#1a2a3a';
+                });
+            }
+
+            // 动画循环
+            function startAnimation() {
+                if (isPlaying) return;
+                isPlaying = true;
+                playBtn.textContent = '⏸ 暂停';
+                let frameCounter = 0;
+
+                function tick() {
+                    if (!isPlaying) return;
+                    const maxFrames = actionFrames[currentAction] || 3;
+                    currentFrame = frameCounter % maxFrames;
+                    frameSelect.value = currentFrame;
+                    renderMain();
+                    // 高亮对应的帧预览
+                    document.querySelectorAll('.frame-box').forEach((b, idx) => {
+                        b.style.borderColor = idx === currentFrame ? '#4aefca' : '#1a2a3a';
+                    });
+                    frameCounter++;
+                    animTimer = setTimeout(tick, 200);
+                }
+                tick();
+            }
+
+            function stopAnimation() {
+                isPlaying = false;
+                playBtn.textContent = '▶ 播放动画';
+                if (animTimer) {
+                    clearTimeout(animTimer);
+                    animTimer = null;
+                }
+            }
+
+            // ---- 导出功能 ----
+            function exportSpriteSheetPNG() {
+                const sheet = window._spriteSheet || character.generateSpriteSheet();
+                const link = document.createElement('a');
+                link.download = 'linche_sprite_sheet.png';
+                link.href = sheet.toDataURL('image/png');
+                link.click();
+            }
+
+            function exportCurrentFramePNG() {
+                const src = character.drawBase(currentFrame, currentAction);
+                const link = document.createElement('a');
+                link.download = `linche_${currentAction}_f${currentFrame}.png`;
+                link.href = src.toDataURL('image/png');
+                link.click();
+            }
+
+            // ---- 导出游戏 spritesheet（4方向×4帧，32×32） ----
+            function exportGameSprite() {
+                const TARGET = 32; // 目标帧尺寸
+                const gameSheet = document.createElement('canvas');
+                gameSheet.width = TARGET * 4;   // 4 columns
+                gameSheet.height = TARGET * 4;  // 4 rows (down, left, right, up)
+                const gCtx = gameSheet.getContext('2d');
+                gCtx.imageSmoothingEnabled = false;
+
+                // 辅助：缩放绘制一帧
+                function drawFrame(row, col, srcCanvas, flipH = false) {
+                    const dx = col * TARGET;
+                    const dy = row * TARGET;
+                    gCtx.save();
+                    gCtx.translate(flipH ? dx + TARGET : dx, dy);
+                    if (flipH) gCtx.scale(-1, 1);
+                    gCtx.drawImage(srcCanvas, 0, 0, 48, 48, 0, 0, TARGET, TARGET);
+                    gCtx.restore();
+                }
+
+                // 为背面绘制一个简化版角色
+                function drawBackFrame(frame) {
+                    const c = document.createElement('canvas');
+                    c.width = 48;
+                    c.height = 48;
+                    const ctx = c.getContext('2d');
+                    const P = PAL;
+
+                    // 裤子
+                    ctx.fillStyle = P.pantDark; ctx.fillRect(16, 34, 16, 10);
+                    ctx.fillStyle = P.pantMid;  ctx.fillRect(17, 34, 14, 10);
+                    ctx.fillStyle = P.pantLight; ctx.fillRect(18, 38, 12, 4);
+
+                    // 靴子
+                    ctx.fillStyle = P.bootDark; ctx.fillRect(16, 42, 7, 6);
+                    ctx.fillStyle = P.bootMid;  ctx.fillRect(17, 42, 5, 6);
+                    ctx.fillStyle = P.bootDark; ctx.fillRect(25, 42, 7, 6);
+                    ctx.fillStyle = P.bootMid;  ctx.fillRect(26, 42, 5, 6);
+
+                    // 身体/衬衫（背面）
+                    ctx.fillStyle = P.shirtLight; ctx.fillRect(17, 20, 14, 16);
+                    ctx.fillStyle = P.shirtMid;  ctx.fillRect(18, 20, 12, 16);
+
+                    // 外套背面
+                    ctx.fillStyle = P.coatMid;   ctx.fillRect(16, 20, 16, 16);
+                    ctx.fillStyle = P.coatLight;  ctx.fillRect(17, 20, 14, 16);
+                    ctx.fillStyle = P.coatDark;   ctx.fillRect(14, 22, 4, 14);
+                    ctx.fillStyle = P.coatDark;   ctx.fillRect(30, 22, 4, 14);
+
+                    // 头部（头发覆盖）
+                    ctx.fillStyle = P.hairDark; ctx.fillRect(16, 4, 16, 10);
+                    ctx.fillStyle = P.hairMid;  ctx.fillRect(17, 4, 14, 10);
+                    ctx.fillStyle = P.hairLight; ctx.fillRect(18, 4, 12, 10);
+                    ctx.fillStyle = P.hairHighlight; ctx.fillRect(19, 4, 10, 2);
+                    ctx.fillStyle = P.hairDark; ctx.fillRect(14, 8, 4, 6);
+                    ctx.fillStyle = P.hairDark; ctx.fillRect(30, 8, 4, 6);
+                    ctx.fillStyle = P.hairMid;  ctx.fillRect(15, 8, 3, 6);
+                    ctx.fillStyle = P.hairMid;  ctx.fillRect(30, 8, 3, 6);
+
+                    // 手臂（背面）
+                    ctx.fillStyle = P.coatMid;  ctx.fillRect(13, 22, 3, 10);
+                    ctx.fillStyle = P.coatMid;  ctx.fillRect(32, 22, 3, 10);
+                    ctx.fillStyle = P.coatLight; ctx.fillRect(14, 22, 2, 10);
+                    ctx.fillStyle = P.coatLight; ctx.fillRect(32, 22, 2, 10);
+
+                    // 行走动画
+                    const f = frame % 4;
+                    const step = Math.sin(f * Math.PI / 2) * 3;
+                    const legOff = Math.round(Math.sin(f * Math.PI / 2) * 4);
+                    if (legOff > 0) {
+                        ctx.fillStyle = P.pantDark; ctx.fillRect(16, 34 + legOff, 6, 10 - legOff);
+                        ctx.fillStyle = P.pantMid;  ctx.fillRect(17, 34 + legOff, 4, 10 - legOff);
+                    }
+                    if (legOff < 0) {
+                        ctx.fillStyle = P.pantDark; ctx.fillRect(26, 34 - legOff, 6, 10 + legOff);
+                        ctx.fillStyle = P.pantMid;  ctx.fillRect(27, 34 - legOff, 4, 10 + legOff);
+                    }
+                    const bootOff = Math.round(Math.sin(f * Math.PI / 2) * 3);
+                    if (bootOff > 0) {
+                        ctx.fillStyle = P.bootDark; ctx.fillRect(16, 42 + bootOff, 7, 6);
+                        ctx.fillStyle = P.bootMid;  ctx.fillRect(17, 42 + bootOff, 5, 6);
+                    } else if (bootOff < 0) {
+                        ctx.fillStyle = P.bootDark; ctx.fillRect(25, 42 - bootOff, 7, 6);
+                        ctx.fillStyle = P.bootMid;  ctx.fillRect(26, 42 - bootOff, 5, 6);
+                    }
+
+                    return c;
+                }
+
+                // 生成 4 方向 × 4 帧
+                for (let f = 0; f < 4; f++) {
+                    const front = character.drawBase(f, 'walk');
+                    const back = drawBackFrame(f);
+
+                    drawFrame(0, f, front);              // 下：正面
+                    drawFrame(1, f, front, true);         // 左：水平镜像
+                    drawFrame(2, f, front);               // 右：正面
+                    drawFrame(3, f, back);                // 上：背面
+                }
+
+                // 下载
+                const link = document.createElement('a');
+                link.download = 'player.png';
+                link.href = gameSheet.toDataURL('image/png');
+                link.click();
+                console.log('[游戏导出] 4方向×4帧 32×32 spritesheet 已导出 ✅');
+            }
+
+            // ---- 事件绑定 ----
+            actionSelect.addEventListener('change', (e) => {
+                stopAnimation();
+                setAction(e.target.value);
+            });
+
+            frameSelect.addEventListener('change', (e) => {
+                currentFrame = parseInt(e.target.value);
+                renderMain();
+                renderFrameGrid();
+                document.querySelectorAll('.frame-box').forEach((b, idx) => {
+                    b.style.borderColor = idx === currentFrame ? '#4aefca' : '#1a2a3a';
+                });
+            });
+
+            playBtn.addEventListener('click', () => {
+                if (isPlaying) {
+                    stopAnimation();
+                } else {
+                    startAnimation();
+                }
+            });
+
+            stopBtn.addEventListener('click', stopAnimation);
+
+            exportSpriteBtn.addEventListener('click', exportSpriteSheetPNG);
+            exportGameBtn.addEventListener('click', exportGameSprite);
+
+            // ---- 初始化 ----
+            setAction('idle');
+
+            // 自动检查：控制台输出状态
+            console.log('[林澈] 像素角色生成器已启动 ✅');
+            console.log('[林澈] 当前动作:', currentAction, '帧:', currentFrame);
+            console.log('[林澈] Sprite Sheet 已生成, 可导出PNG');
+
+            // 暴露一些变量方便调试
+            window.__character = character;
+            window.__refresh = refreshAll;
+
+            // 额外：检查 Canvas 是否正常
+            try {
+                const testCanvas = document.createElement('canvas');
+                testCanvas.width = 1;
+                testCanvas.height = 1;
+                const ctx = testCanvas.getContext('2d');
+                if (!ctx) throw new Error('Canvas 2D 不可用');
+                console.log('[林澈] Canvas 渲染正常 ✅');
+            } catch (e) {
+                console.warn('[林澈] Canvas 检查:', e.message);
+            }
+
+            // 监听窗口大小变化，调整 sprite sheet 显示
+            window.addEventListener('resize', () => {
+                renderSpriteSheet();
+            });
+
+            // 额外：键盘快捷键
+            document.addEventListener('keydown', (e) => {
+                if (e.key === ' ' || e.key === 'Space') {
+                    e.preventDefault();
+                    playBtn.click();
+                }
+                if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    const maxFrames = actionFrames[currentAction] || 3;
+                    currentFrame = (currentFrame + 1) % maxFrames;
+                    frameSelect.value = currentFrame;
+                    renderMain();
+                    renderFrameGrid();
+                    document.querySelectorAll('.frame-box').forEach((b, idx) => {
+                        b.style.borderColor = idx === currentFrame ? '#4aefca' : '#1a2a3a';
+                    });
+                }
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    const maxFrames = actionFrames[currentAction] || 3;
+                    currentFrame = (currentFrame - 1 + maxFrames) % maxFrames;
+                    frameSelect.value = currentFrame;
+                    renderMain();
+                    renderFrameGrid();
+                    document.querySelectorAll('.frame-box').forEach((b, idx) => {
+                        b.style.borderColor = idx === currentFrame ? '#4aefca' : '#1a2a3a';
+                    });
+                }
+            });
+
+        })();
+    </script>
+
+</body>
+</html>

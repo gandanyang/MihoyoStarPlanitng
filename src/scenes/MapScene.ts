@@ -101,7 +101,7 @@ export class MapScene extends Phaser.Scene {
     if (this.textures.exists('tiles')) {
       this.textures.remove('tiles');
     }
-    this.load.image('tiles', `assets/tiles/${this.mapKey}_tileset.png`);
+    this.load.image('tiles', `assets/tiles/${this.mapKey}_tileset.png?v=6`);
     // 玩家 spritesheet（4方向×4帧 run 动画，每帧 32x32，显示时缩放 0.5 与 16x16 瓦片协调）
     if (!this.textures.exists('player')) {
       this.load.spritesheet('player', 'assets/sprites/player.png', { frameWidth: 32, frameHeight: 32 });
