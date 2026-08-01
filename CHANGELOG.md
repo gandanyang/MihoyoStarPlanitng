@@ -6,6 +6,13 @@
 
 ## [未发布]
 
+### v0.5.2 代码审阅 + 美术任务核对 + 移动端表现分析（opencode 审阅会话）
+- **P0 美术任务核对**（`任务-美术P0风格统一重绘.md`）：6 张 v2 像素风贴图（tree1/tree2/stump/old_axe/wood/npc_xiya）经像素级程序分析确认全部达标并已随 `8cd9df2` 接线，任务卡状态更新为 ✅ 已完成（DoD 7 项勾选 + §9 验收记录表）；物品图标已通过 `Inventory.itemIconHtml()` 接入背包/商店
+- **代码审阅**：移动端 UX 改动（`TouchControls.ts` 背包按钮 / `StationScene.ts` 跳过按钮隐藏 / `MapScene.ts` 睡觉判定+提示文案 / `vite.config.ts` host）——tsc 通过、图层数据核对一致、探针全绿、回归无破坏
+- **移动端表现分析**：实测竖屏（375×812）画布仅显示 375×281（FIT 缩放）、上下黑边占 65%，且 DOM UI（对话框/HUD）与画布坐标错位（对话框 y=672 vs 画布 y=265-546 不重叠）——已登记为 `任务-移动端竖屏适配.md`（P1，推荐方案 A：竖屏横屏提示）
+- **回归验证**：test-tutorial / test-ch1-story（24）/ test-stress-switch（25）/ probe-mobile-ux（8）/ probe-sleep-realpath（4）全绿；`npx tsc --noEmit` 通过
+- **文档**：新增 `任务-移动端竖屏适配.md`；`任务-美术P0风格统一重绘.md` 状态已更新并提交（`2e81199`）
+
 ### v0.5.2 移动端 UX 修复（人工测试反馈）
 - **P0：移动端缺少背包按钮**（`TouchControls.ts` / `MapScene.ts`）：新增「背包」按钮（右下角，仅移动端显示，桌面仍用 B 键），点击打开背包面板（对话/面板打开期间不响应）；教程提示文案按移动端适配（「点按「交互」/「背包」按钮」替代 [E]/[B]）
 - **P2：车站跳过开场按钮在剧情对话结束后未隐藏**（`StationScene.ts`）：对话播放完自动移除 `intro-skip-btn`
