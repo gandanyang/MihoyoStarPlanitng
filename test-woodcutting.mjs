@@ -180,10 +180,11 @@ async function run() {
 
     // ==================== W7: 存档序列化保留树桩 ====================
     console.log('\n--- W7: 存档序列化保留树桩 ---');
-    const day = await page.evaluate(() => window.debug.nextDay());
-    result('W7a. 睡觉存档(day+1)', typeof day === 'number' && day > 1, `day=${day}`);
-    await sleep(1500);
-    // 直接读取 localStorage 存档，校验树木状态被序列化（v0.5 farm.trees 分组）
+    // 真实睡觉路径（床边按 E → trySleep → save 用 this.mapKey），验证树桩进入存档
+    await teleport(page, 56, 224);
+    await sleep(150);
+    await page.keyboard.press('KeyE');
+    await sleep(1200);
     const saveTree = await page.evaluate(() => {
       try {
         const raw = localStorage.getItem('return_star_save');
@@ -196,6 +197,7 @@ async function run() {
         return { ok: false, why: String(e) };
       }
     });
+    result('W7a. 真实睡觉后存档已写入', saveTree.why !== 'no-save', saveTree.why);
     result('W7b. 存档含树桩(2,3)状态', saveTree.ok, saveTree.why);
 
     // ==================== 汇总 ====================

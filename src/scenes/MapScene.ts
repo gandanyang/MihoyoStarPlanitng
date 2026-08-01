@@ -40,6 +40,8 @@ import {
   onTalkNpc as onDQTAlkNpc,
   onBuyShop as onDQBuyShop,
   onSellShop as onDQSellShop,
+  onMine as onDQMine,
+  onWoodcut as onDQWoodcut,
   claimReward,
   getDailyQuestSaveData,
 } from '../systems/DailyQuestSystem';
@@ -1359,6 +1361,9 @@ export class MapScene extends Phaser.Scene {
     this.oreSprites = this.oreSprites.filter((e) => e.deposit.id !== minedId);
 
     this.showDialogueText(`开采成功！获得 ${dropsText.join('、')}  体力 -${target.deposit.staminaCost}`);
+    // 挖矿引导任务进度
+    onDQMine();
+    this.updateDailyQuestPanel();
     this.updateHUD();
   }
 
@@ -1410,6 +1415,9 @@ export class MapScene extends Phaser.Scene {
       play('tree_fall');
       if (sprite) sprite.setTexture('stump');
       this.showDialogueText('砍倒了树！获得木材 ×2');
+      // 砍树引导任务进度
+      onDQWoodcut();
+      this.updateDailyQuestPanel();
     } else {
       // 还没倒：扣血 + 砍击音效
       play('chop');
@@ -1629,6 +1637,7 @@ export class MapScene extends Phaser.Scene {
         const id = target.dataset.id!;
         if (claimReward(id)) {
           this.updateDailyQuestPanel();
+          this.updateHUD(); // 刷新 HUD 钻石显示
           this.showDialogueText('💠+奖励已领取！');
         }
       }

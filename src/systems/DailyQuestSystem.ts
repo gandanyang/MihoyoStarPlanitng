@@ -18,7 +18,9 @@ export type QuestObjective =
   | { type: 'collect'; item: ItemType; count: number }
   | { type: 'talk_npc'; npcId: string; npcName: string }
   | { type: 'buy_shop'; count: number }
-  | { type: 'sell_shop'; count: number };
+  | { type: 'sell_shop'; count: number }
+  | { type: 'mine'; count: number }
+  | { type: 'woodcut'; count: number };
 
 /** 任务模板 */
 export interface DailyQuestTemplate {
@@ -64,6 +66,10 @@ const QUEST_POOL: DailyQuestTemplate[] = [
 
   // --- 采集类 ---
   { id: 'collect_star', title: '星之碎片', desc: '收集 1 个星之碎片', objective: { type: 'collect', item: 'star_shard', count: 1 }, reward: 3 },
+
+  // --- 挖矿/砍树引导类（首次刷新固定出现，见 refreshDailyQuests） ---
+  { id: 'mine_1', title: '初入矿洞', desc: '挖矿 1 次（矿洞可从小镇进入，靠近发光矿脉按 E）', objective: { type: 'mine', count: 1 }, reward: 2 },
+  { id: 'woodcut_2', title: '伐木初体验', desc: '砍倒 2 棵树（庄园里靠近树按 E，用旧斧头）', objective: { type: 'woodcut', count: 2 }, reward: 2 },
 
   // --- 对话类 ---
   { id: 'talk_elder', title: '拜访村长', desc: '与村长对话', objective: { type: 'talk_npc', npcId: 'elder', npcName: '村长' }, reward: 1 },
@@ -112,13 +118,26 @@ function createInstance(t: DailyQuestTemplate): DailyQuestInstance {
   };
 }
 
-/** 刷新每日任务（隔天调用） */
+/** 引导任务 ID（挖矿/砍树，首次初始化固定出现，未完成时跨天保留） */
+const GUIDE_QUEST_IDS = new Set(['mine_1', 'woodcut_2']);
+
+/** 刷新每日任务（隔天调用；引导任务未完成时持续保留在面板） */
 export function refreshDailyQuests(): void {
   const day = getTime().day;
   if (day === currentDay && dailyQuests.length > 0) return; // 同一天不重复刷新
+  const isFirstInit = dailyQuests.length === 0; // 从未初始化（首次进入地图场景）
+  // 保留未领奖的引导任务（含已完成未领取），避免过夜丢失奖励；领奖后消失
+  const keepGuide = dailyQuests.filter((q) => GUIDE_QUEST_IDS.has(q.id) && !q.claimed);
   currentDay = day;
-  const picked = pickRandom(4);
-  dailyQuests = picked.map(createInstance);
+  if (isFirstInit) {
+    // 首次：固定 2 个引导任务 + 随机补齐
+    const guide = QUEST_POOL.filter((t) => GUIDE_QUEST_IDS.has(t.id));
+    const rest = pickRandom(4 - guide.length);
+    dailyQuests = [...guide, ...rest].map(createInstance);
+  } else {
+    const rest = pickRandom(4 - keepGuide.length);
+    dailyQuests = [...keepGuide, ...rest.map(createInstance)];
+  }
 }
 
 /** 获取当前每日任务 */
@@ -174,6 +193,28 @@ export function onCollect(item: ItemType, count = 1): void {
     if (q.claimed || q.completed) continue;
     if (q.objective.type === 'collect' && q.objective.item === item) {
       q.progress = Math.min(q.target, q.progress + count);
+      if (q.progress >= q.target) q.completed = true;
+    }
+  }
+}
+
+/** 通知挖矿（每开采成功一次计 1） */
+export function onMine(): void {
+  for (const q of dailyQuests) {
+    if (q.claimed || q.completed) continue;
+    if (q.objective.type === 'mine') {
+      q.progress = Math.min(q.target, q.progress + 1);
+      if (q.progress >= q.target) q.completed = true;
+    }
+  }
+}
+
+/** 通知砍树（每砍倒一棵计 1） */
+export function onWoodcut(): void {
+  for (const q of dailyQuests) {
+    if (q.claimed || q.completed) continue;
+    if (q.objective.type === 'woodcut') {
+      q.progress = Math.min(q.target, q.progress + 1);
       if (q.progress >= q.target) q.completed = true;
     }
   }
