@@ -196,7 +196,7 @@ async function run() {
     await sleep(700);
     const elderText = await dialogueText(page);
     ok('4. 镇长委托对话（接受任务）', elderText.includes('你就是林澈吧'), elderText.substring(0, 40));
-    await skipDialogue(page, 8);
+    await skipDialogue(page, 12); // ELDER_QUEST_DIALOGUE 已扩展为 12 行
 
     // ==================== 第一章：森林采集 ====================
     await gotoScene(page, 'forest', { x: 328, y: 200 });
@@ -221,8 +221,40 @@ async function run() {
     // ==================== 第一章：交付 ====================
     await gotoScene(page, 'town', { x: 200, y: 300 });
     await teleport(page, 'town', 216, 184, 'up');
+    // 调试：检查 elder NPC 是否存在
+    const elderDebug = await page.evaluate(() => {
+      const s = window.__game.scene.getScene('town');
+      if (!s) return 'no_scene';
+      const npcList = s.npcList ?? [];
+      return JSON.stringify(npcList.map(n => ({ id: n.id, x: n.sprite?.x, y: n.sprite?.y })));
+    });
+    console.log('[DEBUG] town NPCs:', elderDebug);
+    // 调试：检查 in-memory quest state
+    const memQuest = await page.evaluate(() => {
+      // 尝试获取 questState（可能通过 window.debug 暴露）
+      return window.debug?.getQuestState?.() ?? 'no_access';
+    });
+    console.log('[DEBUG] in-memory questState:', memQuest);
+    // 调试：检查 player 位置
+    const playerPos = await page.evaluate(() => {
+      const s = window.__game.scene.getScene('town');
+      if (!s?.player) return 'no_player';
+      return `(${s.player.x},${s.player.y})`;
+    });
+    console.log('[DEBUG] player position:', playerPos);
+    // 调试：检查 scene 是否 active
+    const activeCheck = await page.evaluate(() => {
+      const s = window.__game.scene.getScene('town');
+      if (!s) return 'no_scene';
+      try { return `active=${s.sys.isActive()}`; } catch (e) { return `error=${e.message}`; }
+    });
+    console.log('[DEBUG] scene active:', activeCheck);
+    // 调试：检查 update 是否运行（通过帧计数器）
     await pressE(page);
-    await waitAndSkipDialogue(page, 6); // 交付 6 行 → completed + 里程碑存档
+    // 调试：检查 pressE 后的 in-memory quest state
+    const afterPressE = await page.evaluate(() => window.debug.getQuestState?.() ?? 'no_access');
+    console.log('[DEBUG] after pressE questState:', afterPressE);
+    await waitAndSkipDialogue(page, 8); // 交付 8 行 → completed + 里程碑存档
     const afterDeliver = await page.evaluate(() => {
       const raw = localStorage.getItem('return_star_save');
       return raw ? JSON.parse(raw).world.questState : null;
@@ -266,14 +298,15 @@ async function run() {
     );
     ok('12. 三选项渲染', options.length === 3, JSON.stringify(options));
 
-    // 选择 B：我还不知道答案
+    // 选择 B：我想先弄清楚爷爷到底在这里经历了什么
     await page.evaluate(() => {
-      const btn = [...document.querySelectorAll('button')].find(b => b.textContent?.includes('我还不知道答案'));
+      const btn = [...document.querySelectorAll('button')].find(b => b.textContent?.includes('我想先弄清楚'));
       btn?.click();
     });
-    await sleep(700);
+    // 等待打字机效果播完（35ms/字，27 字 ≈ 945ms）
+    await sleep(1500);
     const branchText = await dialogueText(page);
-    ok('13. 分支 B 独白', branchText.includes('有些答案'), branchText.substring(0, 40));
+    ok('13. 分支 B 独白', branchText.includes('比一封信更多'), branchText.substring(0, 40));
 
     await skipDialogue(page, 1); // 分支 → FINALE
     await skipDialogue(page, 4); // FINALE → 结算面板 + 存档

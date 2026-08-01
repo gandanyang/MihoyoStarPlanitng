@@ -6,6 +6,7 @@ import { StationScene } from './scenes/StationScene';
 import { getTime, nextDay as timeNextDay, setTime as setGameTime, formatTime } from './data/TimeSystem';
 import { refreshSchedule } from './systems/NPCSystem';
 import { refreshDailyQuests as refreshDQ, getDailyQuestSaveData } from './systems/DailyQuestSystem';
+import { getQuestState } from './systems/QuestSystem';
 import { resetStamina } from './data/Stamina';
 import { resetOres } from './data/MineState';
 import { save } from './systems/SaveSystem';
@@ -67,7 +68,7 @@ const game = new Phaser.Game({
 //   window.debug.advanceStory()     推进教程剧情一步
 //   window.debug.setStoryStep(s)    设置教程剧情步骤
 //   window.debug.getStoryStep()     获取当前教程步骤
-(window as unknown as { debug: { nextDay: () => number; setTime: (h: number, m: number) => void; advanceStory: () => void; setStoryStep: (s: string) => void; getStoryStep: () => string } }).debug = {
+(window as unknown as { debug: { nextDay: () => number; setTime: (h: number, m: number) => void; advanceStory: () => void; setStoryStep: (s: string) => void; getStoryStep: () => string; getQuestState: () => string } }).debug = {
   nextDay: () => {
     // Phase 4 起统一走 TimeSystem.nextDay，它内调 FarmState.advanceDay
     const newDay = timeNextDay();
@@ -116,6 +117,9 @@ const game = new Phaser.Game({
   },
   getStoryStep: () => {
     return getStoryStep();
+  },
+  getQuestState: () => {
+    return getQuestState();
   },
 };
 

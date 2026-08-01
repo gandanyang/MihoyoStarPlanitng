@@ -464,7 +464,10 @@ export class MapScene extends Phaser.Scene {
 
   update(timeMs: number): void {
     // create 失败：停止每帧逻辑（错误遮罩已显示，避免空引用持续抛错）
-    if (this.createFailed) return;
+    if (this.createFailed) {
+      console.log(`[DEBUG] update skipped: createFailed at ${this.mapKey}`);
+      return;
+    }
 
     // Demo 结算界面打开：冻结移动/交互，等待「继续自由游玩」
     if (this.endingPanel?.isOpen()) {
@@ -521,13 +524,15 @@ export class MapScene extends Phaser.Scene {
     this.updateStargaze();
 
     // 剧情对话打开时：禁止移动，E/空格推进对话
-    if (this.storyDialogue && this.storyDialogue.isOpen()) {
-      this.inputManager.update();
-      this.player.setVelocity(0, 0);
-      if (this.inputManager.consumeAction()) {
-        this.storyDialogue.advance();
+    if (this.storyDialogue) {
+      if (this.storyDialogue.isOpen()) {
+        this.inputManager.update();
+        this.player.setVelocity(0, 0);
+        if (this.inputManager.consumeAction()) {
+          this.storyDialogue.advance();
+        }
+        return;
       }
-      return;
     }
 
     // 每帧更新输入（从键盘读移动向量到 moveX/moveY）
@@ -544,8 +549,12 @@ export class MapScene extends Phaser.Scene {
     this.updateTargetHighlight();
 
     // 交互：消费一次动作输入（按一次只触发一次，不会连发）
-    if (!this.transitioning && this.inputManager.consumeAction()) {
-      this.tryInteract();
+    if (!this.transitioning) {
+      const consumed = this.inputManager.consumeAction();
+      if (consumed) {
+        console.log(`[DEBUG] update consumeAction=true, calling tryInteract at ${this.mapKey}`);
+        this.tryInteract();
+      }
     }
 
     // 切换中则不再检测出口
@@ -1264,6 +1273,7 @@ export class MapScene extends Phaser.Scene {
       }
     }
     if (nearest) {
+      console.log(`[DEBUG] tryInteract NPC: ${nearest.id} at (${nearest.sprite?.x},${nearest.sprite?.y})`);
       // 通知每日任务：与 NPC 对话 + 刷新面板
       onDQTAlkNpc(nearest.id);
       this.updateDailyQuestPanel();
