@@ -2,11 +2,10 @@
  * 物品库存（Phase 0.25 背包系统）
  *
  * 模块级单例：物品数量跨场景保留。
- * 当前支持：萝卜、番茄、玉米、各类种子、星之碎片。
  */
 
 /** 物品类型 */
-export type ItemType = 'radish' | 'tomato' | 'corn' | 'radish_seed' | 'tomato_seed' | 'corn_seed' | 'star_shard' | 'diamond' | 'stone' | 'copper' | 'iron';
+export type ItemType = 'radish' | 'tomato' | 'corn' | 'radish_seed' | 'tomato_seed' | 'corn_seed' | 'star_shard' | 'diamond' | 'stone' | 'copper' | 'iron' | 'manor_key' | 'old_hoe' | 'old_watering_can';
 
 /** 物品定义 */
 export interface ItemDef {
@@ -31,6 +30,9 @@ export const ITEM_DEFS: Record<ItemType, ItemDef> = {
   stone: { id: 'stone', name: '石头', desc: '矿洞中开采的普通石材，可用于建筑或出售。', icon: '🪨' },
   copper: { id: 'copper', name: '铜矿', desc: '铜色矿石，可用于工具升级或出售。', icon: '🟤' },
   iron: { id: 'iron', name: '铁矿', desc: '稀有的铁矿石，价值较高。', icon: '⚪' },
+  manor_key: { id: 'manor_key', name: '庄园钥匙', desc: '打开星黎庄园大门的钥匙。', icon: '🗝️' },
+  old_hoe: { id: 'old_hoe', name: '旧锄头', desc: '一把老旧的锄头，用来翻地足够了。', icon: '⚒️' },
+  old_watering_can: { id: 'old_watering_can', name: '旧水壶', desc: '给作物浇水用的旧水壶。', icon: '🚿' },
 };
 
 /** 库存数据：物品类型 → 数量 */
@@ -46,6 +48,9 @@ const inventory: Record<ItemType, number> = {
   stone: 0,
   copper: 0,
   iron: 0,
+  manor_key: 0,
+  old_hoe: 0,
+  old_watering_can: 0,
 };
 
 /** 读取某物品数量 */

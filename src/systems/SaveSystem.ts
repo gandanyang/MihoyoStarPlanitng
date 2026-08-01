@@ -27,6 +27,7 @@ import { getAllInventoryEntries, restoreAllInventory, type ItemType } from '../d
 import { getTime, setTimeFull } from '../data/TimeSystem';
 import { getStamina, setStamina as restoreStamina } from '../data/Stamina';
 import { getMinedOreIds, restoreMinedOres } from '../data/MineState';
+import { getStoryStep, setStoryStep, type StoryStep } from '../systems/StorySystem';
 import { getQuestState, setQuestState, type QuestState } from '../systems/QuestSystem';
 import { getDailyQuestSaveData, restoreDailyQuests, type DailyQuestSaveData } from '../systems/DailyQuestSystem';
 
@@ -54,6 +55,7 @@ export interface SaveData {
   dailyQuest?: DailyQuestSaveData;
   stamina: number;
   minedOres: string[];
+  storyStep: StoryStep;
   player: { x: number; y: number; scene: string; facing: string };
 }
 
@@ -95,6 +97,7 @@ export function save(player: {
     dailyQuest: player.dailyQuest ?? getDailyQuestSaveData(),
     stamina: getStamina(),
     minedOres: getMinedOreIds(),
+    storyStep: getStoryStep(),
     player: { x: player.x, y: player.y, scene: player.scene, facing: player.facing },
   };
 
@@ -193,7 +196,7 @@ function migrateInventory(
   }
 
   // 为新物品设置默认值（如果存档中没有）
-  const defaultItems: ItemType[] = ['tomato', 'corn', 'tomato_seed', 'corn_seed', 'stone', 'copper', 'iron'];
+  const defaultItems: ItemType[] = ['tomato', 'corn', 'tomato_seed', 'corn_seed', 'stone', 'copper', 'iron', 'manor_key', 'old_hoe', 'old_watering_can'];
   for (const item of defaultItems) {
     if (migrated[item] === undefined) {
       migrated[item] = 0;
@@ -225,6 +228,8 @@ export function apply(data: SaveData): void {
   // 体力 + 矿脉
   restoreStamina(data.stamina ?? 100);
   restoreMinedOres(data.minedOres ?? []);
+  // 剧情进度
+  setStoryStep(data.storyStep ?? 'done');
   // 玩家位置（由 MapScene 读取后设置 spawn）
 }
 

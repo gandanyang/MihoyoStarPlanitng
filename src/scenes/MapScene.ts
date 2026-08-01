@@ -40,6 +40,12 @@ import { InputManager } from '../systems/InputManager';
 import { TouchControls } from '../systems/TouchControls';
 import { ShopPanel } from '../ui/ShopPanel';
 import { BackpackPanel } from '../ui/BackpackPanel';
+import { StoryDialogue } from '../ui/StoryDialogue';
+import {
+  getStoryStep, setStoryStep, advanceStory, isTutorialDone,
+  XIYA_DIALOGUE, GATE_OPENED_DIALOGUE, SOW_SEEDS_DIALOGUE,
+  WATER_CROPS_DIALOGUE, EVENING_DIALOGUE,
+} from '../systems/StorySystem';
 import { hasSave, load, apply, save, getLastIncompatibleVersion, clearIncompatibleVersion } from '../systems/SaveSystem';
 import { play } from '../systems/AudioSystem';
 
@@ -106,6 +112,17 @@ export class MapScene extends Phaser.Scene {
   private seedSwitchCooldown = 0;
   // 种子选择器 DOM
   private seedSelectorEl: HTMLDivElement | null = null;
+  // 剧情对话 UI
+  private storyDialogue: StoryDialogue | null = null;
+  // 教程：庄园大门墙壁（物理矩形，钥匙使用后销毁）
+  private gateWall: Phaser.GameObjects.Rectangle | null = null;
+  // 教程：夏雅精灵
+  private xiyaSprite: Phaser.GameObjects.Sprite | null = null;
+  // 教程提示 DOM
+  private tutorialHint: HTMLDivElement | null = null;
+  // 教程进度计数（锄地/播种/浇水各需3次）
+  private tutorialProgress = 0;
+  private readonly TUTORIAL_TARGET = 3;
 
   constructor(key: string) {
     super(key);
@@ -278,6 +295,11 @@ export class MapScene extends Phaser.Scene {
       this.setupOres();
     }
 
+    // 农场场景：教程设置（庄园大门 + 夏雅）
+    if (this.mapKey === 'farm' && !isTutorialDone()) {
+      this.setupTutorial();
+    }
+
     // 触屏控件（摇杆+交互按钮，DOM 单例，PC 和手机都显示）
     this.touchControls = new TouchControls(this, this.inputManager);
     // 商店面板（DOM 覆盖层；数据变化时刷新 HUD 金币显示；关店时清理输入残留）
@@ -295,11 +317,14 @@ export class MapScene extends Phaser.Scene {
       (count: number) => { onDQSellShop(count); this.updateDailyQuestPanel(); },
     );
 
-    // 背包面板（DOM 覆盖层；关包时清理 B 键残留）
-    this.backpackPanel = new BackpackPanel(() => {
-      this.inputManager.clearAction();
-      this.lastFrameTime = performance.now();
-    });
+    // 背包面板（DOM 覆盖层；关包时清理 B 键残留；使用钥匙回调）
+    this.backpackPanel = new BackpackPanel(
+      () => {
+        this.inputManager.clearAction();
+        this.lastFrameTime = performance.now();
+      },
+      () => this.useManorKey(),
+    );
     // 农场升级通知（升级时显示气泡提示）
     setOnLevelUp((newLevel: number) => {
       this.showDialogueText(`农场升级！Lv.${newLevel}`);
@@ -371,6 +396,16 @@ export class MapScene extends Phaser.Scene {
     // 种子切换冷却递减
     if (this.seedSwitchCooldown > 0) this.seedSwitchCooldown -= dtMs;
 
+    // 剧情对话打开时：禁止移动，E/空格推进对话
+    if (this.storyDialogue && this.storyDialogue.isOpen()) {
+      this.inputManager.update();
+      this.player.setVelocity(0, 0);
+      if (this.inputManager.consumeAction()) {
+        this.storyDialogue.advance();
+      }
+      return;
+    }
+
     // 每帧更新输入（从键盘读移动向量到 moveX/moveY）
     this.inputManager.update();
     // 触屏摇杆拖动时覆盖键盘值（在 inputManager.update 之后、player.update 之前）
@@ -391,6 +426,23 @@ export class MapScene extends Phaser.Scene {
 
     // 切换中则不再检测出口
     if (this.transitioning) return;
+
+    // 教程期间锁定离开农场的出口（防止玩家跑出农场去其他地图）
+    // 但室内入口不受限
+    if (!isTutorialDone() && this.mapKey === 'farm') {
+      const exits = MAP_EXITS[this.mapKey] ?? [];
+      for (const ex of exits) {
+        if (ex.target === 'house') continue; // 允许进入室内
+        if (
+          this.player.x >= ex.x &&
+          this.player.x <= ex.x + ex.w &&
+          this.player.y >= ex.y &&
+          this.player.y <= ex.y + ex.h
+        ) {
+          return; // 锁定：不能离开农场
+        }
+      }
+    }
 
     const exits = MAP_EXITS[this.mapKey] ?? [];
     for (const ex of exits) {
@@ -494,6 +546,189 @@ export class MapScene extends Phaser.Scene {
       sprite.setStrokeStyle(2, 0x000000, 0.4);
       this.oreSprites.push({ deposit, sprite });
     }
+  }
+
+  // ============ 新手教程 ============
+
+  /**
+   * 教程设置：根据当前步骤创建门/夏雅/提示
+   */
+  private setupTutorial(): void {
+    this.storyDialogue = new StoryDialogue();
+    this.tutorialProgress = 0;
+    const step = getStoryStep();
+
+    // 庄园大门墙壁（开门前挡住）
+    const stepsBeforeGate = ['station_intro', 'station_move', 'arrive_manor', 'xiya_talk', 'get_key'];
+    if (stepsBeforeGate.includes(step)) {
+      const gateY = 7 * TILE_SIZE + TILE_SIZE / 2;
+      this.gateWall = this.add.rectangle(15 * TILE_SIZE, gateY, 28 * TILE_SIZE, TILE_SIZE, 0x8b4513, 0.5);
+      this.gateWall.setDepth(4);
+      this.physics.add.existing(this.gateWall, true);
+      this.physics.add.collider(this.player, this.gateWall);
+      this.add.text(15 * TILE_SIZE, gateY, '🔒 庄园大门', {
+        fontSize: '10px', color: '#ffcc00',
+      }).setOrigin(0.5).setDepth(5);
+    }
+
+    // 夏雅 NPC（开门前显示在门北侧）
+    if (step === 'arrive_manor' || step === 'xiya_talk' || step === 'get_key') {
+      const xiyaX = 15 * TILE_SIZE + TILE_SIZE / 2;
+      const xiyaY = 6 * TILE_SIZE + TILE_SIZE / 2;
+      this.xiyaSprite = this.add.sprite(xiyaX, xiyaY, 'npc_girl');
+      this.xiyaSprite.setDepth(5);
+      this.add.text(xiyaX, xiyaY - 16, '夏雅', {
+        fontSize: '10px', color: '#f0a050',
+      }).setOrigin(0.5).setDepth(6);
+    }
+
+    // 根据步骤显示提示
+    const hints: Partial<Record<string, string>> = {
+      arrive_manor: '→ 靠近夏雅，按 [E] 键对话',
+      get_key: '→ 按 [B] 键打开背包，选择钥匙使用',
+      clear_land: '→ 对着农田区域按 [E] 锄地，清理 3 块土地',
+      sow_seeds: '→ 按 [R] 切换到萝卜种子，播种 3 块土地',
+      water_crops: '→ 对已播种的土地按 [E] 浇水',
+      evening_talk: '→ 回到床前按 [E] 睡觉，结束第一天',
+    };
+    if (hints[step]) this.showTutorialHint(hints[step]!);
+  }
+
+  /** 显示教程提示 */
+  private showTutorialHint(text: string): void {
+    this.removeTutorialHint();
+    this.tutorialHint = document.createElement('div');
+    Object.assign(this.tutorialHint.style, {
+      position: 'fixed', bottom: '80px', left: '50%',
+      transform: 'translateX(-50%)', color: '#ffcc00', fontSize: '14px',
+      background: 'rgba(0,0,0,0.7)', padding: '8px 20px', borderRadius: '8px',
+      zIndex: '400', pointerEvents: 'none',
+      border: '1px solid rgba(255,204,0,0.3)',
+      textShadow: '0 0 4px rgba(0,0,0,0.8)',
+    });
+    this.tutorialHint.textContent = text;
+    document.body.appendChild(this.tutorialHint);
+  }
+
+  private removeTutorialHint(): void {
+    if (this.tutorialHint) { this.tutorialHint.remove(); this.tutorialHint = null; }
+  }
+
+  /** 与夏雅交互 */
+  private tryXiyaInteract(): boolean {
+    if (!this.xiyaSprite || !this.xiyaSprite.visible) return false;
+    const dx = this.player.x - this.xiyaSprite.x;
+    const dy = this.player.y - this.xiyaSprite.y;
+    if (dx * dx + dy * dy > 28 * 28) return false;
+
+    if (getStoryStep() === 'arrive_manor') {
+      setStoryStep('xiya_talk');
+      this.storyDialogue!.play(XIYA_DIALOGUE, () => {
+        addItem('manor_key', 1);
+        advanceStory(); // → get_key
+        this.showTutorialHint('→ 按 [B] 键打开背包，选择钥匙使用');
+        this.updateHUD();
+      });
+      return true;
+    }
+    return false;
+  }
+
+  /** 使用庄园钥匙（BackpackPanel 调用） */
+  useManorKey(): boolean {
+    if (getStoryStep() !== 'get_key') return false;
+    if (!this.gateWall) return false;
+
+    this.gateWall.destroy();
+    this.gateWall = null;
+    if (this.xiyaSprite) { this.xiyaSprite.destroy(); this.xiyaSprite = null; }
+    this.removeTutorialHint();
+    play('harvest');
+    addItem('manor_key', -1);
+    advanceStory(); // → gate_opened
+
+    this.storyDialogue!.play(GATE_OPENED_DIALOGUE, () => {
+      addItem('old_hoe', 1);
+      advanceStory(); // → clear_land
+      this.tutorialProgress = 0;
+      this.showTutorialHint('→ 对着农田区域按 [E] 锄地，清理 3 块土地');
+      this.updateHUD();
+    });
+    return true;
+  }
+
+  /** 教程中锄地/播种/浇水的进度检测 */
+  private checkTutorialProgress(action: 'till' | 'sow' | 'water'): void {
+    const step = getStoryStep();
+    if (step === 'done') return;
+
+    if (step === 'clear_land' && action === 'till') {
+      this.tutorialProgress++;
+      this.showTutorialHint(`→ 清理土地 ${this.tutorialProgress}/${this.TUTORIAL_TARGET}`);
+      if (this.tutorialProgress >= this.TUTORIAL_TARGET) {
+        this.removeTutorialHint();
+        this.tutorialProgress = 0;
+        addItem('radish_seed', 3);
+        advanceStory(); // → sow_seeds
+        this.storyDialogue!.play(SOW_SEEDS_DIALOGUE, () => {
+          this.showTutorialHint('→ 按 [R] 切换到萝卜种子，播种 3 块土地');
+          this.updateHUD();
+        });
+      }
+      return;
+    }
+
+    if (step === 'sow_seeds' && action === 'sow') {
+      this.tutorialProgress++;
+      this.showTutorialHint(`→ 播种 ${this.tutorialProgress}/${this.TUTORIAL_TARGET}`);
+      if (this.tutorialProgress >= this.TUTORIAL_TARGET) {
+        this.removeTutorialHint();
+        this.tutorialProgress = 0;
+        addItem('old_watering_can', 1);
+        advanceStory(); // → water_crops
+        this.storyDialogue!.play(WATER_CROPS_DIALOGUE, () => {
+          this.showTutorialHint('→ 对已播种的土地按 [E] 键浇水');
+          this.updateHUD();
+        });
+      }
+      return;
+    }
+
+    if (step === 'water_crops' && action === 'water') {
+      this.tutorialProgress++;
+      this.showTutorialHint(`→ 浇水 ${this.tutorialProgress}/${this.TUTORIAL_TARGET}`);
+      if (this.tutorialProgress >= this.TUTORIAL_TARGET) {
+        this.removeTutorialHint();
+        advanceStory(); // → evening_talk
+        this.storyDialogue!.play(EVENING_DIALOGUE, () => {
+          this.showTutorialHint('→ 回到床前按 [E] 睡觉，结束第一天');
+          this.updateHUD();
+        });
+      }
+      return;
+    }
+  }
+
+  /** 教程晚间睡觉 */
+  private tryTutorialSleep(): boolean {
+    if (getStoryStep() !== 'evening_talk') return false;
+    advanceStory(); // → done
+    this.removeTutorialHint();
+    this.showDialogueText('第一天：归乡 — 游戏保存中…');
+    timeNextDay();
+    resetStamina();
+    resetOres();
+    refreshDailyQuests();
+    this.createDailyQuestPanel();
+    this.refreshFarmVisual();
+    this.rebuildNPCs();
+    save({
+      x: this.player.x, y: this.player.y,
+      scene: this.mapKey, facing: this.player.facing,
+      dailyQuest: getDailyQuestSaveData(),
+    } as any);
+    this.updateHUD();
+    return true;
   }
 
   /**
@@ -722,9 +957,16 @@ export class MapScene extends Phaser.Scene {
         ? (pc >= 2 && pc <= 4 && pr >= 12 && pr <= 14)
         : (pc >= 1 && pc <= 4 && pr >= 1 && pr <= 4);
       if (isSleepArea) {
+        // 教程：晚间睡觉 → 结束教程
+        if (!isTutorialDone() && this.tryTutorialSleep()) return;
         this.trySleep();
         return;
       }
+    }
+
+    // 0.3 教程：夏雅交互（农场教程阶段优先于普通 NPC）
+    if (this.mapKey === 'farm' && this.xiyaSprite) {
+      if (this.tryXiyaInteract()) return;
     }
 
     // 2. 优先检测靠近 NPC（所有场景）：取交互范围内最近的一个
@@ -936,6 +1178,7 @@ export class MapScene extends Phaser.Scene {
       // 锄地：空地 → 耕地
       setTileState(tc, tr, 'tilled');
       play('hoe');
+      this.checkTutorialProgress('till');
     } else if (state === 'tilled') {
       // 播种：优先使用 R 键选中的种子，不足时才弹出选择器
       const selectedSeedItem = CROP_DEFS[this.selectedCropType].seedItem as any;
@@ -967,6 +1210,7 @@ export class MapScene extends Phaser.Scene {
       play('water');
       onDQWater();
       this.updateDailyQuestPanel();
+      this.checkTutorialProgress('water');
     } else if (state === 'grown') {
       // 收获：成熟 → 耕地，获得作物
       const crop = getCrop(tc, tr);
@@ -999,6 +1243,7 @@ export class MapScene extends Phaser.Scene {
     play('plant');
     onDQPlant();
     this.updateDailyQuestPanel();
+    this.checkTutorialProgress('sow');
     const visual = this.tileRects.get(`${col},${row}`);
     if (visual) this.updateTileVisual(col, row, visual);
     this.updateHUD();

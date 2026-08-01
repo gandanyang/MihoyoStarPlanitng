@@ -1,12 +1,14 @@
 import Phaser from 'phaser';
 import { GAME_CONFIG, GAME_TITLE } from './config';
 import { MapScene } from './scenes/MapScene';
+import { StationScene } from './scenes/StationScene';
 import { getTime, nextDay as timeNextDay, setTime as setGameTime, formatTime } from './data/TimeSystem';
 import { refreshSchedule } from './systems/NPCSystem';
 import { refreshDailyQuests as refreshDQ, getDailyQuestSaveData } from './systems/DailyQuestSystem';
 import { resetStamina } from './data/Stamina';
 import { resetOres } from './data/MineState';
 import { save } from './systems/SaveSystem';
+import { advanceStory, getStoryStep, setStoryStep } from './systems/StorySystem';
 
 // 创建 Phaser 游戏实例
 // 4 个区域各注册一个 MapScene 实例，首个（农场）自动启动
@@ -32,6 +34,7 @@ const game = new Phaser.Game({
     },
   },
   scene: [
+    new StationScene(),
     new MapScene('farm'),
     new MapScene('town'),
     new MapScene('forest'),
@@ -45,9 +48,12 @@ const game = new Phaser.Game({
 
 // Debug API（Phase 4 仍保留，供测试用）
 // 用法：
-//   window.debug.nextDay()          结束今日，推进到次日 06:00（TimeSystem.nextDay → FarmState.advanceDay）
-//   window.debug.setTime(21, 50)      设置当前时间（hour, minute（小时0-23 / 分钟0-59
-(window as unknown as { debug: { nextDay: () => number; setTime: (h: number, m: number) => void } }).debug = {
+//   window.debug.nextDay()          结束今日，推进到次日 06:00
+//   window.debug.setTime(21, 50)    设置当前时间（hour, minute）
+//   window.debug.advanceStory()     推进教程剧情一步
+//   window.debug.setStoryStep(s)    设置教程剧情步骤
+//   window.debug.getStoryStep()     获取当前教程步骤
+(window as unknown as { debug: { nextDay: () => number; setTime: (h: number, m: number) => void; advanceStory: () => void; setStoryStep: (s: string) => void; getStoryStep: () => string } }).debug = {
   nextDay: () => {
     // Phase 4 起统一走 TimeSystem.nextDay，它内调 FarmState.advanceDay
     const newDay = timeNextDay();
@@ -85,6 +91,17 @@ const game = new Phaser.Game({
       scene.rebuildNPCs();
     }
     console.log(`[debug] setTime → Day ${getTime().day} ${formatTime()}`);
+  },
+  advanceStory: () => {
+    advanceStory();
+    console.log(`[debug] advanceStory → ${getStoryStep()}`);
+  },
+  setStoryStep: (s: string) => {
+    setStoryStep(s as any);
+    console.log(`[debug] setStoryStep → ${s}`);
+  },
+  getStoryStep: () => {
+    return getStoryStep();
   },
 };
 

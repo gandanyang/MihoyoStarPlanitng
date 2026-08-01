@@ -16,12 +16,15 @@ import { getNonEmptyItems } from '../data/Inventory';
 
 /** 关店回调 */
 type OnClose = () => void;
+/** 使用钥匙回调 */
+type OnUseKey = () => boolean;
 
 // ===== 模块级单例 =====
 let panelEl: HTMLDivElement | null = null;
 let domCreated = false;
 let open = false;
 let onClose: OnClose | null = null;
+let onUseKey: OnUseKey | null = null;
 
 /** 关闭面板（模块级，B/Esc/按钮都走这里） */
 function closePanel(): void {
@@ -65,6 +68,11 @@ function createDom(): void {
     const target = e.target as HTMLElement;
     if (target.dataset?.action === 'close') {
       closePanel();
+    } else if (target.dataset?.action === 'use-key') {
+      // 使用庄园钥匙
+      if (onUseKey?.()) {
+        closePanel();
+      }
     }
   });
 
@@ -106,11 +114,15 @@ function refresh(): void {
   let html = '';
 
   for (const { count, def } of items) {
+    const useBtn = def.id === 'manor_key'
+      ? `<button data-action="use-key" style="margin-top:6px;font-size:12px;padding:4px 12px;background:#6a8a45;border:none;border-radius:4px;color:#fff;cursor:pointer;">使用</button>`
+      : '';
     html += `
       <div style="${cellStyle}">
         <div style="font-size:28px;margin-bottom:4px;">${def.icon}</div>
         <div style="font-size:13px;font-weight:bold;color:#e0d5c1;">${def.name}</div>
         <div style="font-size:12px;color:#a5d6a7;">×${count}</div>
+        ${useBtn}
       </div>
     `;
   }
@@ -119,8 +131,9 @@ function refresh(): void {
 }
 
 export class BackpackPanel {
-  constructor(onCloseCb?: OnClose) {
+  constructor(onCloseCb?: OnClose, onUseKeyCb?: OnUseKey) {
     if (onCloseCb) onClose = onCloseCb;
+    if (onUseKeyCb) onUseKey = onUseKeyCb;
     if (!domCreated) createDom();
   }
 
