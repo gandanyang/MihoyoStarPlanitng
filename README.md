@@ -1,4 +1,4 @@
-# 归星物语
+# 《归星物语》类星露谷 二游 — Web 小游戏 Demo
 
 Phaser 3 + TypeScript + Vite 像素风农场生活 RPG 浏览器游戏。
 
