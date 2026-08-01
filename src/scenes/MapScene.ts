@@ -21,7 +21,7 @@ import {
   chopTree,
   refreshStumps,
 } from '../data/FarmState';
-import { addItem, getItemCount } from '../data/Inventory';
+import { addItem, getItemCount, itemIconHtml } from '../data/Inventory';
 import { formatTime, getTime, nextDay as timeNextDay, tick as timeTick } from '../data/TimeSystem';
 import { getCoins } from '../data/Economy';
 import { addXp, getLevel, getXp, getXpToNext, setOnLevelUp } from '../data/FarmProgress';
@@ -50,11 +50,13 @@ import { TouchControls } from '../systems/TouchControls';
 import { ShopPanel } from '../ui/ShopPanel';
 import { BackpackPanel } from '../ui/BackpackPanel';
 import { StoryDialogue } from '../ui/StoryDialogue';
+import { EndingPanel } from '../ui/EndingPanel';
 import {
   getStoryStep, setStoryStep, advanceStory, isTutorialDone,
   isCh1TownIntroDone, markCh1TownIntroDone,
+  isDemoEndingDone, markDemoEndingDone,
   XIYA_DIALOGUE, GATE_OPENED_DIALOGUE, SOW_SEEDS_DIALOGUE,
-  WATER_CROPS_DIALOGUE, EVENING_DIALOGUE, TOWN_INTRO_DIALOGUE,
+  WATER_CROPS_DIALOGUE, EVENING_DIALOGUE, TOWN_INTRO_DIALOGUE, STARGAZE_DIALOGUE,
 } from '../systems/StorySystem';
 import { hasSave, load, apply, save, getLastIncompatibleVersion, clearIncompatibleVersion, SAVE_VERSION } from '../systems/SaveSystem';
 import { play } from '../systems/AudioSystem';
@@ -117,7 +119,7 @@ export class MapScene extends Phaser.Scene {
   // 森林采集点：星之碎片（accepted 状态时显示，采集后销毁）
   private shardSprite: Phaser.GameObjects.Ellipse | null = null;
   // 矿洞矿脉精灵列表（mine 场景，id → sprite）
-  private oreSprites: { deposit: OreDeposit; sprite: Phaser.GameObjects.Ellipse }[] = [];
+  private oreSprites: { deposit: OreDeposit; sprite: Phaser.GameObjects.Image }[] = [];
   // 农场树木精灵列表（farm 场景，key = "col,row"）
   private treeSprites = new Map<string, Phaser.GameObjects.Image>();
   // 当前选中的种子类型（R 键切换，用于播种）
@@ -137,6 +139,12 @@ export class MapScene extends Phaser.Scene {
   // 教程进度计数（锄地/播种/浇水各需3次）
   private tutorialProgress = 0;
   private readonly TUTORIAL_TARGET = 3;
+  // Demo 结尾：结算界面
+  private endingPanel: EndingPanel | null = null;
+  // Demo 结尾：观星点视觉（farm 右下空地，像素坐标）
+  private readonly STARGAZE_POS = { x: 504, y: 232 };
+  private stargazeSprites: Phaser.GameObjects.Ellipse[] = [];
+  private stargazeMark: Phaser.GameObjects.Text | null = null;
 
   constructor(key: string) {
     super(key);
@@ -167,6 +175,20 @@ export class MapScene extends Phaser.Scene {
     if (!this.textures.exists('npc_merchant')) this.load.image('npc_merchant', 'assets/sprites/npc_merchant.png');
     if (!this.textures.exists('npc_girl')) this.load.image('npc_girl', 'assets/sprites/npc_girl.png');
     if (!this.textures.exists('npc_xiya')) this.load.image('npc_xiya', 'assets/sprites/npc_xiya.png');
+    if (!this.textures.exists('npc_miner')) this.load.image('npc_miner', 'assets/sprites/npc_miner.png');
+    if (!this.textures.exists('npc_gardener')) this.load.image('npc_gardener', 'assets/sprites/npc_gardener.png');
+    if (!this.textures.exists('npc_adventurer')) this.load.image('npc_adventurer', 'assets/sprites/npc_adventurer.png');
+    // 矿脉贴图（矿洞场景：石/铜/铁）
+    if (this.mapKey === 'mine') {
+      if (!this.textures.exists('ore_stone')) this.load.image('ore_stone', 'assets/sprites/ore_stone.png');
+      if (!this.textures.exists('ore_copper')) this.load.image('ore_copper', 'assets/sprites/ore_copper.png');
+      if (!this.textures.exists('ore_iron')) this.load.image('ore_iron', 'assets/sprites/ore_iron.png');
+    }
+    // 道具贴图（农场砍树相关：旧斧头/木材）
+    if (this.mapKey === 'farm') {
+      if (!this.textures.exists('old_axe')) this.load.image('old_axe', 'assets/sprites/old_axe.png');
+      if (!this.textures.exists('wood')) this.load.image('wood', 'assets/sprites/wood.png');
+    }
     if (this.mapKey === 'farm' && !this.textures.exists('crops')) {
       this.load.spritesheet('crops', 'assets/sprites/crops.png', { frameWidth: 32, frameHeight: 32 });
     }
@@ -323,6 +345,9 @@ export class MapScene extends Phaser.Scene {
         addItem('old_axe', 1);
       }
 
+      // Demo 结尾：观星点视觉（主线完成 + 夜晚时显示）
+      this.createStargazePoint();
+
       // 农田选中高亮（淡黄色边框，跟随玩家面向的格子）
       this.targetHighlight = this.add.rectangle(0, 0, TILE_SIZE, TILE_SIZE, 0xfff176, 0.15);
       this.targetHighlight.setStrokeStyle(1, 0xfff176, 0.7);
@@ -420,6 +445,13 @@ export class MapScene extends Phaser.Scene {
     // create 失败：停止每帧逻辑（错误遮罩已显示，避免空引用持续抛错）
     if (this.createFailed) return;
 
+    // Demo 结算界面打开：冻结移动/交互，等待「继续自由游玩」
+    if (this.endingPanel?.isOpen()) {
+      this.player.setVelocity(0, 0);
+      this.inputManager.clearAction();
+      return;
+    }
+
     // 商店打开：冻结时间/玩家移动/NPC/交互，只响应关闭
     // 关闭方式：E/空格/回车（consumeAction）或 Esc（ShopPanel DOM 监听）
     if (this.shopPanel.isOpen()) {
@@ -463,6 +495,9 @@ export class MapScene extends Phaser.Scene {
     timeTick(dtMs);
     // 种子切换冷却递减
     if (this.seedSwitchCooldown > 0) this.seedSwitchCooldown -= dtMs;
+
+    // 观星点显隐 + 呼吸动画（主线完成 + 夜晚时显示）
+    this.updateStargaze();
 
     // 剧情对话打开时：禁止移动，E/空格推进对话
     if (this.storyDialogue && this.storyDialogue.isOpen()) {
@@ -605,12 +640,12 @@ export class MapScene extends Phaser.Scene {
       if (isOreMined(deposit.id)) continue;
       const cx = deposit.col * TILE_SIZE + TILE_SIZE / 2;
       const cy = deposit.row * TILE_SIZE + TILE_SIZE / 2;
-      // 不同矿石大小略有差异
+      // 矿石贴图（32x32，按类型缩放显示：石头 12 / 铜 14 / 铁 16 像素）
+      const textureKey = `ore_${deposit.oreType}`;
       const size = deposit.oreType === 'iron' ? 16 : deposit.oreType === 'copper' ? 14 : 12;
-      const sprite = this.add.ellipse(cx, cy, size, size, deposit.color, 1);
+      const sprite = this.add.image(cx, cy, textureKey);
+      sprite.setScale(size / 32);
       sprite.setDepth(5);
-      // 矿脉边框
-      sprite.setStrokeStyle(2, 0x000000, 0.4);
       this.oreSprites.push({ deposit, sprite });
     }
   }
@@ -1157,6 +1192,9 @@ export class MapScene extends Phaser.Scene {
       }
     }
 
+    // 1.5 Demo 结尾：观星点（主线完成 + 夜晚 + 靠近观星点按 E）
+    if (this.tryStargaze()) return;
+
     // 0.3 教程：夏雅交互（大门地图优先于普通 NPC）
     if ((this.mapKey === 'gate' || this.mapKey === 'farm') && this.xiyaSprite) {
       if (this.tryXiyaInteract()) return;
@@ -1262,6 +1300,63 @@ export class MapScene extends Phaser.Scene {
   }
 
   /**
+   * 创建观星点视觉（双层光圈 + ✦ 标记，初始隐藏）
+   * 主线完成 + 夜晚时由 updateStargaze 显示
+   */
+  private createStargazePoint(): void {
+    const { x, y } = this.STARGAZE_POS;
+    const outer = this.add.ellipse(x, y, 46, 46, 0x8a9bd6, 0.12);
+    const inner = this.add.ellipse(x, y, 22, 22, 0xaebff5, 0.28);
+    outer.setDepth(5);
+    inner.setDepth(6);
+    this.stargazeMark = this.add.text(x, y - 6, '✦', {
+      fontFamily: 'Arial', fontSize: '20px', color: '#e8ecff',
+    }).setOrigin(0.5).setDepth(7);
+    this.stargazeSprites = [outer, inner];
+    this.setStargazeVisible(false);
+  }
+
+  /** 控制观星点整体显隐 */
+  private setStargazeVisible(visible: boolean): void {
+    for (const s of this.stargazeSprites) s.setVisible(visible);
+    if (this.stargazeMark) this.stargazeMark.setVisible(visible);
+  }
+
+  /** 观星点显隐 + 呼吸闪烁（每帧，仅 farm 且主线完成 + 夜晚时显示） */
+  private updateStargaze(): void {
+    if (this.mapKey !== 'farm' || this.stargazeSprites.length === 0) return;
+    const eligible = getQuestState() === 'completed' && getTime().hour >= 20 && !isDemoEndingDone();
+    const show = eligible && !(this.storyDialogue && this.storyDialogue.isOpen());
+    this.setStargazeVisible(show);
+    if (!show) return;
+    const pulse = 0.5 + 0.5 * Math.sin(this.time.now / 400);
+    this.stargazeSprites[0].setAlpha(0.08 + 0.1 * pulse);
+    this.stargazeSprites[1].setAlpha(0.22 + 0.14 * pulse);
+    if (this.stargazeMark) this.stargazeMark.setAlpha(0.6 + 0.4 * pulse);
+  }
+
+  /**
+   * 观星交互：主线完成（第一章收束）+ 夜晚 20:00 后 + 靠近观星点按 E
+   * → 播放观星收尾剧情 → 打开 Demo 结算界面（只触发一次）
+   */
+  private tryStargaze(): boolean {
+    if (this.mapKey !== 'farm') return false;
+    if (getQuestState() !== 'completed' || getTime().hour < 20 || isDemoEndingDone()) return false;
+    const dx = this.player.x - this.STARGAZE_POS.x;
+    const dy = this.player.y - this.STARGAZE_POS.y;
+    if (dx * dx + dy * dy > 48 * 48) return false;
+    if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+    markDemoEndingDone();
+    this.storyDialogue.play(STARGAZE_DIALOGUE, () => {
+      this.updateHUD();
+      if (!this.endingPanel) this.endingPanel = new EndingPanel();
+      save({ x: this.player.x, y: this.player.y, scene: this.mapKey, facing: this.player.facing } as any);
+      this.endingPanel.open();
+    });
+    return true;
+  }
+
+  /**
    * 刷新树木视觉（树桩恢复为树后更新贴图）
    * 仅更新当前贴图为 stump 但状态已恢复的精灵
    */
@@ -1325,7 +1420,7 @@ export class MapScene extends Phaser.Scene {
    */
   private tryMine(): void {
     // 找最近的矿脉（24px 范围内）
-    let target: { deposit: OreDeposit; sprite: Phaser.GameObjects.Ellipse } | null = null;
+    let target: { deposit: OreDeposit; sprite: Phaser.GameObjects.Image } | null = null;
     let minDist = 24 * 24;
     for (const entry of this.oreSprites) {
       if (!entry.sprite.visible) continue;
@@ -1559,7 +1654,7 @@ export class MapScene extends Phaser.Scene {
     for (const s of seeds) {
       const def = CROP_DEFS[s.cropType];
       itemsHtml += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <span style="font-size:15px;">${def.icon} ${def.name} ×${s.count}</span>
+        <span style="font-size:15px;">${itemIconHtml(s.cropType, 18)} ${def.name} ×${s.count}</span>
         <button class="seed-opt" data-crop="${s.cropType}" style="${btnStyle}">播种</button>
       </div>`;
     }

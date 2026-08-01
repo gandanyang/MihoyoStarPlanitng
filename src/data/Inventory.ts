@@ -102,3 +102,12 @@ export function restoreAllInventory(data: Partial<Record<ItemType, number>>): vo
     }
   }
 }
+
+/**
+ * 物品图标 HTML（16×16 像素图标替换 emoji 渲染）
+ * @param id     物品 ID（对应 public/assets/icons/{id}.png）
+ * @param size   显示尺寸（px，默认 18）
+ */
+export function itemIconHtml(id: string, size = 18): string {
+  return `<img src="assets/icons/${id}.png" alt="" style="width:${size}px;height:${size}px;vertical-align:middle;image-rendering:pixelated;">`;
+}

@@ -27,7 +27,7 @@ import {
   WOOD_PRICE,
   spendCoins,
 } from '../data/Economy';
-import { addItem, getItemCount } from '../data/Inventory';
+import { addItem, getItemCount, itemIconHtml } from '../data/Inventory';
 import { play } from '../systems/AudioSystem';
 
 /** 商店商品配置 */
@@ -47,65 +47,65 @@ interface ShopItem {
 const SHOP_ITEMS: ShopItem[] = [
   // 出售（作物 → 金币）
   {
-    id: 'radish', label: '🥕 萝卜', price: RADISH_PRICE, action: 'sell-radish', type: 'sell',
+    id: 'radish', label: '萝卜', price: RADISH_PRICE, action: 'sell-radish', type: 'sell',
     canDo: () => getItemCount('radish') > 0,
     do: () => { addItem('radish', -1); addCoins(RADISH_PRICE); },
   },
   {
-    id: 'tomato', label: '🍅 番茄', price: TOMATO_PRICE, action: 'sell-tomato', type: 'sell',
+    id: 'tomato', label: '番茄', price: TOMATO_PRICE, action: 'sell-tomato', type: 'sell',
     canDo: () => getItemCount('tomato') > 0,
     do: () => { addItem('tomato', -1); addCoins(TOMATO_PRICE); },
   },
   {
-    id: 'corn', label: '🌽 玉米', price: CORN_PRICE, action: 'sell-corn', type: 'sell',
+    id: 'corn', label: '玉米', price: CORN_PRICE, action: 'sell-corn', type: 'sell',
     canDo: () => getItemCount('corn') > 0,
     do: () => { addItem('corn', -1); addCoins(CORN_PRICE); },
   },
   {
-    id: 'strawberry', label: '🍓 草莓', price: STRAWBERRY_PRICE, action: 'sell-strawberry', type: 'sell',
+    id: 'strawberry', label: '草莓', price: STRAWBERRY_PRICE, action: 'sell-strawberry', type: 'sell',
     canDo: () => getItemCount('strawberry') > 0,
     do: () => { addItem('strawberry', -1); addCoins(STRAWBERRY_PRICE); },
   },
   // 出售矿石
   {
-    id: 'stone', label: '🪨 石头', price: STONE_PRICE, action: 'sell-stone', type: 'sell',
+    id: 'stone', label: '石头', price: STONE_PRICE, action: 'sell-stone', type: 'sell',
     canDo: () => getItemCount('stone') > 0,
     do: () => { addItem('stone', -1); addCoins(STONE_PRICE); },
   },
   {
-    id: 'copper', label: '🟤 铜矿', price: COPPER_PRICE, action: 'sell-copper', type: 'sell',
+    id: 'copper', label: '铜矿', price: COPPER_PRICE, action: 'sell-copper', type: 'sell',
     canDo: () => getItemCount('copper') > 0,
     do: () => { addItem('copper', -1); addCoins(COPPER_PRICE); },
   },
   {
-    id: 'iron', label: '⚪ 铁矿', price: IRON_PRICE, action: 'sell-iron', type: 'sell',
+    id: 'iron', label: '铁矿', price: IRON_PRICE, action: 'sell-iron', type: 'sell',
     canDo: () => getItemCount('iron') > 0,
     do: () => { addItem('iron', -1); addCoins(IRON_PRICE); },
   },
   // 出售木材
   {
-    id: 'wood', label: '🪵 木材', price: WOOD_PRICE, action: 'sell-wood', type: 'sell',
+    id: 'wood', label: '木材', price: WOOD_PRICE, action: 'sell-wood', type: 'sell',
     canDo: () => getItemCount('wood') > 0,
     do: () => { addItem('wood', -1); addCoins(WOOD_PRICE); },
   },
   // 购买（金币 → 种子）
   {
-    id: 'radish_seed', label: '🌱 萝卜种子', price: 10, action: 'buy-radish-seed', type: 'buy',
+    id: 'radish_seed', label: '萝卜种子', price: 10, action: 'buy-radish-seed', type: 'buy',
     canDo: () => getCoins() >= 10,
     do: () => { if (spendCoins(10)) addItem('radish_seed', 1); },
   },
   {
-    id: 'tomato_seed', label: '🌱 番茄种子', price: 20, action: 'buy-tomato-seed', type: 'buy',
+    id: 'tomato_seed', label: '番茄种子', price: 20, action: 'buy-tomato-seed', type: 'buy',
     canDo: () => getCoins() >= 20,
     do: () => { if (spendCoins(20)) addItem('tomato_seed', 1); },
   },
   {
-    id: 'corn_seed', label: '🌱 玉米种子', price: 15, action: 'buy-corn-seed', type: 'buy',
+    id: 'corn_seed', label: '玉米种子', price: 15, action: 'buy-corn-seed', type: 'buy',
     canDo: () => getCoins() >= 15,
     do: () => { if (spendCoins(15)) addItem('corn_seed', 1); },
   },
   {
-    id: 'strawberry_seed', label: '🍓 草莓种子', price: 50, action: 'buy-strawberry-seed', type: 'buy',
+    id: 'strawberry_seed', label: '草莓种子', price: 50, action: 'buy-strawberry-seed', type: 'buy',
     canDo: () => getCoins() >= 50,
     do: () => { if (spendCoins(50)) addItem('strawberry_seed', 1); },
   },
@@ -218,7 +218,7 @@ function refresh(): void {
     sellEl.innerHTML = sellItems.map(item => {
       const canSell = item.canDo();
       return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <span>${item.label}</span>
+        <span>${itemIconHtml(item.id, 16)} ${item.label}</span>
         <button data-action="${item.action}" ${canSell ? '' : 'disabled'} style="${canSell ? btnActive : btnDisabled}">卖 ${item.price}G</button>
       </div>`;
     }).join('');
@@ -231,7 +231,7 @@ function refresh(): void {
     buyEl.innerHTML = buyItems.map(item => {
       const canBuy = item.canDo();
       return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <span>${item.label}</span>
+        <span>${itemIconHtml(item.id, 16)} ${item.label}</span>
         <button data-action="${item.action}" ${canBuy ? '' : 'disabled'} style="${canBuy ? btnActive : btnDisabled}">买 ${item.price}G</button>
       </div>`;
     }).join('');

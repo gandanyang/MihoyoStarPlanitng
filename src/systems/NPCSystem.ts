@@ -152,14 +152,14 @@ const ADVENTURER_DIALOGUES: DialogueLine[] = [
   { speaker: '冒险家阿飞', color: '#88b8e8', text: '想去探险的话，记得备足体力。森林可比看上去大得多！' },
 ];
 
-/** 六个 NPC（纹理暂时复用现有素材，后续替换） */
+/** 六个 NPC（贴图已独立，不再复用） */
 const npcs: NPC[] = [
   new NPC('elder', '村长', 'npc_elder', ELDER_DIALOGUES, buildSchedule('elder')),
   new NPC('shopkeeper', '商店老板', 'npc_merchant', SHOPKEEPER_DIALOGUES, buildSchedule('shopkeeper')),
   new NPC('mystery', '神秘少女', 'npc_girl', MYSTERY_DIALOGUES, buildSchedule('mystery')),
-  new NPC('miner', '矿工老张', 'npc_elder', MINER_DIALOGUES, buildSchedule('miner')),
-  new NPC('gardener', '花匠小梅', 'npc_girl', GARDENER_DIALOGUES, buildSchedule('gardener')),
-  new NPC('adventurer', '冒险家阿飞', 'npc_merchant', ADVENTURER_DIALOGUES, buildSchedule('adventurer')),
+  new NPC('miner', '矿工老张', 'npc_miner', MINER_DIALOGUES, buildSchedule('miner')),
+  new NPC('gardener', '花匠小梅', 'npc_gardener', GARDENER_DIALOGUES, buildSchedule('gardener')),
+  new NPC('adventurer', '冒险家阿飞', 'npc_adventurer', ADVENTURER_DIALOGUES, buildSchedule('adventurer')),
 ];
 
 /** 读取全部 NPC（只读列表） */

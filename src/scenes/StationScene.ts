@@ -54,7 +54,9 @@ export class StationScene extends Phaser.Scene {
     // 有存档且教程已过车站 → 跳过
     if (hasSave()) {
       const saveData = load();
-      if (saveData && getStoryStep() !== 'station_intro') {
+      // 注意：此处必须读存档里的 storyStep，而不是 getStoryStep()
+      // reload 后模块级 currentStep 仍是初始值 'station_intro'，apply() 前判断会永远跳过恢复
+      if (saveData && saveData.story.storyStep !== 'station_intro') {
         apply(saveData);
         const targetScene = saveData.player.scene || 'farm';
         this.scene.start(targetScene, {

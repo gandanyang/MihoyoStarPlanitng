@@ -7,6 +7,11 @@
 ## [未发布]
 
 ### v0.5 第一章小镇剧情 + 稳定化重构（v0.5）
+- **Demo 结尾（观星之夜）**：
+  - 第一章主线完成后，每晚 20:00 起农场右下空地出现观星点（`MapScene.ts` `STARGAZE_POS`，双层光圈呼吸闪烁）
+  - 靠近按 E 触发观星收尾剧情（`STARGAZE_DIALOGUE` 9 行：林澈独白 + 守星人登场消失），随后弹出「✦ 归星物语 · Demo 结局 ✦」结算面板（`EndingPanel.ts`：游玩天数/等级/金币/钻石/星之碎片/收获/矿石/木材）
+  - 点击「继续自由游玩」关闭面板恢复游玩；存档新增 `story.demoEndingDone`（可选字段，v0.5 不升版本），只触发一次
+- **修复存档恢复不生效**（`StationScene.ts`）：判断"教程是否已过车站"改为读存档内 `saveData.story.storyStep`。原实现读模块级 `getStoryStep()`，reload 后永远返回初始值 `'station_intro'`，导致玩家每次刷新都重开序章
 - **存档系统升级**：`SAVE_VERSION` 0.3 → 0.5，存档结构重构为分组格式 `{ version, player, world, farm, story }`（`SaveSystem.ts`）
   - 加载时 `version !== SAVE_VERSION` → 走 `migrate()` 迁移；当前策略清空旧存档，防止旧格式污染新结构
   - 存档 key：`return_star_save`

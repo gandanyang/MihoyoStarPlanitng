@@ -136,6 +136,21 @@ export const SHARD_DELIVER_DIALOGUE: DialogueLine[] = [
   { speaker: '', color: COLORS.system, text: '主线任务完成：星之碎片（1/…）。岛屿的秘密，才刚刚开始。' },
 ];
 
+// ============ Demo 结尾：观星 ============
+
+/** 观星收尾剧情（第一章完成后，夜晚在庄园观星点触发） */
+export const STARGAZE_DIALOGUE: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（夜幕降临，星火镇沉入宁静。林澈独自走到庄园的空地，抬头望向星空。）' },
+  { speaker: '林澈', color: COLORS.linche, inner: true, text: '爷爷……你以前是不是也常常这样，一个人看星星？' },
+  { speaker: '林澈', color: COLORS.linche, inner: true, text: '衣袋里的碎片微微发烫。像是在回应什么。' },
+  { speaker: '神秘少女', color: COLORS.xiya, text: '你果然能看见它们。' },
+  { speaker: '林澈', color: COLORS.linche, text: '你是……？' },
+  { speaker: '神秘少女', color: COLORS.xiya, text: '我是守星人。这座岛的星光，一直在等一个愿意停下来的人。' },
+  { speaker: '神秘少女', color: COLORS.xiya, text: '你已经找回第一片碎片。等星光重聚的那一天，你会知道这座岛真正的名字。' },
+  { speaker: '', color: COLORS.system, text: '（星光在少女身边汇聚，她的身影渐渐透明，化作点点光芒消散在夜空。）' },
+  { speaker: '林澈', color: COLORS.linche, inner: true, text: '……不管这座岛藏着什么秘密，我已经决定留下来了。' },
+];
+
 // ============ 状态管理 ============
 
 let currentStep: StoryStep = 'station_intro';
@@ -151,6 +166,19 @@ export function isCh1TownIntroDone(): boolean {
 /** 标记小镇剧情已触发 */
 export function markCh1TownIntroDone(): void {
   ch1TownIntroDone = true;
+}
+
+/** Demo 结尾：观星收尾是否已触发（只触发一次） */
+let demoEndingDone = false;
+
+/** 是否已看过 Demo 结尾 */
+export function isDemoEndingDone(): boolean {
+  return demoEndingDone;
+}
+
+/** 标记 Demo 结尾已触发 */
+export function markDemoEndingDone(): void {
+  demoEndingDone = true;
 }
 
 export function getStoryStep(): StoryStep {

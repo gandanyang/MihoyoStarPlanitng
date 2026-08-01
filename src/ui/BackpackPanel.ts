@@ -12,7 +12,7 @@
  */
 
 import { getCoins } from '../data/Economy';
-import { getNonEmptyItems } from '../data/Inventory';
+import { getNonEmptyItems, itemIconHtml } from '../data/Inventory';
 
 /** 关店回调 */
 type OnClose = () => void;
@@ -119,7 +119,7 @@ function refresh(): void {
       : '';
     html += `
       <div style="${cellStyle}">
-        <div style="font-size:28px;margin-bottom:4px;">${def.icon}</div>
+        <div style="margin-bottom:4px;line-height:1;">${itemIconHtml(def.id, 28)}</div>
         <div style="font-size:13px;font-weight:bold;color:#e0d5c1;">${def.name}</div>
         <div style="font-size:12px;color:#a5d6a7;">×${count}</div>
         ${useBtn}
