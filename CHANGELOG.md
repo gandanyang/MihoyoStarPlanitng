@@ -6,6 +6,15 @@
 
 ## [未发布]
 
+### v0.5.x 剧情定稿返工：观星夜收尾（编剧审查 v0.3）
+- **观星夜收尾重写**（`StorySystem.ts`）：废弃旧版"守星人揭底"版 `STARGAZE_DIALOGUE`，改为定稿版 `DEMO_ENDING_DIALOGUE`——夏雅 + 爷爷的信 + 静默镜头（虫鸣/星光/没有说话）+ 三选项（试着留下 / 不知道答案 / 至少今晚）→ 分支独白（`DEMO_ENDING_BRANCHES`）→ 次日清晨（`DEMO_ENDING_FINALE`："归星镇，欢迎你"）
+- **对话选项支持**（`StoryDialogue.ts`）：`DialogueLine.options` 选项行渲染（鼠标/触屏点击 + 键盘 1/2/3），选择后回调分支
+- **状态标记返工**：移除 `demoEndingDone` 存档字段，改用 `storyStep = 'observatory_complete'` 持久化判重；`endingChoice` 仅内存暂存（第三章再定）；`isTutorialDone()` 兼容新终态
+- **第一章程序员能力展示**：森林采集首次交互播放 6 句对话（"它像是在等待一个条件"/"以前调程序的时候……"），结束后自动采集
+- **序章对白修订**：辞退邮件改公文口吻（弱化 AI 反派感）、独白压缩（"换过无数版本的工具"）、去"最后的信"剧透
+- **NPC 台词**：神秘少女改"异常点"版（不揭底）、老张/小梅/阿风各一句话、商店老板补一句；冒险家改名统一为"阿风"
+- **验证**：tsc / build / tutorial E2E（11 项）/ stress（25 项）/ woodcutting 全绿；新增 `probe-stargaze.mjs`（观星夜链路 12 项断言）
+
 ### v0.5 第一章小镇剧情 + 稳定化重构（v0.5）
 - **Demo 结尾（观星之夜）**：
   - 第一章主线完成后，每晚 20:00 起农场右下空地出现观星点（`MapScene.ts` `STARGAZE_POS`，双层光圈呼吸闪烁）

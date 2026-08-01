@@ -17,19 +17,24 @@ export type StoryStep =
   | 'sow_seeds'           // 夏雅给种子，播种3块
   | 'water_crops'         // 夏雅给水壶，浇水
   | 'evening_talk'        // 晚间对话
-  | 'done';               // 教程完成
+  | 'done'                // 教程完成
+  | 'observatory_complete'; // 观星夜收尾完成（Demo 结尾终态，复用 storyStep 模式）
 
 export interface DialogueLine {
   speaker: string;
   color: string;
   text: string;
   inner?: boolean;
+  /** 选项行：显示为可点击选项（当前仅观星夜收尾使用） */
+  options?: string[];
 }
 
 export const COLORS = {
   linche: '#7eb8da',
   xiya: '#f0a050',
   elder: '#c8b898',
+  girl: '#b8a0e8',
+  letter: '#e8d8a8',
   system: '#aaaaaa',
 };
 
@@ -37,15 +42,17 @@ export const COLORS = {
 
 /** 车站开场 */
 export const STATION_DIALOGUE: DialogueLine[] = [
-  { speaker: '林澈', color: COLORS.linche, inner: true, text: '又一次。' },
-  { speaker: '林澈', color: COLORS.linche, inner: true, text: '五年前，我觉得进入大城市，就是进入了未来。' },
-  { speaker: '林澈', color: COLORS.linche, inner: true, text: '每天面对电脑，写代码、改方案、追赶新的技术。' },
-  { speaker: '林澈', color: COLORS.linche, inner: true, text: '可是当变化真正发生的时候……' },
-  { speaker: '林澈', color: COLORS.linche, inner: true, text: '好像只需要一封邮件，就能结束一个人的几年努力。' },
-  { speaker: '', color: COLORS.system, text: '（林澈关闭手机。）' },
+  { speaker: '', color: COLORS.system, text: '（「嘀——」列车到站声。晨光从车窗漏进来。）' },
+  { speaker: '', color: COLORS.system, text: '（手机屏幕亮起：「尊敬的林澈先生：因业务流程智能化调整，您的岗位职责将进行重新分配。感谢您五年来的付出。」）' },
+  { speaker: '林澈', color: COLORS.linche, inner: true, text: '五年了。' },
+  { speaker: '林澈', color: COLORS.linche, inner: true, text: '五年前，我以为走进大城市，就是走进了未来。' },
+  { speaker: '林澈', color: COLORS.linche, inner: true, text: '五年里，我换过无数版本的工具。每一次，都告诉自己：下一次，不会被淘汰。' },
+  { speaker: '林澈', color: COLORS.linche, inner: true, text: '可是变化真正发生的时候……原来只需要一封邮件。' },
+  { speaker: '', color: COLORS.system, text: '（林澈关掉手机。）' },
   { speaker: '林澈', color: COLORS.linche, text: '算了。至少这次，不用再假装自己没事了。' },
-  { speaker: '', color: COLORS.system, text: '（林澈看向远处，那里有一座老旧庄园。）' },
-  { speaker: '林澈', color: COLORS.linche, inner: true, text: '星黎庄园……没想到最后，我还是回到了这里。' },
+  { speaker: '', color: COLORS.system, text: '（林澈抬起头。远处，晨雾里有一座安静的庄园。）' },
+  { speaker: '林澈', color: COLORS.linche, inner: true, text: '星黎庄园……爷爷留给我的那封信，写着这个地址。' },
+  { speaker: '林澈', color: COLORS.linche, inner: true, text: '他说，如果有一天不知道往哪走，就回来看看。' },
   { speaker: '', color: COLORS.system, text: '使用 [W/A/S/D] 或方向键控制林澈移动。前往星黎庄园。' },
 ];
 
@@ -138,17 +145,56 @@ export const SHARD_DELIVER_DIALOGUE: DialogueLine[] = [
 
 // ============ Demo 结尾：观星 ============
 
-/** 观星收尾剧情（第一章完成后，夜晚在庄园观星点触发） */
-export const STARGAZE_DIALOGUE: DialogueLine[] = [
-  { speaker: '', color: COLORS.system, text: '（夜幕降临，星火镇沉入宁静。林澈独自走到庄园的空地，抬头望向星空。）' },
-  { speaker: '林澈', color: COLORS.linche, inner: true, text: '爷爷……你以前是不是也常常这样，一个人看星星？' },
-  { speaker: '林澈', color: COLORS.linche, inner: true, text: '衣袋里的碎片微微发烫。像是在回应什么。' },
-  { speaker: '神秘少女', color: COLORS.xiya, text: '你果然能看见它们。' },
-  { speaker: '林澈', color: COLORS.linche, text: '你是……？' },
-  { speaker: '神秘少女', color: COLORS.xiya, text: '我是守星人。这座岛的星光，一直在等一个愿意停下来的人。' },
-  { speaker: '神秘少女', color: COLORS.xiya, text: '你已经找回第一片碎片。等星光重聚的那一天，你会知道这座岛真正的名字。' },
-  { speaker: '', color: COLORS.system, text: '（星光在少女身边汇聚，她的身影渐渐透明，化作点点光芒消散在夜空。）' },
-  { speaker: '林澈', color: COLORS.linche, inner: true, text: '……不管这座岛藏着什么秘密，我已经决定留下来了。' },
+// ============ 第一章：森林碎片（程序员能力展示） ============
+
+/** 森林采集对话（首次交互播放，结束后自动采集） */
+export const FOREST_SHARD_DIALOGUE: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（森林深处，一块泛着幽蓝光芒的碎片静静躺在树根旁。）' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '我们试过很多办法，可它一直没有反应。' },
+  { speaker: '林澈', color: COLORS.linche, text: '不是没有反应。' },
+  { speaker: '林澈', color: COLORS.linche, text: '它像是在等待一个条件。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '你怎么看出来的？' },
+  { speaker: '林澈', color: COLORS.linche, text: '以前调程序的时候，经常遇到类似的问题。' },
+  { speaker: '', color: COLORS.girl, text: '……它沉睡太久了。' },
+];
+
+// ============ Demo 结尾：观星夜（定稿版 v0.3） ============
+
+/** 观星夜收尾（第一章完成 + 夜晚，靠近观星点触发；含静默镜头与选项） */
+export const DEMO_ENDING_DIALOGUE: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（夜幕降临。庄园外，今天的星空格外明亮。）' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '你爷爷以前每天都会坐在这里。' },
+  { speaker: '林澈', color: COLORS.linche, text: '他也喜欢看星星？' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '嗯。他说，总有一天，会有人回来继续看。' },
+  { speaker: '', color: COLORS.system, text: '（夏雅看向石头边。那里压着一封信，被月光晒得发白。）' },
+  { speaker: '信', color: COLORS.letter, text: '如果看到这封信，说明你终于回来了。' },
+  { speaker: '信', color: COLORS.letter, text: '我不知道你为什么回来。可能是累了，可能是迷茫了。' },
+  { speaker: '信', color: COLORS.letter, text: '但这里，永远有一个属于你的地方。' },
+  { speaker: '', color: COLORS.system, text: '（林澈握着信，抬头看向星空。）' },
+  { speaker: '', color: COLORS.system, text: '（他没有说话。）' },
+  { speaker: '', color: COLORS.system, text: '（远处传来虫鸣。星光落在庄园旧墙上。）' },
+  { speaker: '', color: COLORS.system, text: '', options: ['爷爷，我会试着留下。', '我还不知道答案。', '至少今晚，我想待在这里。'] },
+];
+
+/** 观星夜三选项分支独白（选择后播放，随后汇聚到结局） */
+export const DEMO_ENDING_BRANCHES: Record<'try_stay' | 'unknown' | 'tonight', DialogueLine[]> = {
+  try_stay: [
+    { speaker: '', color: COLORS.system, text: '（林澈把信收好。也许这一次，可以试试看。）' },
+  ],
+  unknown: [
+    { speaker: '', color: COLORS.system, text: '（林澈把信收好。有些答案，也许要在这里住很久才能找到。）' },
+  ],
+  tonight: [
+    { speaker: '', color: COLORS.system, text: '（林澈把信收好。至少今晚，他想待在这里。）' },
+  ],
+};
+
+/** 观星夜收尾：选择后的汇聚结尾（次日清晨，自由模式） */
+export const DEMO_ENDING_FINALE: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（那一夜，他没有再说话。只有风穿过田野。）' },
+  { speaker: '', color: COLORS.system, text: '第二天清晨，新的早晨开始了。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '归星镇，欢迎你。' },
+  { speaker: '', color: COLORS.system, text: '已存档。现在开始，这座岛都是你的了。' },
 ];
 
 // ============ 状态管理 ============
@@ -168,17 +214,28 @@ export function markCh1TownIntroDone(): void {
   ch1TownIntroDone = true;
 }
 
-/** Demo 结尾：观星收尾是否已触发（只触发一次） */
-let demoEndingDone = false;
-
-/** 是否已看过 Demo 结尾 */
-export function isDemoEndingDone(): boolean {
-  return demoEndingDone;
+/** Demo 结尾：观星夜是否已完成（复用 storyStep，不新增存档字段） */
+export function isObservatoryComplete(): boolean {
+  return currentStep === 'observatory_complete';
 }
 
-/** 标记 Demo 结尾已触发 */
-export function markDemoEndingDone(): void {
-  demoEndingDone = true;
+/** 标记观星夜收尾完成（进入终态；isTutorialDone 兼容此终态） */
+export function markObservatoryComplete(): void {
+  currentStep = 'observatory_complete';
+}
+
+/** 观星夜选择类型（第三章多结局预留，仅内存暂存） */
+export type EndingChoice = 'try_stay' | 'unknown' | 'tonight';
+let endingChoice: EndingChoice | null = null;
+
+/** 读取观星夜选择 */
+export function getEndingChoice(): EndingChoice | null {
+  return endingChoice;
+}
+
+/** 记录观星夜选择（暂不入档，第三章再定） */
+export function setEndingChoice(choice: EndingChoice | null): void {
+  endingChoice = choice;
 }
 
 export function getStoryStep(): StoryStep {
@@ -190,7 +247,7 @@ export function setStoryStep(step: StoryStep): void {
 }
 
 export function isTutorialDone(): boolean {
-  return currentStep === 'done';
+  return currentStep === 'done' || currentStep === 'observatory_complete';
 }
 
 export function advanceStory(): void {

@@ -27,6 +27,9 @@ export class StoryDialogue {
   private typing = false;
   private typeTimer: number | null = null;
   private onComplete: (() => void) | null = null;
+  private onChoice: ((index: number) => void) | null = null;
+  private optionsEl: HTMLDivElement | null = null;
+  private optionKeyHandler: ((e: KeyboardEvent) => void) | null = null;
 
   constructor() {
     // 容器
@@ -115,9 +118,19 @@ export class StoryDialogue {
     });
     this.hintEl.textContent = '▼ 点击或空格继续';
 
+    // 选项容器（选项行显示，默认隐藏）
+    this.optionsEl = document.createElement('div');
+    Object.assign(this.optionsEl.style, {
+      display: 'none',
+      flexDirection: 'column',
+      gap: '8px',
+      marginTop: '12px',
+    });
+
     textArea.appendChild(this.nameEl);
     textArea.appendChild(this.textEl);
     textArea.appendChild(this.hintEl);
+    textArea.appendChild(this.optionsEl);
     box.appendChild(this.portraitEl);
     box.appendChild(textArea);
     this.container.appendChild(box);
@@ -161,10 +174,11 @@ export class StoryDialogue {
   }
 
   /** 播放对话序列 */
-  play(lines: DialogueLine[], onComplete?: () => void): void {
+  play(lines: DialogueLine[], onComplete?: () => void, onChoice?: (index: number) => void): void {
     this.lines = lines;
     this.index = 0;
     this.onComplete = onComplete ?? null;
+    this.onChoice = onChoice ?? null;
     this.container.style.display = 'block';
     this.showLine();
   }
@@ -177,6 +191,7 @@ export class StoryDialogue {
   /** 跳过整段对话，直接触发 onComplete */
   skip(): void {
     if (!this.isOpen()) return;
+    this.clearOptions();
     this.close();
     this.onComplete?.();
   }
@@ -184,6 +199,8 @@ export class StoryDialogue {
   /** 推进：正在打字时直接显示全文，否则下一句 */
   advance(): void {
     if (!this.isOpen()) return;
+    // 选项行必须做出选择，不允许直接跳过
+    if (this.optionsEl && this.optionsEl.style.display !== 'none') return;
     if (this.typing) {
       // 跳过打字效果，直接显示全文
       this.finishTyping();
@@ -201,6 +218,13 @@ export class StoryDialogue {
   private showLine(): void {
     const line = this.lines[this.index];
     if (!line) return;
+    this.clearOptions();
+
+    // 选项行：隐藏普通文本，渲染选项按钮
+    if (line.options && line.options.length > 0) {
+      this.showOptions(line.options);
+      return;
+    }
 
     // 角色名
     if (line.inner) {
@@ -262,7 +286,77 @@ export class StoryDialogue {
     this.hintEl.style.opacity = '1';
   }
 
+  /** 渲染选项按钮（选项行） */
+  private showOptions(options: string[]): void {
+    if (!this.optionsEl) return;
+    this.optionsEl.innerHTML = '';
+    options.forEach((opt, i) => {
+      const btn = document.createElement('button');
+      btn.textContent = `${i + 1}. ${opt}`;
+      Object.assign(btn.style, {
+        display: 'block',
+        width: '100%',
+        textAlign: 'left',
+        fontSize: '15px',
+        padding: '10px 14px',
+        background: 'rgba(255,255,255,0.06)',
+        color: '#e0e0e0',
+        border: '1px solid rgba(255,255,255,0.2)',
+        borderRadius: '8px',
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+      });
+      btn.addEventListener('mouseenter', () => { btn.style.background = 'rgba(255,255,255,0.16)'; });
+      btn.addEventListener('mouseleave', () => { btn.style.background = 'rgba(255,255,255,0.06)'; });
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.selectOption(i);
+      });
+      this.optionsEl!.appendChild(btn);
+    });
+    this.optionsEl.style.display = 'flex';
+    this.nameEl.textContent = '';
+    this.nameEl.style.display = 'none';
+    this.textEl.textContent = '';
+    this.portraitEl.style.display = 'none';
+    this.hintEl.style.opacity = '0';
+    this.typing = false;
+    if (this.typeTimer !== null) { clearInterval(this.typeTimer); this.typeTimer = null; }
+
+    // 键盘 1/2/3 选择
+    const handler = (e: KeyboardEvent) => {
+      const n = parseInt(e.key, 10);
+      if (n >= 1 && n <= options.length) {
+        e.preventDefault();
+        this.selectOption(n - 1);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    this.optionKeyHandler = handler;
+  }
+
+  /** 选择选项：回调 onChoice 后关闭（分支由调用方继续播放） */
+  private selectOption(index: number): void {
+    if (!this.isOpen()) return;
+    this.clearOptions();
+    this.close();
+    this.onChoice?.(index);
+  }
+
+  /** 清理选项 UI 与键盘监听 */
+  private clearOptions(): void {
+    if (this.optionKeyHandler) {
+      window.removeEventListener('keydown', this.optionKeyHandler);
+      this.optionKeyHandler = null;
+    }
+    if (this.optionsEl) {
+      this.optionsEl.style.display = 'none';
+      this.optionsEl.innerHTML = '';
+    }
+  }
+
   private close(): void {
+    this.clearOptions();
     this.container.style.display = 'none';
     if (this.typeTimer !== null) {
       clearInterval(this.typeTimer);

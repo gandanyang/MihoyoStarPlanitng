@@ -54,9 +54,11 @@ import { EndingPanel } from '../ui/EndingPanel';
 import {
   getStoryStep, setStoryStep, advanceStory, isTutorialDone,
   isCh1TownIntroDone, markCh1TownIntroDone,
-  isDemoEndingDone, markDemoEndingDone,
+  isObservatoryComplete, markObservatoryComplete,
+  getEndingChoice, setEndingChoice, type EndingChoice, type DialogueLine,
   XIYA_DIALOGUE, GATE_OPENED_DIALOGUE, SOW_SEEDS_DIALOGUE,
-  WATER_CROPS_DIALOGUE, EVENING_DIALOGUE, TOWN_INTRO_DIALOGUE, STARGAZE_DIALOGUE,
+  WATER_CROPS_DIALOGUE, EVENING_DIALOGUE, TOWN_INTRO_DIALOGUE,
+  FOREST_SHARD_DIALOGUE, DEMO_ENDING_DIALOGUE, DEMO_ENDING_BRANCHES, DEMO_ENDING_FINALE,
 } from '../systems/StorySystem';
 import { hasSave, load, apply, save, getLastIncompatibleVersion, clearIncompatibleVersion, SAVE_VERSION } from '../systems/SaveSystem';
 import { play } from '../systems/AudioSystem';
@@ -118,6 +120,8 @@ export class MapScene extends Phaser.Scene {
   private dialogueTimer: Phaser.Time.TimerEvent | null = null;
   // 森林采集点：星之碎片（accepted 状态时显示，采集后销毁）
   private shardSprite: Phaser.GameObjects.Ellipse | null = null;
+  // 森林碎片对话已播放（首次交互先播对话，结束后自动采集）
+  private shardDialoguePlayed = false;
   // 矿洞矿脉精灵列表（mine 场景，id → sprite）
   private oreSprites: { deposit: OreDeposit; sprite: Phaser.GameObjects.Image }[] = [];
   // 农场树木精灵列表（farm 场景，key = "col,row"）
@@ -1239,14 +1243,14 @@ export class MapScene extends Phaser.Scene {
       const dx = this.player.x - this.shardSprite.x;
       const dy = this.player.y - this.shardSprite.y;
       if (dx * dx + dy * dy < 24 * 24) {
-        collectShard();
-        this.shardSprite.destroy();
-        this.shardSprite = null;
-        addItem('star_shard', 1);
-        onDQCollect('star_shard');
-        this.updateDailyQuestPanel();
-        this.showDialogueText('采集到「星之碎片」！返回村长交付任务。');
-        this.updateQuestHUD();
+        // 首次交互先播"程序员能力展示"对话，结束后自动采集（无需二次按键）
+        if (!this.shardDialoguePlayed) {
+          this.shardDialoguePlayed = true;
+          if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+          this.storyDialogue.play(FOREST_SHARD_DIALOGUE, () => {
+            this.doCollectShard();
+          });
+        }
         return;
       }
     }
@@ -1325,7 +1329,7 @@ export class MapScene extends Phaser.Scene {
   /** 观星点显隐 + 呼吸闪烁（每帧，仅 farm 且主线完成 + 夜晚时显示） */
   private updateStargaze(): void {
     if (this.mapKey !== 'farm' || this.stargazeSprites.length === 0) return;
-    const eligible = getQuestState() === 'completed' && getTime().hour >= 20 && !isDemoEndingDone();
+    const eligible = getQuestState() === 'completed' && getTime().hour >= 20 && !isObservatoryComplete();
     const show = eligible && !(this.storyDialogue && this.storyDialogue.isOpen());
     this.setStargazeVisible(show);
     if (!show) return;
@@ -1341,19 +1345,54 @@ export class MapScene extends Phaser.Scene {
    */
   private tryStargaze(): boolean {
     if (this.mapKey !== 'farm') return false;
-    if (getQuestState() !== 'completed' || getTime().hour < 20 || isDemoEndingDone()) return false;
+    if (getQuestState() !== 'completed' || getTime().hour < 20 || isObservatoryComplete()) return false;
     const dx = this.player.x - this.STARGAZE_POS.x;
     const dy = this.player.y - this.STARGAZE_POS.y;
     if (dx * dx + dy * dy > 48 * 48) return false;
     if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
-    markDemoEndingDone();
-    this.storyDialogue.play(STARGAZE_DIALOGUE, () => {
-      this.updateHUD();
-      if (!this.endingPanel) this.endingPanel = new EndingPanel();
-      save({ x: this.player.x, y: this.player.y, scene: this.mapKey, facing: this.player.facing } as any);
-      this.endingPanel.open();
-    });
+    markObservatoryComplete();
+    this.storyDialogue.play(
+      DEMO_ENDING_DIALOGUE,
+      () => this.finishStargaze(),
+      (index: number) => {
+        const choice: EndingChoice = index === 0 ? 'try_stay' : index === 1 ? 'unknown' : 'tonight';
+        setEndingChoice(choice);
+        this.playStargazeAfter(DEMO_ENDING_BRANCHES[choice]);
+      },
+    );
     return true;
+  }
+
+  /** 观星夜跳过/未选择时走默认分支 */
+  private finishStargaze(): void {
+    if (getEndingChoice()) return;
+    setEndingChoice('try_stay');
+    this.playStargazeAfter(DEMO_ENDING_BRANCHES['try_stay']);
+  }
+
+  /** 观星夜：分支独白 → 次日清晨 → 结算面板 + 存档 */
+  private playStargazeAfter(branch: DialogueLine[]): void {
+    if (!this.storyDialogue) return;
+    this.storyDialogue.play(branch, () => {
+      this.storyDialogue!.play(DEMO_ENDING_FINALE, () => {
+        this.updateHUD();
+        if (!this.endingPanel) this.endingPanel = new EndingPanel();
+        save({ x: this.player.x, y: this.player.y, scene: this.mapKey, facing: this.player.facing } as any);
+        this.endingPanel.open();
+      });
+    });
+  }
+
+  /** 采集星之碎片（森林对话结束后自动执行） */
+  private doCollectShard(): void {
+    collectShard();
+    this.shardSprite?.destroy();
+    this.shardSprite = null;
+    addItem('star_shard', 1);
+    onDQCollect('star_shard');
+    this.updateDailyQuestPanel();
+    this.showDialogueText('采集到「星之碎片」！返回村长交付任务。');
+    this.updateQuestHUD();
   }
 
   /**

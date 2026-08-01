@@ -4,7 +4,7 @@
  * 设计：与 ShopPanel 相同模式——模块级单例、DOM 只创建一次、open/close 切显隐。
  * 触发：观星收尾剧情播放完成后由 MapScene 调 open()。
  * 内容：游玩天数 / 等级 / 金币 / 钻石 / 收集统计，点击「继续自由游玩」关闭。
- * 关闭后不再重复触发（demoEndingDone 标记已存档）。
+ * 关闭后不再重复触发（storyStep = 'observatory_complete' 持久化判重）。
  */
 
 import { getTime } from '../data/TimeSystem';

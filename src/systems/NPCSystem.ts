@@ -118,6 +118,7 @@ const SHOPKEEPER_DIALOGUES: DialogueLine[] = [
   { speaker: '商店老板', color: '#8ac8a0', text: '欢迎光临星辰杂货店！' },
   { speaker: '商店老板', color: '#8ac8a0', text: '收获的作物、挖到的矿石都可以卖给我换金币。种子和工具也有卖。' },
   { speaker: '', color: COLORS.system, text: '（按 [E] 键打开商店。）' },
+  { speaker: '商店老板', color: '#8ac8a0', text: '需要什么随便看。钱货两清，童叟无欺。' },
 ];
 
 /** 神秘少女：神秘感对话，暗示岛屿与星辰的关联 */
@@ -125,7 +126,7 @@ const MYSTERY_DIALOGUES: DialogueLine[] = [
   { speaker: '', color: COLORS.system, text: '（一个少女站在树影下，她似乎一直在等着林澈。少女抬起头。）' },
   { speaker: '神秘少女', color: '#b8a0e8', text: '……你来了。' },
   { speaker: '林澈', color: COLORS.linche, text: '你认识我？' },
-  { speaker: '神秘少女', color: '#b8a0e8', text: '这座岛上的星星告诉我，会有一个从远方回来的人。' },
+  { speaker: '神秘少女', color: '#b8a0e8', text: '不认识。……只是觉得，你应该会来。' },
   { speaker: '神秘少女', color: '#b8a0e8', text: '你身上……有那颗星的味道。夜深的时候，记得抬头看看。' },
   { speaker: '', color: COLORS.system, text: '（少女说完，转身消失在林间。）' },
 ];
@@ -136,6 +137,7 @@ const MINER_DIALOGUES: DialogueLine[] = [
   { speaker: '矿工老张', color: '#d8a050', text: '矿洞里能挖到石头、铜矿、铁矿。拿到镇上卖了能换钱。' },
   { speaker: '矿工老张', color: '#d8a050', text: '不过挖矿费体力，别把自个儿累趴下咯。' },
   { speaker: '', color: COLORS.system, text: '（靠近发光的矿脉，按 [E] 键开采。矿洞可从小镇进入。）' },
+  { speaker: '矿工老张', color: '#d8a050', text: '年轻的时候，我也想离开这里。' },
 ];
 
 /** 花匠小梅：种植话题 */
@@ -143,13 +145,15 @@ const GARDENER_DIALOGUES: DialogueLine[] = [
   { speaker: '花匠小梅', color: '#a0d888', text: '你好呀，我叫小梅。这些花都是我亲手种的，漂亮吧？' },
   { speaker: '花匠小梅', color: '#a0d888', text: '种东西啊，没什么秘诀。每天来看看它们，浇水、除草……' },
   { speaker: '花匠小梅', color: '#a0d888', text: '只要用心，土地就会用丰收回报你。你的庄园也会一样的。' },
+  { speaker: '花匠小梅', color: '#a0d888', text: '这花不是卖的，是有人托我种的。' },
 ];
 
-/** 冒险家阿飞：冒险与森林提示 */
+/** 冒险家阿风：冒险与森林提示 */
 const ADVENTURER_DIALOGUES: DialogueLine[] = [
-  { speaker: '冒险家阿飞', color: '#88b8e8', text: '嘿！新来的庄园主！我叫阿飞，这座岛的每个角落我都跑遍了。' },
-  { speaker: '冒险家阿飞', color: '#88b8e8', text: '告诉你个秘密——森林深处有东西在发光，镇长神神秘秘的不肯说。' },
-  { speaker: '冒险家阿飞', color: '#88b8e8', text: '想去探险的话，记得备足体力。森林可比看上去大得多！' },
+  { speaker: '冒险家阿风', color: '#88b8e8', text: '嘿！新来的庄园主！我叫阿风，这座岛的每个角落我都跑遍了。' },
+  { speaker: '冒险家阿风', color: '#88b8e8', text: '告诉你个秘密——森林深处有东西在发光，镇长神神秘秘的不肯说。' },
+  { speaker: '冒险家阿风', color: '#88b8e8', text: '想去探险的话，记得备足体力。森林可比看上去大得多！' },
+  { speaker: '冒险家阿风', color: '#88b8e8', text: '森林深处……有些东西，最好别惊醒。' },
 ];
 
 /** 六个 NPC（贴图已独立，不再复用） */
@@ -159,7 +163,7 @@ const npcs: NPC[] = [
   new NPC('mystery', '神秘少女', 'npc_girl', MYSTERY_DIALOGUES, buildSchedule('mystery')),
   new NPC('miner', '矿工老张', 'npc_miner', MINER_DIALOGUES, buildSchedule('miner')),
   new NPC('gardener', '花匠小梅', 'npc_gardener', GARDENER_DIALOGUES, buildSchedule('gardener')),
-  new NPC('adventurer', '冒险家阿飞', 'npc_adventurer', ADVENTURER_DIALOGUES, buildSchedule('adventurer')),
+  new NPC('adventurer', '冒险家阿风', 'npc_adventurer', ADVENTURER_DIALOGUES, buildSchedule('adventurer')),
 ];
 
 /** 读取全部 NPC（只读列表） */

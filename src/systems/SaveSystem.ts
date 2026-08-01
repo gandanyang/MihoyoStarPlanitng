@@ -32,7 +32,7 @@ import { getAllInventoryEntries, restoreAllInventory, type ItemType } from '../d
 import { getTime, setTimeFull } from '../data/TimeSystem';
 import { getStamina, setStamina as restoreStamina } from '../data/Stamina';
 import { getMinedOreIds, restoreMinedOres } from '../data/MineState';
-import { getStoryStep, setStoryStep, isCh1TownIntroDone, markCh1TownIntroDone, isDemoEndingDone, markDemoEndingDone, type StoryStep } from '../systems/StorySystem';
+import { getStoryStep, setStoryStep, isCh1TownIntroDone, markCh1TownIntroDone, type StoryStep } from '../systems/StorySystem';
 import { getQuestState, setQuestState, type QuestState } from '../systems/QuestSystem';
 import { getDailyQuestSaveData, restoreDailyQuests, type DailyQuestSaveData } from '../systems/DailyQuestSystem';
 
@@ -80,7 +80,6 @@ export interface SaveData {
   story: {
     storyStep: StoryStep;
     ch1TownIntroDone?: boolean;
-    demoEndingDone?: boolean;
   };
 }
 
@@ -138,7 +137,6 @@ export function save(player: {
     story: {
       storyStep: getStoryStep(),
       ch1TownIntroDone: isCh1TownIntroDone(),
-      demoEndingDone: isDemoEndingDone(),
     },
   };
 
@@ -242,7 +240,6 @@ export function apply(data: SaveData): void {
   // 剧情
   setStoryStep(data.story.storyStep ?? 'done');
   if (data.story.ch1TownIntroDone) markCh1TownIntroDone();
-  if (data.story.demoEndingDone) markDemoEndingDone();
   // 背包
   restoreAllInventory(data.player.inventory);
   // 玩家位置（由 MapScene 读取后设置 spawn）
