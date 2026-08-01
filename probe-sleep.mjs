@@ -123,13 +123,13 @@ async function run() {
       console.log(`B. 屋内床铺睡觉 → step=${info.step}${info.step === 'done' ? ' ✅完成' : ' ❌未完成'}`);
     }
 
-    // ===== C. 农场木屋区域按 E（玩家看到木屋可能直接按） =====
+    // ===== C. 农场木屋区域按 E（玩家看到木屋直接按；v0.5.2 修复：木屋地板=睡觉判定格） =====
     await page.evaluate(() => window.debug.setStoryStep('evening_talk'));
     await gotoScene(page, 'farm', { x: 400, y: 300 });
     await teleport(page, 'farm', 56, 304, 'up'); // (3,19) 木屋地板
     await pressE(page);
     info = await sceneInfo(page);
-    console.log(`C. 农场木屋(3,19) 按E → step=${info.step}${info.step === 'done' ? ' ⚠️不应完成' : ' ✅符合预期（农场无床不触发）'}`);
+    console.log(`C. 农场木屋(3,19) 按E → step=${info.step}${info.step === 'done' ? ' ✅完成（v0.5.2 修复：木屋地板可睡）' : ' ❌未完成'}`);
 
     // ===== D. 屋内床铺相邻格（row 4 面向床） =====
     await page.evaluate(() => window.debug.setStoryStep('evening_talk'));

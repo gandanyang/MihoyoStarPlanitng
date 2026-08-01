@@ -20,6 +20,7 @@
  */
 
 import { InputManager } from './InputManager';
+import { isMobileLayout } from '../config';
 
 /** 当前活跃场景的 InputManager（DOM 事件回调操作它） */
 let currentInput: InputManager | null = null;
@@ -32,6 +33,9 @@ let lastPY = 0;
 const deadzone = 10;
 let joystickBase: HTMLDivElement | null = null;
 let joystickThumb: HTMLDivElement | null = null;
+/** 背包按钮（移动端显示，对应键盘 B） */
+let backpackBtn: HTMLDivElement | null = null;
+let backpackHandler: (() => void) | null = null;
 /** DOM 是否已创建（防止重复创建） */
 let domCreated = false;
 
@@ -102,9 +106,30 @@ function createDom(): void {
   btn.addEventListener('touchstart', pressBtn);
   btn.addEventListener('mousedown', pressBtn);
 
+  // 背包按钮（仅移动端显示；桌面端用键盘 B）
+  backpackBtn = document.createElement('div');
+  backpackBtn.style.cssText =
+    'position:absolute;right:30px;bottom:135px;width:64px;height:64px;border-radius:50%;background:rgba(33,150,243,0.5);border:2px solid rgba(255,255,255,0.6);pointer-events:auto;display:none;align-items:center;justify-content:center;color:#fff;font:bold 15px Arial;touch-action:none;cursor:pointer';
+  backpackBtn.textContent = '背包';
+  const pressBackpack = (e: Event) => {
+    e.preventDefault();
+    if (backpackHandler) backpackHandler();
+  };
+  backpackBtn.addEventListener('touchstart', pressBackpack);
+  backpackBtn.addEventListener('mousedown', pressBackpack);
+  container.appendChild(backpackBtn);
+  updateBackpackVisibility();
+  window.addEventListener('resize', updateBackpackVisibility);
+
   container.appendChild(joy);
   container.appendChild(btn);
   document.body.appendChild(container);
+}
+
+/** 背包按钮仅移动端显示（桌面有 B 键） */
+function updateBackpackVisibility(): void {
+  if (!backpackBtn) return;
+  backpackBtn.style.display = isMobileLayout() ? 'flex' : 'none';
 }
 
 /** 开始拖动摇杆 */
@@ -158,12 +183,15 @@ function applyDirection(): void {
 }
 
 export class TouchControls {
-  constructor(_scene: Phaser.Scene, input: InputManager) {
+  constructor(_scene: Phaser.Scene, input: InputManager, onBackpack?: () => void) {
     // 更新当前活跃 InputManager（场景切换时由新场景更新）
     currentInput = input;
+    backpackHandler = onBackpack ?? null;
     // DOM 只创建一次，后续场景切换只更新 currentInput
     if (!domCreated) {
       createDom();
+    } else {
+      updateBackpackVisibility();
     }
   }
 

@@ -122,7 +122,8 @@ export class MapScene extends Phaser.Scene {
   private shardSprite: Phaser.GameObjects.Ellipse | null = null;
   // 森林碎片对话已播放（首次交互先播对话，结束后自动采集）
   private shardDialoguePlayed = false;
-  // 屋内真实床铺格集合（house 场景，Ground 层 gid 9；"真实床"睡觉判定）
+  // 睡觉判定格集合：house 场景为真实床铺（Ground gid 9）；farm 场景为木屋地板（Walls gid 6）
+  // 说明：教程提示"回到床前按 E 睡觉"显示在 farm，玩家在木屋内按 E 也应能睡（无需先进屋）
   private bedTiles = new Set<string>();
   // 矿洞矿脉精灵列表（mine 场景，id → sprite）
   private oreSprites: { deposit: OreDeposit; sprite: Phaser.GameObjects.Image }[] = [];
@@ -221,8 +222,8 @@ export class MapScene extends Phaser.Scene {
   private createScene(): void {
     // 创建 tilemap 并关联 tileset
     const map = this.make.tilemap({ key: this.mapKey });
-    // 屋内场景：收集真实床铺格（睡觉判定用）
-    if (this.mapKey === 'house') {
+    // 屋内/木屋场景：收集睡觉判定格（house=床铺 gid 9；farm=木屋地板 gid 6）
+    if (this.mapKey === 'house' || this.mapKey === 'farm') {
       this.collectBedTiles(map);
     }
     let tileset = map.addTilesetImage('placeholder', 'tiles');
@@ -397,8 +398,8 @@ export class MapScene extends Phaser.Scene {
       this.setupTutorial();
     }
 
-    // 触屏控件（摇杆+交互按钮，DOM 单例，PC 和手机都显示）
-    this.touchControls = new TouchControls(this, this.inputManager);
+    // 触屏控件（摇杆+交互按钮，DOM 单例；移动端额外显示背包按钮）
+    this.touchControls = new TouchControls(this, this.inputManager, () => this.tryOpenBackpack());
     // 商店面板（DOM 覆盖层；数据变化时刷新 HUD 金币显示；关店时清理输入残留）
     this.shopPanel = new ShopPanel(
       () => this.updateHUD(),
@@ -841,8 +842,8 @@ export class MapScene extends Phaser.Scene {
 
     // 提示
     const hints: Partial<Record<string, string>> = {
-      arrive_manor: '→ 靠近夏雅，按 [E] 键对话',
-      get_key: '→ 按 [B] 键打开背包，选择钥匙使用',
+      arrive_manor: this.hintText('→ 靠近夏雅，按 [E] 键对话', '→ 靠近夏雅，点「交互」对话'),
+      get_key: this.hintText('→ 按 [B] 键打开背包，选择钥匙使用', '→ 点按右下角「背包」按钮，选择钥匙使用'),
     };
     if (hints[step]) this.showTutorialHint(hints[step]!);
   }
@@ -850,10 +851,10 @@ export class MapScene extends Phaser.Scene {
   /** 农场教程：锄地/播种/浇水/睡觉 */
   private setupFarmTutorial(step: string): void {
     const hints: Partial<Record<string, string>> = {
-      clear_land: '→ 对着农田区域按 [E] 锄地，清理 3 块土地',
-      sow_seeds: '→ 按 [R] 切换到萝卜种子，播种 3 块土地',
-      water_crops: '→ 对已播种的土地按 [E] 浇水',
-      evening_talk: '→ 回到床前按 [E] 睡觉，结束第一天',
+      clear_land: this.hintText('→ 对着农田区域按 [E] 锄地，清理 3 块土地', '→ 对着农田区域点「交互」锄地，清理 3 块土地'),
+      sow_seeds: this.hintText('→ 按 [R] 切换到萝卜种子，播种 3 块土地', '→ 对着锄过的土地点「交互」播种萝卜（默认种子），播种 3 块土地'),
+      water_crops: this.hintText('→ 对已播种的土地按 [E] 浇水', '→ 对已播种的土地点「交互」浇水'),
+      evening_talk: this.hintText('→ 回到床前按 [E] 睡觉，结束第一天', '→ 回到屋内床前点「交互」睡觉，结束第一天'),
     };
     if (hints[step]) this.showTutorialHint(hints[step]!);
   }
@@ -890,7 +891,7 @@ export class MapScene extends Phaser.Scene {
       this.storyDialogue!.play(XIYA_DIALOGUE, () => {
         addItem('manor_key', 1);
         advanceStory(); // → get_key
-        this.showTutorialHint('→ 按 [B] 键打开背包，选择钥匙使用');
+        this.showTutorialHint(this.hintText('→ 按 [B] 键打开背包，选择钥匙使用', '→ 点按右下角「背包」按钮，选择钥匙使用'));
         this.updateHUD();
       });
       return true;
@@ -921,7 +922,7 @@ export class MapScene extends Phaser.Scene {
       if (this.mapKey === 'gate') {
         this.showTutorialHint('→ 大门已开，穿过大门前往庄园');
       } else {
-        this.showTutorialHint('→ 对着农田区域按 [E] 锄地，清理 3 块土地');
+        this.showTutorialHint(this.hintText('→ 对着农田区域按 [E] 锄地，清理 3 块土地', '→ 对着农田区域点「交互」锄地，清理 3 块土地'));
       }
       this.updateHUD();
     });
@@ -942,7 +943,7 @@ export class MapScene extends Phaser.Scene {
         addItem('radish_seed', 3);
         advanceStory(); // → sow_seeds
         this.storyDialogue!.play(SOW_SEEDS_DIALOGUE, () => {
-          this.showTutorialHint('→ 按 [R] 切换到萝卜种子，播种 3 块土地');
+          this.showTutorialHint(this.hintText('→ 按 [R] 切换到萝卜种子，播种 3 块土地', '→ 对着锄过的土地点「交互」播种萝卜（默认种子），播种 3 块土地'));
           this.updateHUD();
         });
       }
@@ -958,7 +959,7 @@ export class MapScene extends Phaser.Scene {
         addItem('old_watering_can', 1);
         advanceStory(); // → water_crops
         this.storyDialogue!.play(WATER_CROPS_DIALOGUE, () => {
-          this.showTutorialHint('→ 对已播种的土地按 [E] 键浇水');
+          this.showTutorialHint(this.hintText('→ 对已播种的土地按 [E] 键浇水', '→ 对已播种的土地点「交互」浇水'));
           this.updateHUD();
         });
       }
@@ -972,7 +973,7 @@ export class MapScene extends Phaser.Scene {
         this.removeTutorialHint();
         advanceStory(); // → evening_talk
         this.storyDialogue!.play(EVENING_DIALOGUE, () => {
-          this.showTutorialHint('→ 回到床前按 [E] 睡觉，结束第一天');
+          this.showTutorialHint(this.hintText('→ 回到床前按 [E] 睡觉，结束第一天', '→ 回到屋内床前点「交互」睡觉，结束第一天'));
           this.updateHUD();
         });
       }
@@ -1008,6 +1009,20 @@ export class MapScene extends Phaser.Scene {
    */
   updateQuestHUD(): void {
     this.hudQuestDom.textContent = `任务：${getQuestObjective()}`;
+  }
+
+  /** 触屏背包按钮：对话/面板/切图期间不响应（对应键盘 B） */
+  private tryOpenBackpack(): void {
+    if (this.transitioning) return;
+    if (this.storyDialogue && this.storyDialogue.isOpen()) return;
+    if (this.shopPanel.isOpen() || this.backpackPanel.isOpen()) return;
+    this.inputManager.clearAction();
+    this.backpackPanel.open();
+  }
+
+  /** 教程提示文案：移动端（无键盘）与桌面端差异 */
+  private hintText(pc: string, mob: string): string {
+    return isMobileLayout() ? mob : pc;
   }
 
   /**
@@ -1187,24 +1202,33 @@ export class MapScene extends Phaser.Scene {
    *   2. 否则 → 农田交互（锄地/播种/浇水/收获）
    */
   private tryInteract(): void {
-    // 1. 睡觉点检测：屋内真实床铺（house，Ground 层 gid 9）
-    //    支持：站在床格上按 E，或站在床相邻格且面向床按 E
-    if (this.mapKey === 'house') {
+    // 1. 睡觉点检测：
+    //    house → 真实床铺（Ground gid 9）：站在床格上按 E，或站在床相邻格且面向床按 E
+    //    farm  → 木屋地板（Walls gid 6）：站在木屋内按 E 即可（教程提示"回到床前"，玩家无需先进屋）
+    if (this.mapKey === 'house' || this.mapKey === 'farm') {
       const pc = Math.floor(this.player.x / TILE_SIZE);
       const pr = Math.floor(this.player.y / TILE_SIZE);
-      let tc = pc;
-      let tr = pr;
-      switch (this.player.facing) {
-        case 'up': tr = pr - 1; break;
-        case 'down': tr = pr + 1; break;
-        case 'left': tc = pc - 1; break;
-        case 'right': tc = pc + 1; break;
-      }
-      if (this.bedTiles.has(`${pc},${pr}`) || this.bedTiles.has(`${tc},${tr}`)) {
+      if (this.bedTiles.has(`${pc},${pr}`)) {
         // 教程：晚间睡觉 → 结束教程
         if (!isTutorialDone() && this.tryTutorialSleep()) return;
         this.trySleep();
         return;
+      }
+      if (this.mapKey === 'house') {
+        // house：支持站在床相邻格且面向床按 E
+        let tc = pc;
+        let tr = pr;
+        switch (this.player.facing) {
+          case 'up': tr = pr - 1; break;
+          case 'down': tr = pr + 1; break;
+          case 'left': tc = pc - 1; break;
+          case 'right': tc = pc + 1; break;
+        }
+        if (this.bedTiles.has(`${tc},${tr}`)) {
+          if (!isTutorialDone() && this.tryTutorialSleep()) return;
+          this.trySleep();
+          return;
+        }
       }
     }
 
@@ -1421,29 +1445,44 @@ export class MapScene extends Phaser.Scene {
 
   /**
    * 收集屋内真实床铺格（Ground 层 gid 9）。
-   * 扫描失败时回退到已知床铺区域（house cols 2-3, rows 2-3），保证睡觉判定不失效。
+   * 扫描睡觉判定格：
+   *   house → Ground 层 gid 9（真实床铺）
+   *   farm  → Walls 层 gid 6（木屋地板；教程提示在 farm，玩家在木屋内按 E 即可睡觉）
+   * 扫描失败时回退到已知区域（house cols 2-3, rows 2-3；farm cols 3-8, rows 19-23），保证睡觉判定不失效。
    */
   private collectBedTiles(map: Phaser.Tilemaps.Tilemap): void {
     this.bedTiles.clear();
+    // house: Ground 层 gid 9；farm: Walls 层 gid 6
+    const targetLayerName = this.mapKey === 'house' ? 'Ground' : 'Walls';
+    const targetGid = this.mapKey === 'house' ? 9 : 6;
     for (const layerData of map.layers) {
+      if (layerData?.name !== targetLayerName) continue;
       const data = layerData?.data;
       if (!data) continue;
       for (let r = 0; r < data.length; r++) {
         for (let c = 0; c < data[r].length; c++) {
-          if (data[r][c]?.index === 9) {
+          if (data[r][c]?.index === targetGid) {
             this.bedTiles.add(`${c},${r}`);
           }
         }
       }
     }
     if (this.bedTiles.size === 0) {
-      for (let c = 2; c <= 3; c++) {
-        for (let r = 2; r <= 3; r++) {
-          this.bedTiles.add(`${c},${r}`);
+      if (this.mapKey === 'house') {
+        for (let c = 2; c <= 3; c++) {
+          for (let r = 2; r <= 3; r++) {
+            this.bedTiles.add(`${c},${r}`);
+          }
+        }
+      } else {
+        for (let c = 3; c <= 8; c++) {
+          for (let r = 19; r <= 23; r++) {
+            this.bedTiles.add(`${c},${r}`);
+          }
         }
       }
     }
-    console.log(`[MapScene:house] 床铺格 ${this.bedTiles.size} 个`);
+    console.log(`[MapScene:${this.mapKey}] 睡觉判定格 ${this.bedTiles.size} 个`);
   }
 
   /**

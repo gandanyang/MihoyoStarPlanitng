@@ -595,8 +595,15 @@ export class StationScene extends Phaser.Scene {
     this.storyDialogue.play(STATION_DIALOGUE, () => {
       advanceStory(); // → station_move
       this.canMove = true;
+      this.hideSkipButton(); // P2：剧情对话结束后隐藏跳过按钮
       this.showMoveHint();
     });
+  }
+
+  /** 隐藏跳过开场按钮 */
+  private hideSkipButton(): void {
+    const btn = document.getElementById('intro-skip-btn');
+    if (btn) btn.remove();
   }
 
   private showMoveHint(): void {
