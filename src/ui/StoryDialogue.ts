@@ -49,7 +49,9 @@ export class StoryDialogue {
       height: '100%',
       zIndex: '500',
       display: 'none',
-      pointerEvents: 'auto',
+      // 背景不拦截点击：防止全屏覆盖层挡住下方 UI（如每日任务面板的领奖按钮）。
+      // 仅对话框主体与 Skip 按钮保留 pointer-events:auto（见下方 box/skipBtn）。
+      pointerEvents: 'none',
       background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.7) 70%, rgba(0,0,0,0.85) 100%)',
     });
 
@@ -72,6 +74,7 @@ export class StoryDialogue {
       display: 'flex',
       gap: '16px',
       alignItems: 'flex-start',
+      pointerEvents: 'auto',
     });
 
     // 肖像区
@@ -156,6 +159,7 @@ export class StoryDialogue {
       borderRadius: '6px',
       cursor: 'pointer',
       transition: 'all 0.2s',
+      pointerEvents: 'auto',
     });
     skipBtn.textContent = 'Skip ▸';
     skipBtn.addEventListener('mouseenter', () => {
