@@ -6,6 +6,16 @@
 
 ## [未发布]
 
+### v0.5.2 P0 修复：睡觉交互改为真实床铺（"回到床上睡觉"无法完成教程 bug）
+- **根因**：农场旧睡觉判定区（cols 2-4, rows 12-14）与床的实际位置脱节——床只在屋内（house cols 2-3, rows 2-3），玩家在可见木屋处按 E 无反应，教程无法推进
+- **修复**（`MapScene.ts`）：
+  - 删除/废弃农场旧睡觉硬编码区域（rows 12-14, cols 2-4）
+  - 睡觉判定改为屋内真实床铺：自动扫描 Ground 层 gid 9（扫描失败回退已知床格）
+  - 支持站在床格上按 E，或站在床相邻格且面向床按 E
+  - 不新增存档字段、不改 storyStep
+- **测试更新**：test-tutorial 第 11 步改为"进门 → 床边按 E 完成教程 → 床上按 E 跨天"；test-woodcutting W7 改为真实床铺睡觉路径；新增 probe-sleep 排查探针
+- **验证**：tsc / build / tutorial / stress（25）/ woodcutting / ch1-story（24）全绿
+
 ### v0.5.2 P0 稳定底线（存档可靠性 + 第一章 E2E）
 - **存档可靠性补强**（`SaveSystem.ts` / `MapScene.ts`）：
   - `pagehide` 兜底自动保存（移动端 `beforeunload` 不可靠）
