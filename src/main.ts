@@ -11,6 +11,17 @@ import { resetOres } from './data/MineState';
 import { save } from './systems/SaveSystem';
 import { advanceStory, getStoryStep, setStoryStep } from './systems/StorySystem';
 
+// 临时调试入口：URL 带 ?reset=1 时启动前强制清除本地存档（用于移动端真机测试清档）
+// 仅前端操作 localStorage，不进存档逻辑、不属于正式功能
+if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('reset')) {
+  try {
+    localStorage.removeItem('return_star_save');
+    console.log('[reset] 已清除本地存档');
+  } catch (e) {
+    console.warn('[reset] 清档失败', e);
+  }
+}
+
 // 创建 Phaser 游戏实例
 // 4 个区域各注册一个 MapScene 实例，首个（农场）自动启动
 const game = new Phaser.Game({
