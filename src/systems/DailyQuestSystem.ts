@@ -7,6 +7,7 @@
 
 import { addItem, ItemType } from '../data/Inventory';
 import { getTime } from '../data/TimeSystem';
+import { isTutorialDone } from './StorySystem';
 
 // ============ 任务类型定义 ============
 
@@ -121,7 +122,7 @@ function createInstance(t: DailyQuestTemplate): DailyQuestInstance {
 /** 引导任务 ID（挖矿/砍树，首次初始化固定出现，未完成时跨天保留） */
 const GUIDE_QUEST_IDS = new Set(['mine_1', 'woodcut_2']);
 
-/** 刷新每日任务（隔天调用；引导任务未完成时持续保留在面板） */
+/** 刷新每日任务（隔天调用；引导任务在教程完成后才投放，未完成时跨天保留） */
 export function refreshDailyQuests(): void {
   const day = getTime().day;
   if (day === currentDay && dailyQuests.length > 0) return; // 同一天不重复刷新
@@ -130,8 +131,9 @@ export function refreshDailyQuests(): void {
   const keepGuide = dailyQuests.filter((q) => GUIDE_QUEST_IDS.has(q.id) && !q.claimed);
   currentDay = day;
   if (isFirstInit) {
-    // 首次：固定 2 个引导任务 + 随机补齐
-    const guide = QUEST_POOL.filter((t) => GUIDE_QUEST_IDS.has(t.id));
+    // 首次：教程完成后才固定投放引导任务（挖矿/砍树）；
+    // 教程未完成时玩家还没有斧头/未解锁矿洞，提前投放会导致"按E无法推进任务"
+    const guide = isTutorialDone() ? QUEST_POOL.filter((t) => GUIDE_QUEST_IDS.has(t.id)) : [];
     const rest = pickRandom(4 - guide.length);
     dailyQuests = [...guide, ...rest].map(createInstance);
   } else {
@@ -143,6 +145,23 @@ export function refreshDailyQuests(): void {
 /** 获取当前每日任务 */
 export function getDailyQuests(): readonly DailyQuestInstance[] {
   return dailyQuests;
+}
+
+/**
+ * 教程完成后注入引导任务（挖矿/砍树）。
+ * 在 tryTutorialSleep（睡觉完成 → storyStep=done）时调用；
+ * 已出现在面板中的引导任务（含已领奖）不重复添加；
+ * 面板总数保持 4：引导任务占前位，尾部随机任务被裁掉。
+ */
+export function injectGuideQuests(): void {
+  for (const t of QUEST_POOL) {
+    if (!GUIDE_QUEST_IDS.has(t.id)) continue;
+    if (dailyQuests.some((q) => q.id === t.id)) continue;
+    dailyQuests.unshift(createInstance(t));
+  }
+  if (dailyQuests.length > 4) {
+    dailyQuests.length = 4;
+  }
 }
 
 /** 获取每日任务天数 */

@@ -44,6 +44,7 @@ import {
   onWoodcut as onDQWoodcut,
   claimReward,
   getDailyQuestSaveData,
+  injectGuideQuests,
 } from '../systems/DailyQuestSystem';
 import { InputManager } from '../systems/InputManager';
 import { TouchControls } from '../systems/TouchControls';
@@ -992,6 +993,7 @@ export class MapScene extends Phaser.Scene {
     resetStamina();
     resetOres();
     refreshDailyQuests();
+    injectGuideQuests(); // 教程完成 → 投放挖矿/砍树引导任务（此时已获得斧头）
     this.createDailyQuestPanel();
     this.refreshFarmVisual();
     this.rebuildNPCs();
@@ -1203,32 +1205,22 @@ export class MapScene extends Phaser.Scene {
    */
   private tryInteract(): void {
     // 1. 睡觉点检测：
-    //    house → 真实床铺（Ground gid 9）：站在床格上按 E，或站在床相邻格且面向床按 E
-    //    farm  → 木屋地板（Walls gid 6）：站在木屋内按 E 即可（教程提示"回到床前"，玩家无需先进屋）
+    //    house → 真实床铺（Ground gid 9）；farm → 木屋地板（Walls gid 6）
+    //    判定：站在床格上，或站在床格相邻 1 格内即可（触屏操作精度宽容，无需精确面向）
     if (this.mapKey === 'house' || this.mapKey === 'farm') {
       const pc = Math.floor(this.player.x / TILE_SIZE);
       const pr = Math.floor(this.player.y / TILE_SIZE);
-      if (this.bedTiles.has(`${pc},${pr}`)) {
+      if (this.bedTiles.has(`${pc},${pr}`) || this.isNearBedTile(pc, pr)) {
+        // 教程中：只有 evening_talk 允许睡觉；提前睡觉不跨天（防止存档卡死：
+        // 播种后未浇水就睡 → 次日作物已熟/无种子，教程永久无法完成）
+        if (!isTutorialDone() && getStoryStep() !== 'evening_talk') {
+          this.showDialogueText('还不到睡觉的时候……先把今天的农活做完吧。');
+          return;
+        }
         // 教程：晚间睡觉 → 结束教程
         if (!isTutorialDone() && this.tryTutorialSleep()) return;
         this.trySleep();
         return;
-      }
-      if (this.mapKey === 'house') {
-        // house：支持站在床相邻格且面向床按 E
-        let tc = pc;
-        let tr = pr;
-        switch (this.player.facing) {
-          case 'up': tr = pr - 1; break;
-          case 'down': tr = pr + 1; break;
-          case 'left': tc = pc - 1; break;
-          case 'right': tc = pc + 1; break;
-        }
-        if (this.bedTiles.has(`${tc},${tr}`)) {
-          if (!isTutorialDone() && this.tryTutorialSleep()) return;
-          this.trySleep();
-          return;
-        }
       }
     }
 
@@ -1483,6 +1475,15 @@ export class MapScene extends Phaser.Scene {
       }
     }
     console.log(`[MapScene:${this.mapKey}] 睡觉判定格 ${this.bedTiles.size} 个`);
+  }
+
+  /** 玩家所在格是否在任一床铺格的相邻 1 格内（含床格本身） */
+  private isNearBedTile(pc: number, pr: number): boolean {
+    for (const key of this.bedTiles) {
+      const [c, r] = key.split(',').map(Number);
+      if (Math.abs(pc - c) <= 1 && Math.abs(pr - r) <= 1) return true;
+    }
+    return false;
   }
 
   /**

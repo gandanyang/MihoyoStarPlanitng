@@ -6,6 +6,14 @@
 
 ## [未发布]
 
+### v0.5.2 任务系统分类：引导任务教程期不投放（"按E无法推进任务"根因修复）
+- **根因**：引导任务（`mine_1` 挖矿 / `woodcut_2` 砍树）混入每日任务池，在教程未完成（storyStep ≠ done）时就已投放——此时玩家没有斧头（睡觉完成才赠送）、未解锁矿洞，按 E 被"需要斧头才能砍树！"拦截 → 任务永远无法推进
+- **修复**（`DailyQuestSystem.ts` / `MapScene.ts`）：
+  - 首次初始化每日任务时用 `isTutorialDone()` 判断：教程未完成 → 不投放引导任务（面板只出普通随机任务）；教程完成 → 固定投放引导任务
+  - 新增 `injectGuideQuests()`：`tryTutorialSleep` 睡觉完成（→ storyStep=done、赠送旧斧头）后调用，将挖矿/砍树引导任务注入面板前位；已存在的（含已领奖）不重复添加，面板总数保持 4（超限裁尾部随机任务）
+  - 未领奖引导任务跨天保留（过夜不丢失奖励），领奖后消失
+- **验证**：tsc / build / test-tutorial（13）/ test-ch1-story（24）/ test-woodcutting（19）全绿
+
 ### v0.5.2 移动端 UX 修复（第二轮反馈：横屏背包按钮消失）
 - **根因**：背包按钮可见性用 `isMobileLayout()`（`window.innerWidth < 800`）判断，手机横屏宽度 ≥800（如 844pt）时被误判为桌面 → 按钮隐藏
 - **修复**（`TouchControls.ts`）：改为**触屏能力判断**（`navigator.maxTouchPoints > 0 || 'ontouchstart' in window`）——竖屏/横屏/平板都显示背包按钮，无触屏桌面保持隐藏
