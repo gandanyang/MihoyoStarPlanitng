@@ -131,6 +131,39 @@ async function run() {
       return b ? b.style.display : 'none';
     });
     console.log(`P1d. 桌面端背包按钮隐藏: ${bpDesktop === 'none' ? '✅' : '❌'} display=${bpDesktop}`);
+
+    // 横屏手机（宽度 ≥800）：背包按钮应仍可见（本次 bug 场景）
+    // 用启动即横屏触屏视口的新实例（等价真机加载，避免运行时触屏模拟时序问题）
+    const bLand = await puppeteer.launch({
+      executablePath: CHROME_PATH,
+      headless: false,
+      defaultViewport: { width: 844, height: 390, isMobile: true, hasTouch: true },
+      args: ['--no-sandbox'],
+    });
+    const pLand = await bLand.newPage();
+    await pLand.goto(GAME_URL, { waitUntil: 'networkidle2' });
+    await sleep(2500);
+    // 进入农场场景（TouchControls 在 MapScene create 时创建）
+    await pLand.evaluate(() => {
+      const g = window.__game;
+      window.debug.setStoryStep('done');
+      const active = g.scene.getScenes(true)[0];
+      if (active && active.scene.key !== 'farm') g.scene.stop(active.scene.key);
+      g.scene.start('farm', { spawn: { x: 400, y: 300 } });
+    });
+    await sleep(3000);
+    const touchInfo = await pLand.evaluate(() => ({
+      maxTouchPoints: navigator.maxTouchPoints,
+      ontouchstart: 'ontouchstart' in window,
+    }));
+    const bpLandscape = await pLand.evaluate(() => {
+      const btns = [...document.querySelectorAll('#touch-controls div')];
+      const b = btns.find(x => x.textContent?.trim() === '背包');
+      return b ? b.style.display : 'none';
+    });
+    console.log(`P0e-debug touch: ${JSON.stringify(touchInfo)}`);
+    console.log(`P0e. 横屏(844×390)背包按钮可见: ${bpLandscape === 'flex' ? '✅' : '❌'} display=${bpLandscape}`);
+    await bLand.close();
   } finally {
     await browser.close();
   }

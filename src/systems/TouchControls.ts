@@ -20,7 +20,6 @@
  */
 
 import { InputManager } from './InputManager';
-import { isMobileLayout } from '../config';
 
 /** 当前活跃场景的 InputManager（DOM 事件回调操作它） */
 let currentInput: InputManager | null = null;
@@ -126,10 +125,16 @@ function createDom(): void {
   document.body.appendChild(container);
 }
 
-/** 背包按钮仅移动端显示（桌面有 B 键） */
+/** 是否触屏设备（用触屏能力判断，而非窗口宽度——手机横屏宽度可能 ≥800） */
+function isTouchDevice(): boolean {
+  return typeof navigator !== 'undefined'
+    && (navigator.maxTouchPoints > 0 || 'ontouchstart' in window);
+}
+
+/** 背包按钮仅触屏设备显示（竖屏/横屏/平板都显示；桌面无触屏时用键盘 B） */
 function updateBackpackVisibility(): void {
   if (!backpackBtn) return;
-  backpackBtn.style.display = isMobileLayout() ? 'flex' : 'none';
+  backpackBtn.style.display = isTouchDevice() ? 'flex' : 'none';
 }
 
 /** 开始拖动摇杆 */

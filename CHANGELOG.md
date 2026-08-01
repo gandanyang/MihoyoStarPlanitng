@@ -6,6 +6,11 @@
 
 ## [未发布]
 
+### v0.5.2 移动端 UX 修复（第二轮反馈：横屏背包按钮消失）
+- **根因**：背包按钮可见性用 `isMobileLayout()`（`window.innerWidth < 800`）判断，手机横屏宽度 ≥800（如 844pt）时被误判为桌面 → 按钮隐藏
+- **修复**（`TouchControls.ts`）：改为**触屏能力判断**（`navigator.maxTouchPoints > 0 || 'ontouchstart' in window`）——竖屏/横屏/平板都显示背包按钮，无触屏桌面保持隐藏
+- **验证**：`probe-mobile-ux.mjs` 新增横屏（844×390）用例，9/9 全绿；tsc / build / tutorial / ch1-story 通过
+
 ### v0.5.2 代码审阅 + 美术任务核对 + 移动端表现分析（opencode 审阅会话）
 - **P0 美术任务核对**（`任务-美术P0风格统一重绘.md`）：6 张 v2 像素风贴图（tree1/tree2/stump/old_axe/wood/npc_xiya）经像素级程序分析确认全部达标并已随 `8cd9df2` 接线，任务卡状态更新为 ✅ 已完成（DoD 7 项勾选 + §9 验收记录表）；物品图标已通过 `Inventory.itemIconHtml()` 接入背包/商店
 - **代码审阅**：移动端 UX 改动（`TouchControls.ts` 背包按钮 / `StationScene.ts` 跳过按钮隐藏 / `MapScene.ts` 睡觉判定+提示文案 / `vite.config.ts` host）——tsc 通过、图层数据核对一致、探针全绿、回归无破坏
