@@ -9,7 +9,7 @@
  */
 
 import Phaser from 'phaser';
-import { hasSave } from '../systems/SaveSystem';
+import { hasSave, deleteSave } from '../systems/SaveSystem';
 import { play } from '../systems/AudioSystem';
 import { isMobileLayout } from '../config';
 
@@ -74,6 +74,9 @@ export class TitleScene extends Phaser.Scene {
         stroke: '#000',
         strokeThickness: 2,
       }).setOrigin(0.5).setDepth(2);
+
+      // 调试专用：一键清除存档按钮（真机测试用，正式版移除）
+      this.createClearSaveButton();
     }
 
     // ── 操作提示 ──
@@ -114,12 +117,45 @@ export class TitleScene extends Phaser.Scene {
     this.input.once('pointerup', () => this.startGame());
   }
 
+  /** 调试专用：一键清除存档按钮（仅测试阶段保留，正式版移除） */
+  private createClearSaveButton(): void {
+    const btn = document.createElement('div');
+    btn.id = 'clear-save-btn';
+    Object.assign(btn.style, {
+      position: 'fixed',
+      right: '16px',
+      bottom: '60px',
+      padding: '10px 16px',
+      background: 'rgba(180,40,40,0.85)',
+      color: '#fff',
+      fontSize: '14px',
+      fontFamily: 'Arial, sans-serif',
+      borderRadius: '6px',
+      cursor: 'pointer',
+      border: '1px solid rgba(255,255,255,0.4)',
+      zIndex: '900',
+      pointerEvents: 'auto',
+      userSelect: 'none',
+    });
+    btn.textContent = '清除存档';
+    btn.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+    });
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      deleteSave();
+      location.reload();
+    });
+    document.body.appendChild(btn);
+  }
+
   private startGame(): void {
     if (!this.canStart) return;
     this.canStart = false;
 
     play('levelup');
-
     // 淡出后切换到车站场景
     this.cameras.main.fadeOut(400, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
