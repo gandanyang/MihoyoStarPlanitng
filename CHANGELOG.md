@@ -6,6 +6,14 @@
 
 ## [未发布]
 
+### v0.5.2 P0 稳定底线（存档可靠性 + 第一章 E2E）
+- **存档可靠性补强**（`SaveSystem.ts` / `MapScene.ts`）：
+  - `pagehide` 兜底自动保存（移动端 `beforeunload` 不可靠）
+  - 里程碑保存：碎片采集后、主线交付后立即入档（睡觉/观星完成已有）
+  - `apply()` 边界保护：剧情步骤/任务状态白名单校验，数值字段非有限数降级默认，防坏档崩溃（不新增字段 / 版本号 / 迁移结构）
+- **第一章 E2E 正式化**：新增 `test-ch1-story.mjs`（24 项断言）——序章辞退邮件 → 第一章任务链 → 观星三选项 → 结算 → save/reload/apply 恢复校验；车站手机通知文案对齐定稿公文版（`StationScene.ts`）
+- **验证**：tsc / build / tutorial / stress（25）/ woodcutting 全绿；test-ch1-story 24/24
+
 ### v0.5.2 对话立绘（§8.5 方案 A 落地）
 - **立绘选型**（制作人 2026-08-02）：林澈 = `linchen_s777001_cfg2`，夏雅 = `xiya`
 - **后处理管线**（`tools/gen_portrait_final.py`）：选型图缩放至 512×768 RGBA，输出 `public/assets/portraits/linchen.png` / `xiya.png`；**保留原背景圆角卡片展示**（v0.4.3 修订：去背会损伤发丝/肩部边缘）

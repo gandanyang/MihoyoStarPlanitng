@@ -32,7 +32,7 @@ import { getAllInventoryEntries, restoreAllInventory, type ItemType } from '../d
 import { getTime, setTimeFull } from '../data/TimeSystem';
 import { getStamina, setStamina as restoreStamina } from '../data/Stamina';
 import { getMinedOreIds, restoreMinedOres } from '../data/MineState';
-import { getStoryStep, setStoryStep, isCh1TownIntroDone, markCh1TownIntroDone, type StoryStep } from '../systems/StorySystem';
+import { getStoryStep, setStoryStep, isCh1TownIntroDone, markCh1TownIntroDone, STORY_STEPS, type StoryStep } from '../systems/StorySystem';
 import { getQuestState, setQuestState, type QuestState } from '../systems/QuestSystem';
 import { getDailyQuestSaveData, restoreDailyQuests, type DailyQuestSaveData } from '../systems/DailyQuestSystem';
 
@@ -204,10 +204,46 @@ export function load(): SaveData | null {
       return null;
     }
 
+    // 边界保护（v0.5.2 P0）：非法枚举/非数值字段降级为安全默认，防止坏档导致崩溃
+    sanitize(data as SaveData);
     return data as SaveData;
   } catch {
     console.warn('[SaveSystem] 存档读取失败，数据可能损坏');
     return null;
+  }
+}
+
+/**
+ * 加载时边界保护：不改存档结构、不升版本号，只把非法值收敛为安全默认。
+ * JSON 解析保证数值有限或缺失（缺失字段用默认值兜底）。
+ */
+function sanitize(data: SaveData): void {
+  // 剧情步骤：不在白名单内 → 降级为 done（教程已完成态，避免未知步骤破坏状态机）
+  if (!STORY_STEPS.includes(data.story.storyStep)) {
+    data.story.storyStep = 'done';
+  }
+  // 主线任务状态：非法值 → not_started
+  const questStates: readonly string[] = ['not_started', 'accepted', 'collected', 'completed'];
+  if (!questStates.includes(data.world.questState)) {
+    data.world.questState = 'not_started';
+  }
+  // 数值字段：非有限数/缺失 → 默认值（setter 会再做 clamp）
+  const num = (v: unknown, fallback: number): number =>
+    typeof v === 'number' && Number.isFinite(v) ? v : fallback;
+  data.world.day = num(data.world.day, 1);
+  data.world.hour = num(data.world.hour, 6);
+  data.world.minute = num(data.world.minute, 0);
+  data.world.coins = num(data.world.coins, 100);
+  data.world.level = num(data.world.level, 1);
+  data.world.xp = num(data.world.xp, 0);
+  data.world.stamina = num(data.world.stamina, 100);
+  // 每日任务：progress 非数值 → 0
+  if (data.world.dailyQuest) {
+    for (const q of data.world.dailyQuest.quests) {
+      q.progress = num(q.progress, 0);
+      q.completed = !!q.completed;
+      q.claimed = !!q.claimed;
+    }
   }
 }
 

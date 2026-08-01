@@ -18,8 +18,8 @@ import { isMobileLayout } from '../config';
 
 /** 对话立绘映射（§8.5 方案 A）：说话人 → 立绘资源；无映射角色回退首字色块 */
 const PORTRAIT_MAP: Record<string, string> = {
-  林澈: 'assets/portraits/avatars/linchen.png',
-  夏雅: 'assets/portraits/avatars/xiya.png',
+  林澈: 'assets/portraits/linchen.png',
+  夏雅: 'assets/portraits/xiya.png',
 };
 
 export class StoryDialogue {

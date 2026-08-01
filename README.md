@@ -88,6 +88,7 @@ src/
 test-tutorial.mjs            # E2E 测试：新玩家完整流程（node test-tutorial.mjs）
 test-stress-switch.mjs       # E2E 压力测试：切图/挖矿稳定性（node test-stress-switch.mjs）
 test-woodcutting.mjs         # E2E 测试：砍树机制（node test-woodcutting.mjs）
+test-ch1-story.mjs           # E2E 测试：第一章主线+观星夜+存档恢复（node test-ch1-story.mjs）
 ```
 
 ## 测试
@@ -98,4 +99,5 @@ npm run build                # 生产构建
 node test-tutorial.mjs       # 教程流程 E2E（需 dev server 运行在 5173）
 node test-stress-switch.mjs  # 切图/挖矿压力测试（需 dev server 运行在 5173）
 node test-woodcutting.mjs    # 砍树机制 E2E（需 dev server 运行在 5173）
+node test-ch1-story.mjs      # 第一章主线+观星夜+存档恢复 E2E（需 dev server 运行在 5173）
 ```

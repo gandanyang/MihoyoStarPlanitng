@@ -566,7 +566,7 @@ export class StationScene extends Phaser.Scene {
 
     const msg = document.createElement('div');
     Object.assign(msg.style, { color: '#7eb8ff', fontSize: '15px', lineHeight: '1.6' });
-    msg.textContent = '由于公司业务调整，您的岗位将由新的智能化系统接替。';
+    msg.textContent = '因业务流程智能化调整，您的岗位职责将进行重新分配。';
 
     const hint = document.createElement('div');
     Object.assign(hint.style, { color: '#333', fontSize: '11px', marginTop: '12px', textAlign: 'center' });

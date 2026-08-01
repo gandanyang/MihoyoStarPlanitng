@@ -20,6 +20,13 @@ export type StoryStep =
   | 'done'                // 教程完成
   | 'observatory_complete'; // 观星夜收尾完成（Demo 结尾终态，复用 storyStep 模式）
 
+/** 全部合法剧情步骤（存档边界保护白名单，SaveSystem 复用） */
+export const STORY_STEPS: StoryStep[] = [
+  'station_intro', 'station_move', 'arrive_manor', 'xiya_talk', 'get_key',
+  'gate_opened', 'clear_land', 'sow_seeds', 'water_crops', 'evening_talk',
+  'done', 'observatory_complete',
+];
+
 export interface DialogueLine {
   speaker: string;
   color: string;

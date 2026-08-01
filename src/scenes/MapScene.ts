@@ -426,9 +426,10 @@ export class MapScene extends Phaser.Scene {
     refreshDailyQuests();
     this.createDailyQuestPanel();
 
-    // 离开页面前自动存档（beforeunload，只注册一次，后续场景切换复用）
+    // 离开页面前自动存档（beforeunload + pagehide；pagehide 兜底移动端，只注册一次）
     if (MapScene._beforeUnload) {
       window.removeEventListener('beforeunload', MapScene._beforeUnload);
+      window.removeEventListener('pagehide', MapScene._beforeUnload);
     }
     MapScene._beforeUnload = () => {
       if (this.player && this.player.active) {
@@ -440,6 +441,7 @@ export class MapScene extends Phaser.Scene {
       }
     };
     window.addEventListener('beforeunload', MapScene._beforeUnload);
+    window.addEventListener('pagehide', MapScene._beforeUnload);
 
     // 淡入过渡（与出口切换的 fadeOut 配对，避免切图瞬间黑屏）
     this.cameras.main.fadeIn(300, 0, 0, 0);
@@ -1228,6 +1230,12 @@ export class MapScene extends Phaser.Scene {
         this.storyDialogue.play(getElderDialogue(), () => {
           this.updateQuestHUD();
           this.updateHUD();
+          // 里程碑保存（v0.5.2 P0）：主线交付后立即入档
+          save({
+            x: this.player.x, y: this.player.y,
+            scene: this.mapKey, facing: this.player.facing,
+            dailyQuest: getDailyQuestSaveData(),
+          });
         });
       } else if (nearest.id === 'shopkeeper') {
         // 商人：先播放欢迎剧本，对话结束后自动打开商店
@@ -1393,6 +1401,12 @@ export class MapScene extends Phaser.Scene {
     this.updateDailyQuestPanel();
     this.showDialogueText('采集到「星之碎片」！返回村长交付任务。');
     this.updateQuestHUD();
+    // 里程碑保存（v0.5.2 P0）：碎片采集后立即入档
+    save({
+      x: this.player.x, y: this.player.y,
+      scene: this.mapKey, facing: this.player.facing,
+      dailyQuest: getDailyQuestSaveData(),
+    });
   }
 
   /**
