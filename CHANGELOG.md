@@ -6,6 +6,28 @@
 
 ## [未发布]
 
+### v0.5 第一章小镇剧情 + 稳定化重构（v0.5）
+- **存档系统升级**：`SAVE_VERSION` 0.3 → 0.5，存档结构重构为分组格式 `{ version, player, world, farm, story }`（`SaveSystem.ts`）
+  - 加载时 `version !== SAVE_VERSION` → 走 `migrate()` 迁移；当前策略清空旧存档，防止旧格式污染新结构
+  - 存档 key：`return_star_save`
+- **第一章小镇剧情**（`StorySystem.ts` 新增）：
+  - `TOWN_INTRO_DIALOGUE`（首次进小镇开场）、`ELDER_QUEST_DIALOGUE`（村长委托星之碎片）、`SHARD_DELIVER_DIALOGUE`（交付碎片收尾）
+  - 存档新增 `story.ch1TownIntroDone` 标记，防止第一章过场重复触发
+- **NPC 对话升级**：6 个 NPC 全部改为完整剧本（`dialogue: string` → `dialogues: DialogueLine[]`，`NPCSystem.ts`），由 `StoryDialogue` 全屏打字机播放
+- **砍树系统**：`old_axe` 旧斧头 + 木材 `wood`（售价 8G）；每棵树 3 击砍倒，每击消耗 5 体力
+- **稳定性修复（P0 防黑屏）**：
+  - 地图切换：tileset 加载失败用程序生成占位瓦片兜底，避免整场景黑屏
+  - 切图过渡：`camera.fadeOut(250ms)` + `fadeIn(300ms)` + 1500ms 强制切换兜底
+  - `create()` 整体 try/catch：异常显示错误遮罩而非永久黑屏
+  - 挖矿：开采后矿脉从列表移除，防止同一矿脉重复开采
+- **出口修复**：gate/forest 返回农场的出生点下移（y=96），修复农场↔森林 33ms 循环瞬移（出生点踩在出口区域边界导致）
+- **封面替换**：新封面图（图片已含游戏名），移除 TitleScene 代码叠加的游戏标题
+- **测试**：
+  - `test-tutorial.mjs` 重写：新玩家完整流程（启动→title→enter→station→完成教程→farm），15 项断言
+  - 新增 `test-stress-switch.mjs`：连续 16 次真实出口切图 + 4 次挖矿压力测试，验证无黑屏（RUNNING=1、摄像机无卡淡出），25 项断言
+- **清理**：删除临时诊断脚本 `diag-exit.mjs` / `full-flow-test.mjs`、已弃用 `BootScene.ts`
+- **项目规则**：新增 `AGENTS.md`（Alpha 阶段开发指南：稳定 > 新功能，禁止战斗/抽卡/大地图/后端等）
+
 ### 0.4 序章剧情 + 新手教程（v0.4-rc1）
 - **新增 `src/systems/StorySystem.ts`**：11 步序章状态机（`station_intro → station_move → arrive_manor → xiya_talk → get_key → gate_opened → clear_land → sow_seeds → water_crops → evening_talk → done`）
 - **新增车站场景 `StationScene.ts`**：纯 Phaser 图形场景（1120×600），三层视差远山+列车+晨雾粒子+手机通知动画+内心独白
