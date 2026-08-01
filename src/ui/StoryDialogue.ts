@@ -14,6 +14,13 @@
  */
 
 import { DialogueLine } from '../systems/StorySystem';
+import { isMobileLayout } from '../config';
+
+/** 对话立绘映射（§8.5 方案 A）：说话人 → 立绘资源；无映射角色回退首字色块 */
+const PORTRAIT_MAP: Record<string, string> = {
+  林澈: 'assets/portraits/avatars/linchen.png',
+  夏雅: 'assets/portraits/avatars/xiya.png',
+};
 
 export class StoryDialogue {
   private container: HTMLDivElement;
@@ -247,14 +254,34 @@ export class StoryDialogue {
       this.textEl.style.color = '#b0b0b0';
     }
 
-    // 肖像（用首字+颜色做简单占位）
+    // 肖像：有立绘显示立绘（§8.5 方案 A：128×128 桌面 / 96×96 移动端，object-fit 半身裁切），否则首字色块占位
     if (line.speaker && !line.inner) {
+      const portrait = PORTRAIT_MAP[line.speaker];
+      this.applyPortraitSize();
       this.portraitEl.style.display = 'flex';
-      this.portraitEl.style.background = line.color + '40';
-      this.portraitEl.style.border = `2px solid ${line.color}`;
-      this.portraitEl.textContent = line.speaker.charAt(0);
+      this.portraitEl.style.alignItems = 'center';
+      this.portraitEl.style.justifyContent = 'center';
+      if (portrait) {
+        // 立绘加载：失败（文件缺失/404）时自动回退到首字+颜色占位，防止空白头像框
+        this.portraitEl.innerHTML =
+          `<img src="${portrait}" alt="" ` +
+          `style="width:100%;height:100%;object-fit:cover;object-position:50% 18%;border-radius:8px;display:block;">`;
+        this.portraitEl.style.background = line.color + '40';
+        this.portraitEl.style.border = `2px solid ${line.color}`;
+        const img = this.portraitEl.querySelector('img')!;
+        img.addEventListener('error', () => {
+          // 图片失败：隐藏图片，显示首字占位（保留颜色边框）
+          this.portraitEl.textContent = line.speaker.charAt(0);
+        });
+      } else {
+        this.portraitEl.innerHTML = '';
+        this.portraitEl.style.background = line.color + '40';
+        this.portraitEl.style.border = `2px solid ${line.color}`;
+        this.portraitEl.textContent = line.speaker.charAt(0);
+      }
     } else {
       this.portraitEl.style.display = 'none';
+      this.portraitEl.innerHTML = '';
     }
 
     // 打字机效果
@@ -284,6 +311,13 @@ export class StoryDialogue {
       this.textEl.textContent = line.text;
     }
     this.hintEl.style.opacity = '1';
+  }
+
+  /** 头像尺寸：桌面 128×128，移动端 96×96（§8.5 方案 A） */
+  private applyPortraitSize(): void {
+    const size = isMobileLayout() ? 96 : 128;
+    this.portraitEl.style.width = `${size}px`;
+    this.portraitEl.style.height = `${size}px`;
   }
 
   /** 渲染选项按钮（选项行） */

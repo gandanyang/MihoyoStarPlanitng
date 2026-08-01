@@ -6,6 +6,12 @@
 
 ## [未发布]
 
+### v0.5.2 对话立绘（§8.5 方案 A 落地）
+- **立绘选型**（制作人 2026-08-02）：林澈 = `linchen_s777001_cfg2`，夏雅 = `xiya`
+- **后处理管线**（`tools/gen_portrait_final.py`）：选型图缩放至 512×768 RGBA，输出 `public/assets/portraits/linchen.png` / `xiya.png`；**保留原背景圆角卡片展示**（v0.4.3 修订：去背会损伤发丝/肩部边缘）
+- **接线**（`StoryDialogue.ts`）：`PORTRAIT_MAP` 按说话人映射立绘，头像区升级为桌面 128×128 / 移动端 96×96（`isMobileLayout()`），`object-fit: cover` + `object-position: 50% 18%` 半身裁切；无立绘角色回退首字色块占位
+- **验证**：tsc / build 通过；`probe-stargaze.mjs` 新增"夏雅立绘头像显示"断言，13/13 全绿
+
 ### v0.5.x 剧情定稿返工：观星夜收尾（编剧审查 v0.3）
 - **观星夜收尾重写**（`StorySystem.ts`）：废弃旧版"守星人揭底"版 `STARGAZE_DIALOGUE`，改为定稿版 `DEMO_ENDING_DIALOGUE`——夏雅 + 爷爷的信 + 静默镜头（虫鸣/星光/没有说话）+ 三选项（试着留下 / 不知道答案 / 至少今晚）→ 分支独白（`DEMO_ENDING_BRANCHES`）→ 次日清晨（`DEMO_ENDING_FINALE`："归星镇，欢迎你"）
 - **对话选项支持**（`StoryDialogue.ts`）：`DialogueLine.options` 选项行渲染（鼠标/触屏点击 + 键盘 1/2/3），选择后回调分支

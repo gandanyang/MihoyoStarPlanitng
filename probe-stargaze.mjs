@@ -208,8 +208,17 @@ async function run() {
     const endText1 = await dialogueText(page);
     result('观星夜开场文本', endText1.includes('星空格外明亮'), endText1.substring(0, 40));
 
+    // 推进 1 行到夏雅台词，验证立绘头像（§8.5 方案 A）
+    await advanceN(page, 1);
+    const portraitSrc = await page.evaluate(() => {
+      const s = window.__game.scene.getScene('farm');
+      const img = s?.storyDialogue?.portraitEl?.querySelector('img');
+      return img ? img.getAttribute('src') : '';
+    });
+    result('夏雅立绘头像显示', portraitSrc.includes('xiya.png'), portraitSrc || '<无立绘>');
+
     // 跳过 11 行（静默镜头在内），停到选项行
-    await skipDialogue(page, 11);
+    await skipDialogue(page, 10);
     const options = await page.evaluate(() =>
       [...document.querySelectorAll('button')].map(b => b.textContent?.trim()).filter(t => /^\d\./.test(t ?? ''))
     );
