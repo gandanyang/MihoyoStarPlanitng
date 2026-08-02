@@ -151,6 +151,10 @@ const MINER_DIALOGUES: DialogueLine[] = [
   { speaker: '林澈', color: COLORS.linche, text: '那为什么没走？' },
   { speaker: '矿工老张', color: '#d8a050', text: '（笑）……走不动了。路太长。' },
   { speaker: '林澈', color: COLORS.linche, text: '有时候，路长不是坏事。至少路上还能想清楚一些事。' },
+  { speaker: '矿工老张', color: '#d8a050', text: '……说起来，这矿里有些老旧的机器，镇上没人会弄。' },
+  { speaker: '林澈', color: COLORS.linche, text: '以前工作的时候，经常处理这些。' },
+  { speaker: '矿工老张', color: '#d8a050', text: '哦？那你可帮大忙了。' },
+  { speaker: '林澈', color: COLORS.linche, text: '（笑了笑，没接话）' },
 ];
 
 /** 花匠小梅：种植话题 */
@@ -179,6 +183,55 @@ const ADVENTURER_DIALOGUES: DialogueLine[] = [
   { speaker: '林澈', color: COLORS.linche, text: '不是胆子大。只是觉得，既然来了这座岛，就该看看它藏着什么。' },
   { speaker: '冒险家阿风', color: '#88b8e8', text: '说得对。有空来森林，我带你转转。' },
 ];
+
+// ============ v0.5.3 剧情密度：NPC 每日随机一句 ============
+// 设计：让 NPC 像真实居民——不每句都服务剧情。
+// 选句规则：seed = 当天天数 + NPC id hash，取模选 1 句。
+// 同一天同 NPC 固定同一句（读档回来不跳变，因 seed 只依赖天数，不依赖存档）。
+// 状态：由 MapScene 持有"当天已说过"的内存标记（Map<npcId, day>），不进入存档。
+
+const NPC_DAILY_LINES: Record<string, DialogueLine[]> = {
+  miner: [
+    { speaker: '矿工老张', color: '#d8a050', text: '今天风不错，适合晒木材。' },
+    { speaker: '矿工老张', color: '#d8a050', text: '今年雨水比去年多，地倒是好挖了。' },
+    { speaker: '矿工老张', color: '#d8a050', text: '昨晚听见林子里有动静，估计又是野猪。' },
+    { speaker: '矿工老张', color: '#d8a050', text: '矿洞里头凉快，来坐坐？' },
+  ],
+  gardener: [
+    { speaker: '花匠小梅', color: '#a0d888', text: '今天这花开得比昨天好。' },
+    { speaker: '花匠小梅', color: '#a0d888', text: '听说庄园里种出了新作物？' },
+    { speaker: '花匠小梅', color: '#a0d888', text: '我的水壶漏了，正愁呢。' },
+    { speaker: '花匠小梅', color: '#a0d888', text: '这株花啊，是我爷爷种的。' },
+  ],
+  adventurer: [
+    { speaker: '冒险家阿风', color: '#88b8e8', text: '森林最近有奇怪的声音，我可没说谎。' },
+    { speaker: '冒险家阿风', color: '#88b8e8', text: '我今天又发现一个没人去过的地方。' },
+    { speaker: '冒险家阿风', color: '#88b8e8', text: '明天想去北边看看，你去不？' },
+    { speaker: '冒险家阿风', color: '#88b8e8', text: '听说老张昨晚又喝多了，哈哈。' },
+  ],
+};
+
+/** 简单字符串 hash（用于 seed，避免依赖天数之外的状态） */
+function hashCode(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = (h * 31 + s.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
+}
+
+/**
+ * 获取某 NPC 当天的一句随机生活台词（无状态，seed = day + npcId hash）
+ * @param npcId NPC id（miner/gardener/adventurer）
+ * @param day 当天天数
+ * @returns 台词数组（1 条）；该 NPC 没有随机池时返回 null
+ */
+export function getDailyNpcLine(npcId: string, day: number): DialogueLine[] | null {
+  const pool = NPC_DAILY_LINES[npcId];
+  if (!pool || pool.length === 0) return null;
+  const idx = (hashCode(npcId) + day) % pool.length;
+  return [pool[idx]];
+}
 
 /** 六个 NPC（贴图已独立，不再复用） */
 const npcs: NPC[] = [

@@ -111,7 +111,9 @@ function createDom(): void {
   btn.dataset.action = 'interact';
   btn.textContent = '交互';
   let lastActionTime = 0;
-  const ACTION_DEBOUNCE_MS = 500;
+  // 防抖：同一手势 150ms 内只触发一次（touchstart→mousedown 跨帧双击发防护）
+  // 注：500ms 过慢会拖累连锄/连种手感，150ms 既防双击又保持流畅
+  const ACTION_DEBOUNCE_MS = 150;
   const pressBtn = (e: Event) => {
     e.preventDefault();
     e.stopPropagation();

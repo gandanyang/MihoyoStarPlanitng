@@ -98,6 +98,15 @@ export const GATE_OPENED_DIALOGUE: DialogueLine[] = [
   { speaker: '', color: COLORS.system, text: hint('获得物品：【旧锄头】  对着农田区域按 [E] 键锄地，清理 3 块土地。', '获得物品：【旧锄头】  对着农田区域点「交互」锄地，清理 3 块土地。') },
 ];
 
+/** v0.5.3 剧情密度 E1：夏雅清晨偶遇（教程完成后，清晨 06-08 时进入农场触发） */
+export const XIYA_DAWN_DIALOGUE: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（清晨的庄园很安静。夏雅蹲在田边，正看着昨夜露水下的土地。）' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '这么早？我睡不着，就过来看看这些地。' },
+  { speaker: '林澈', color: COLORS.linche, text: '你每天都起这么早？' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '（笑）岛上的人都这样。太阳一出来，就想醒着。' },
+  { speaker: '林澈', color: COLORS.linche, text: '……我以前，都是被闹钟叫醒的。' },
+];
+
 /** 清理完成 → 播种 */
 export const SOW_SEEDS_DIALOGUE: DialogueLine[] = [
   { speaker: '', color: COLORS.system, text: '（土地整理完成，阳光洒在新翻开的土地上。）' },

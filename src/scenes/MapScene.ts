@@ -28,7 +28,7 @@ import { addXp, getLevel, getXp, getXpToNext, setOnLevelUp } from '../data/FarmP
 import { getStamina, consumeStamina, resetStamina, MAX_STAMINA } from '../data/Stamina';
 import { ORE_DEPOSITS, OreDeposit, isOreMined, markMined, resetOres } from '../data/MineState';
 import { NPC } from '../entities/NPC';
-import { getNPCsForScene, refreshSchedule, updateNPCs } from '../systems/NPCSystem';
+import { getNPCsForScene, refreshSchedule, updateNPCs, getDailyNpcLine } from '../systems/NPCSystem';
 import { collectShard, getElderDialogue, getQuestObjective, getQuestState } from '../systems/QuestSystem';
 import {
   getDailyQuests,
@@ -60,7 +60,7 @@ import {
   XIYA_DIALOGUE, GATE_OPENED_DIALOGUE, SOW_SEEDS_DIALOGUE,
   WATER_CROPS_DIALOGUE, EVENING_DIALOGUE, TOWN_INTRO_DIALOGUE,
   FOREST_SHARD_DIALOGUE, DEMO_ENDING_DIALOGUE, DEMO_ENDING_BRANCHES, DEMO_ENDING_FINALE,
-  WOODCUT_TIP_DIALOGUE, MINE_TIP_DIALOGUE,
+  WOODCUT_TIP_DIALOGUE, MINE_TIP_DIALOGUE, XIYA_DAWN_DIALOGUE,
 } from '../systems/StorySystem';
 import { hasSave, load, apply, save, getLastIncompatibleVersion, clearIncompatibleVersion, SAVE_VERSION } from '../systems/SaveSystem';
 import { play } from '../systems/AudioSystem';
@@ -142,12 +142,20 @@ export class MapScene extends Phaser.Scene {
   private seedSwitchCooldown = 0;
   // 种子选择器 DOM
   private seedSelectorEl: HTMLDivElement | null = null;
+  // 移动端点击种田：点击操作后的短暂反馈高亮（key = "col,row"，至 tapFlashUntil 过期）
+  private tapFlashKey = '';
+  private tapFlashUntil = 0;
   // 剧情对话 UI
   private storyDialogue: StoryDialogue | null = null;
   // 教程：大门墙壁（物理矩形，钥匙使用后销毁）
   private gateWall: Phaser.GameObjects.Rectangle | null = null;
   // 教程：夏雅精灵
   private xiyaSprite: Phaser.GameObjects.Sprite | null = null;
+  // v0.5.3 剧情密度 E1：清晨偶遇的夏雅（教程完成后，清晨 06-08 时在农场出现）
+  private dawnXiya: Phaser.GameObjects.Sprite | null = null;
+  private dawnXiyaLabel: Phaser.GameObjects.Text | null = null;
+  // E1 当天是否已触发过（跨天重置：由 onDayChange 清空）
+  private dawnXiyaDay = 0;
   // 教程提示 DOM
   private tutorialHint: HTMLDivElement | null = null;
   // 教程进度计数（锄地/播种/浇水各需3次）
@@ -405,10 +413,20 @@ export class MapScene extends Phaser.Scene {
       this.setupTutorial();
     }
 
+    // v0.5.3 剧情密度 E1：教程完成后，清晨（06-08 时）在农场出现夏雅（纯陪伴事件，非任务）
+    if (this.mapKey === 'farm' && isTutorialDone()) {
+      this.setupDawnXiya();
+    }
+
     // 触屏控件（摇杆+交互按钮，DOM 单例；移动端额外显示背包按钮）
     this.touchControls = new TouchControls(this, this.inputManager, () => this.tryOpenBackpack());
     // 农场场景操作按钮语义为「使用工具」，其余场景保持「交互」（仅影响按钮文字，逻辑不变）
     setActionButtonLabel(this.mapKey === 'farm' ? '使用工具' : '交互');
+    // 移动端点击种田：触屏设备在农场点击可操作的农田格子 → 直接执行操作
+    // （DOM 按钮/摇杆区域 pointer-events:auto 会拦截事件，不会落到此处）
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      this.handleFarmTap(pointer);
+    });
     // 商店面板（DOM 覆盖层；数据变化时刷新 HUD 金币显示；关店时清理输入残留）
     this.shopPanel = new ShopPanel(
       () => this.updateHUD(),
@@ -646,6 +664,45 @@ export class MapScene extends Phaser.Scene {
       // 立即吸附到目标位置（避免从原点滑过来）
       npc.snapToTarget();
     }
+  }
+
+  /**
+   * v0.5.3 剧情密度 E1：清晨偶遇的夏雅
+   * 教程完成后，清晨 06-08 时进入农场时在庄园出现；玩家靠近按 E 播放 XIYA_DAWN_DIALOGUE。
+   * 当天触发过一次后不再出现（dawnXiyaDay 记录，跨天由 onDayChange 重置）。
+   * 纯陪伴事件：无任务、无奖励、不影响主线/教程。
+   */
+  private setupDawnXiya(): void {
+    const t = getTime();
+    if (t.hour < 6 || t.hour >= 8) return;
+    if (this.dawnXiyaDay === t.day) return;
+
+    const dx = 8 * TILE_SIZE + TILE_SIZE / 2;
+    const dy = 11 * TILE_SIZE + TILE_SIZE / 2;
+    this.dawnXiya = this.add.sprite(dx, dy, 'npc_xiya');
+    this.dawnXiya.setScale(0.5).setDepth(5);
+    this.dawnXiyaLabel = this.add.text(dx, dy - 16, '夏雅', {
+      fontSize: '10px', color: '#f0a050',
+    }).setOrigin(0.5).setDepth(6);
+  }
+
+  /** 与清晨夏雅交互（靠近按 E → 播放偶遇对话） */
+  private tryDawnXiyaInteract(): boolean {
+    if (!this.dawnXiya || !this.dawnXiya.visible) return false;
+    if (getTime().hour < 6 || getTime().hour >= 8) return false;
+    const dx = this.player.x - this.dawnXiya.x;
+    const dy = this.player.y - this.dawnXiya.y;
+    if (dx * dx + dy * dy > 28 * 28) return false;
+
+    this.dawnXiyaDay = getTime().day;
+    this.dawnXiya.destroy();
+    this.dawnXiya = null;
+    if (this.dawnXiyaLabel) { this.dawnXiyaLabel.destroy(); this.dawnXiyaLabel = null; }
+    if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+    this.storyDialogue.play(XIYA_DAWN_DIALOGUE, () => {
+      this.updateHUD();
+    });
+    return true;
   }
 
   /**
@@ -1093,13 +1150,27 @@ export class MapScene extends Phaser.Scene {
     });
   }
 
+  /** v0.5.3：NPC 每日随机句的"当天已说过"内存标记（不进入存档） */
+  private npcDailySaid = new Map<string, number>();
+
   /**
    * 播放 NPC 对话（靠近 NPC 按 E 触发，全屏打字机剧本）
    * 使用 StoryDialogue 全屏播放 npc.dialogues
+   * v0.5.3：当日首次对话时，在固定对白之后追加一句随机生活台词
    */
   private showDialogue(npc: NPC): void {
     if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
-    this.storyDialogue.play(npc.dialogues, () => {
+    // v0.5.3 剧情密度：当日首次对话时追加随机生活句（只对老张/小梅/阿风）
+    let lines = npc.dialogues;
+    const today = getTime().day;
+    if (this.npcDailySaid.get(npc.id) !== today) {
+      const daily = getDailyNpcLine(npc.id, today);
+      if (daily) {
+        lines = [...npc.dialogues, ...daily];
+        this.npcDailySaid.set(npc.id, today);
+      }
+    }
+    this.storyDialogue.play(lines, () => {
       // 商店老板：对话结束后自动打开商店
       if (npc.id === 'shopkeeper') {
         this.inputManager.clearAction();
@@ -1258,6 +1329,11 @@ export class MapScene extends Phaser.Scene {
     // 0.3 教程：夏雅交互（大门地图优先于普通 NPC）
     if ((this.mapKey === 'gate' || this.mapKey === 'farm') && this.xiyaSprite) {
       if (this.tryXiyaInteract()) return;
+    }
+
+    // v0.5.3 剧情密度 E1：清晨偶遇夏雅（教程完成后，仅清晨 06-08 时）
+    if (this.mapKey === 'farm' && this.dawnXiya) {
+      if (this.tryDawnXiyaInteract()) return;
     }
 
     // 2. 优先检测靠近 NPC（所有场景）：取交互范围内最近的一个
@@ -1556,6 +1632,17 @@ export class MapScene extends Phaser.Scene {
       }
     }
     this.setupNPCs();
+    // v0.5.3 E1：跨天后重新判断清晨夏雅（清空旧精灵 + 按新天数重建）
+    this.clearDawnXiya();
+    if (this.mapKey === 'farm' && isTutorialDone()) {
+      this.setupDawnXiya();
+    }
+  }
+
+  /** 清除清晨夏雅精灵（场景切换/跨天时调用） */
+  private clearDawnXiya(): void {
+    if (this.dawnXiya) { this.dawnXiya.destroy(); this.dawnXiya = null; }
+    if (this.dawnXiyaLabel) { this.dawnXiyaLabel.destroy(); this.dawnXiyaLabel = null; }
   }
 
   /**
@@ -1565,6 +1652,17 @@ export class MapScene extends Phaser.Scene {
    */
   private updateTargetHighlight(): void {
     if (this.mapKey !== 'farm' || !this.targetHighlight) return;
+    // 点击种田后的短暂反馈高亮（不被每帧面向高亮覆盖）
+    if (this.tapFlashUntil > this.time.now && this.tapFlashKey) {
+      const [fc, fr] = this.tapFlashKey.split(',').map(Number);
+      if (this.targetHighlight.active) {
+        this.targetHighlight.setVisible(true);
+        this.targetHighlight.setPosition(fc * TILE_SIZE + TILE_SIZE / 2, fr * TILE_SIZE + TILE_SIZE / 2);
+        const pulse = 0.5 + 0.5 * Math.sin(this.time.now / 150);
+        this.targetHighlight.setAlpha(0.45 + 0.25 * pulse);
+      }
+      return;
+    }
     const pc = Math.floor(this.player.x / TILE_SIZE);
     const pr = Math.floor(this.player.y / TILE_SIZE);
     let tc = pc;
@@ -1755,13 +1853,45 @@ export class MapScene extends Phaser.Scene {
         tc = pc + 1;
         break;
     }
-    // 必须在农田可耕区域内
-    if (!isInFarmArea(tc, tr)) return;
+    this.tryFarmInteractAt(tc, tr);
+  }
 
-    const state = getTileState(tc, tr);
+  /**
+   * 移动端点击种田：触屏设备在农场点击可操作的农田格子 → 直接执行操作
+   * 面板/对话打开时忽略；非触屏设备忽略（桌面保留 WASD + E 交互）
+   */
+  private handleFarmTap(pointer: Phaser.Input.Pointer): void {
+    if (!isTouchDevice()) return;
+    if (this.mapKey !== 'farm') return;
+    if (this.transitioning) return;
+    // 面板/对话打开时忽略点击
+    if (this.storyDialogue?.isOpen()) return;
+    if (this.shopPanel.isOpen()) return;
+    if (this.backpackPanel.isOpen()) return;
+    if (this.endingPanel?.isOpen()) return;
+    const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+    const col = Math.floor(world.x / TILE_SIZE);
+    const row = Math.floor(world.y / TILE_SIZE);
+    if (!isInFarmArea(col, row)) return;
+    if (!this.isTileActionable(col, row)) return;
+    this.tryFarmInteractAt(col, row);
+    // 点击反馈：目标格短暂高亮（反馈"刚才操作了哪一格"）
+    this.tapFlashKey = `${col},${row}`;
+    this.tapFlashUntil = this.time.now + 500;
+  }
+
+  /**
+   * 对指定农田格执行操作（锄地/播种/浇水/收获）
+   * 由 tryFarmInteract（面前一格）与 handleFarmTap（点击格）复用
+   */
+  private tryFarmInteractAt(col: number, row: number): void {
+    // 必须在农田可耕区域内
+    if (!isInFarmArea(col, row)) return;
+
+    const state = getTileState(col, row);
     if (state === 'empty') {
       // 锄地：空地 → 耕地
-      setTileState(tc, tr, 'tilled');
+      setTileState(col, row, 'tilled');
       play('hoe');
       this.checkTutorialProgress('till');
     } else if (state === 'tilled') {
@@ -1770,7 +1900,7 @@ export class MapScene extends Phaser.Scene {
       const selectedCount = getItemCount(selectedSeedItem);
       if (selectedCount > 0) {
         // 选中的种子有库存，直接种
-        this.doPlant(tc, tr, this.selectedCropType);
+        this.doPlant(col, row, this.selectedCropType);
       } else {
         // 选中的种子没了，检查其他种子
         const availableSeeds: { cropType: CropType; count: number }[] = [];
@@ -1781,16 +1911,16 @@ export class MapScene extends Phaser.Scene {
         }
         if (availableSeeds.length === 0) return;
         if (availableSeeds.length === 1) {
-          this.doPlant(tc, tr, availableSeeds[0].cropType);
+          this.doPlant(col, row, availableSeeds[0].cropType);
         } else {
-          this.showSeedSelector(tc, tr, availableSeeds);
+          this.showSeedSelector(col, row, availableSeeds);
         }
       }
     } else if (state === 'planted') {
       // 浇水：已种 → 已浇水（成长前置条件）
-      setTileState(tc, tr, 'watered');
-      const crop = getCrop(tc, tr);
-      if (crop) setCrop(tc, tr, { ...crop, watered: true });
+      setTileState(col, row, 'watered');
+      const crop = getCrop(col, row);
+      if (crop) setCrop(col, row, { ...crop, watered: true });
       addXp(1, 'water');
       play('water');
       onDQWater();
@@ -1798,10 +1928,10 @@ export class MapScene extends Phaser.Scene {
       this.checkTutorialProgress('water');
     } else if (state === 'grown') {
       // 收获：成熟 → 耕地，获得作物
-      const crop = getCrop(tc, tr);
+      const crop = getCrop(col, row);
       const cropType = crop?.cropType ?? 'radish';
-      setTileState(tc, tr, 'tilled');
-      setCrop(tc, tr, undefined);
+      setTileState(col, row, 'tilled');
+      setCrop(col, row, undefined);
       addItem(cropType, 1);
       addXp(10, 'harvest');
       play('harvest');
@@ -1813,8 +1943,8 @@ export class MapScene extends Phaser.Scene {
     }
 
     // 刷新该格视觉 + HUD
-    const visual = this.tileRects.get(`${tc},${tr}`);
-    if (visual) this.updateTileVisual(tc, tr, visual);
+    const visual = this.tileRects.get(`${col},${row}`);
+    if (visual) this.updateTileVisual(col, row, visual);
     this.updateHUD();
   }
 
