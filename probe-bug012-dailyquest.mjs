@@ -12,7 +12,7 @@
 import puppeteer from 'puppeteer-core';
 
 const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-const GAME_URL = 'http://localhost:5173/';
+const GAME_URL = process.env.GAME_URL ?? 'http://localhost:5173/';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function run() {
