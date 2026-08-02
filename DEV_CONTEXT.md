@@ -157,12 +157,7 @@ E6 神秘少女追加
 # 5. 当前正在处理
 
 
-## 地图管线
-
-
-发现问题：
-
-### F1 forest tileset
+## F1 forest tileset ✅ 已完成（提交 66a42f2）
 
 
 问题：
@@ -174,14 +169,47 @@ forest.json 使用 gid 9-12 树瓦片
 forest_tileset.png 只有8格
 
 
-影响：
+修复：
 
-森林部分碰撞存在，但视觉缺失。
+forest_tileset.png 扩展至 12 格（192×16）
+
+追加 gid 9-12 树瓦片
+
+未改 gid 编号 / 未改 JSON 引用 / 未改碰撞语义
 
 
-处理：
+验证：
 
-v0.6 前修复。
+- 数据级 PIL 合成 47/47 树瓦片像素断言 ✅
+- 运行时探针 probe-forest-visual.mjs 3/3 ✅
+- tsc + vite build ✅
+
+
+产物：
+
+- public/assets/tiles/forest_tileset.png（8→12 格）
+- tools/fix_forest_tileset.py
+- tests/probes/probe-forest-visual.mjs
+- 地图扩展技术评估报告-v0.6.md
+
+
+## 当前状态：地图线等待 M1-1 产出
+
+
+地图升级双轨（M1 farm / C1 海岸 / C2 深林）已转交地图线开发。
+
+地图线已提交：
+
+- 629ef02 DEV_CONTEXT.md
+- 7510777 地图资产管线规范 + 前置检查报告
+
+
+QA 监督（本 AI 角色）待命：
+
+- ❌ 不验收（M1-1 无 commit）
+- ❌ 不提前评审方案（避免干扰设计）
+- ❌ 不补文档（规范已够）
+- ❌ 不改地图代码
 
 
 ---
@@ -314,34 +342,79 @@ NPC位置：
 推荐顺序：
 
 1.
-修复 forest tileset
+✅ 修复 forest tileset（已完成 66a42f2）
 
 2.
-NPC日程重构
+等待地图线 M1-1 farm 升级产出
 
 3.
-farm地图升级
+M1-1 产出后：独立 QA 验收（Git 变更审查 → Tiled 数据检查 → Runtime probe → 存档检查）
 
 4.
+NPC日程重构
+
+5.
 海岸地图原型
 
 
----
+# 11. AI 协作分工（制作人定稿 9c0b10f）
 
-# 11. 最近提交记录
+
+制作人
+|-- opencode（实现）：BUG-026 种植体验（P0）+ 音效评估
+|-- 地图线（trae 转交）：地图管线 + M1 farm 升级 + M2 氛围 + C1/C2
+|-- 美术线：村长立绘收尾（P2，in-flight）
+|-- QA 监督（本 AI）：地图变更后独立验证 + 架构红线 + 质量控制
+
+
+## QA 监督验收标准（M1-1 提交后按序执行）
+
+
+① Git 变更审查
+
+允许：map json / tileset 资源 / 地图配置 / probe 脚本
+
+警惕：SaveSystem / Player 系统 / NPC 核心逻辑 / 全局配置
+
+
+② Tiled 数据检查
+
+- 最大 gid ≤ tileset 实际格数（防 F1 重演）
+- layer 无无意义变化（防 ground/collision/objects 改名导致 Phaser 读取异常）
+- 碰撞语义稳定：墙 / 水域 / 不可进入区域 / 出口
+
+
+③ Runtime probe
+
+复用 probe-forest-visual.mjs 模板
+
+新增 probe-farm-visual.mjs（或 probe-m1-farm.mjs）
+
+断言：scene 存在 / player 存在 / collision 存在 / 关键 object 存在
+
+
+④ 存档检查
+
+不改变：farm tile 状态 / crop 位置 / object id
+
+重点防 Tiled 重存导致 layer / object id / collision 变化
+
+
+# 12. 最近提交记录
+
 
 最新：
 
-10216a0
+66a42f2
 
 内容：
 
-docs(producer): 制作人综合评估与三线并行计划（BUG-026升级/音效立项/美术冻结）
+fix(forest): F1 修复 forest_tileset 补齐 gid 9-12 树瓦片 + 地图扩展技术评估报告入库
 
 近 5 条：
 
+- 66a42f2 fix(forest): F1 修复 forest_tileset 补齐 gid 9-12 树瓦片 + 地图扩展技术评估报告入库
+- 7510777 docs(map): v0.6 地图资产管线规范 + 前置检查报告
+- 629ef02 docs(context): 建立AI协作上下文交接文档 DEV_CONTEXT.md
+- 9c0b10f docs(producer): 制作人定稿 v0.5.4→v0.6 过渡优先级（BUG-026 P0/地图farm优先/音效WebAudio/先反馈再精度）
 - 10216a0 docs(producer): 制作人综合评估与三线并行计划（BUG-026升级/音效立项/美术冻结）
-- 23d590a docs(plan): NPC生活事件v0.5.4阶段2草案
-- 76577fc feat(npc): v0.5.4 阶段1 NPC日程错峰重构
-- cdd0925 docs(plan): 村庄NPC扩展计划草案
-- 858d9e1 docs: 地图扩展与探索体验升级规划 v0.6（双轨并入最高优先级）
