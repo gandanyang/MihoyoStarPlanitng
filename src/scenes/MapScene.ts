@@ -896,7 +896,7 @@ export class MapScene extends Phaser.Scene {
       el = document.createElement('div');
       el.id = 'fatal-error-overlay';
       el.style.cssText =
-        'position:fixed;inset:0;background:#000;z-index:9999;' +
+        'position:fixed;top:0;right:0;bottom:0;left:0;background:#000;z-index:9999;' +
         'display:flex;flex-direction:column;align-items:center;justify-content:center;' +
         'font-family:Arial,sans-serif;text-align:center;padding:20px';
       document.body.appendChild(el);
@@ -2197,7 +2197,7 @@ export class MapScene extends Phaser.Scene {
 
     const el = document.createElement('div');
     el.style.cssText =
-      'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;' +
+      'position:fixed;top:0;right:0;bottom:0;left:0;display:flex;align-items:center;justify-content:center;' +
       'background:rgba(0,0,0,0.5);z-index:220;user-select:none;';
 
     const cardStyle =
@@ -2264,7 +2264,7 @@ export class MapScene extends Phaser.Scene {
     el.style.cssText =
       panelPos + 'width:min(190px,38vw);background:rgba(25,20,15,0.92);' +
       'border:1px solid rgba(138,106,69,0.6);border-radius:10px;padding:6px 8px;color:#fff;font-size:11px;' +
-      'font-family:Arial;z-index:10;user-select:none;pointer-events:auto;backdrop-filter:blur(4px);' +
+      'font-family:Arial;z-index:10;user-select:none;pointer-events:auto;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);' +
       'display:none;';
 
     // 分离：可领奖 / 进行中 / 已领奖

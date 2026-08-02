@@ -56,15 +56,15 @@ function createDom(): void {
   const container = document.createElement('div');
   container.id = 'touch-controls';
   container.style.cssText =
-    'position:fixed;inset:0;pointer-events:none;z-index:100;user-select:none;-webkit-user-select:none';
+    'position:fixed;top:0;right:0;bottom:0;left:0;pointer-events:none;z-index:100;user-select:none;-webkit-user-select:none';
 
   // 摇杆容器（左下角）
   const joy = document.createElement('div');
   joy.style.cssText =
-    'position:absolute;left:30px;bottom:30px;width:130px;height:130px;pointer-events:auto;touch-action:none';
+    'position:absolute;left:30px;bottom:calc(30px + env(safe-area-inset-bottom, 0px));width:130px;height:130px;pointer-events:auto;touch-action:none';
   joystickBase = document.createElement('div');
   joystickBase.style.cssText =
-    'position:absolute;inset:0;border-radius:50%;background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.4)';
+    'position:absolute;top:0;right:0;bottom:0;left:0;border-radius:50%;background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.4)';
   joystickThumb = document.createElement('div');
   joystickThumb.style.cssText =
     'position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px;border-radius:50%;background:rgba(255,255,255,0.6)';
@@ -107,7 +107,7 @@ function createDom(): void {
   // 防抖：同一手势 500ms 内只触发一次（touchstart→mousedown 跨帧双击发防护）
   const btn = document.createElement('div');
   btn.style.cssText =
-    'position:absolute;right:24px;bottom:24px;width:72px;height:72px;border-radius:50%;' +
+    'position:absolute;right:24px;bottom:calc(24px + env(safe-area-inset-bottom, 0px));width:72px;height:72px;border-radius:50%;' +
     'background:rgba(76,175,80,0.45);border:2px solid rgba(255,255,255,0.5);pointer-events:auto;' +
     'display:flex;align-items:center;justify-content:center;color:#fff;font:bold 15px Arial;' +
     'touch-action:none;cursor:pointer;user-select:none;-webkit-user-select:none';
@@ -135,7 +135,7 @@ function createDom(): void {
   // 背包按钮（仅移动端显示；桌面端用键盘 B）
   backpackBtn = document.createElement('div');
   backpackBtn.style.cssText =
-    'position:absolute;right:28px;bottom:108px;width:52px;height:52px;border-radius:50%;background:rgba(33,150,243,0.4);border:2px solid rgba(255,255,255,0.5);pointer-events:auto;display:none;align-items:center;justify-content:center;color:#fff;font:bold 13px Arial;touch-action:none;cursor:pointer';
+    'position:absolute;right:28px;bottom:calc(108px + env(safe-area-inset-bottom, 0px));width:52px;height:52px;border-radius:50%;background:rgba(33,150,243,0.4);border:2px solid rgba(255,255,255,0.5);pointer-events:auto;display:none;align-items:center;justify-content:center;color:#fff;font:bold 13px Arial;touch-action:none;cursor:pointer';
   backpackBtn.textContent = '背包';
   let lastBackpackTime = 0;
   const BP_DEBOUNCE_MS = 300;
@@ -156,7 +156,7 @@ function createDom(): void {
   questBtn = document.createElement('div');
   questBtn.id = 'quest-btn';
   questBtn.style.cssText =
-    'position:absolute;right:28px;bottom:172px;width:52px;height:52px;border-radius:50%;background:rgba(120,90,180,0.4);border:2px solid rgba(255,255,255,0.5);pointer-events:auto;display:none;align-items:center;justify-content:center;color:#fff;font:bold 13px Arial;touch-action:none;cursor:pointer;';
+    'position:absolute;right:28px;bottom:calc(172px + env(safe-area-inset-bottom, 0px));width:52px;height:52px;border-radius:50%;background:rgba(120,90,180,0.4);border:2px solid rgba(255,255,255,0.5);pointer-events:auto;display:none;align-items:center;justify-content:center;color:#fff;font:bold 13px Arial;touch-action:none;cursor:pointer;';
   questBtn.textContent = '任务';
   // 红点提示（可领奖时显示）
   questRedDot = document.createElement('div');

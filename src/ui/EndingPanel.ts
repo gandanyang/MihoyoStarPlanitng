@@ -38,7 +38,7 @@ function createDom(): void {
   panelEl = document.createElement('div');
   panelEl.id = 'ending-panel';
   panelEl.style.cssText =
-    'position:fixed;inset:0;display:none;align-items:center;justify-content:center;' +
+    'position:fixed;top:0;right:0;bottom:0;left:0;display:none;align-items:center;justify-content:center;' +
     'background:rgba(5,8,28,0.82);z-index:250;user-select:none;-webkit-user-select:none;';
 
   panelEl.innerHTML = `

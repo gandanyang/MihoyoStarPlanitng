@@ -14,7 +14,9 @@ let ctx: AudioContext | null = null;
 /** 懒初始化 AudioContext（浏览器要求用户交互后才能创建） */
 function getCtx(): AudioContext {
   if (!ctx) {
-    ctx = new AudioContext();
+    const AC = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AC) throw new Error('AudioContext not supported');
+    ctx = new AC();
   }
   // 某些浏览器会暂停 AudioContext，需要 resume
   if (ctx.state === 'suspended') {

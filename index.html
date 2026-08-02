@@ -2,7 +2,8 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <title>归星物语</title>
     <style>
       html, body {
@@ -15,6 +16,8 @@
         /* 阻止移动端双指缩放与橡皮筋滚动 */
         touch-action: none;
         overscroll-behavior: none;
+        /* 防止长按弹出系统菜单（iOS Safari） */
+        -webkit-touch-callout: none;
       }
       body {
         display: flex;

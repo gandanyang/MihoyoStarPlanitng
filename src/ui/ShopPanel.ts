@@ -146,7 +146,7 @@ function createDom(): void {
   panelEl = document.createElement('div');
   panelEl.id = 'shop-panel';
   panelEl.style.cssText =
-    'position:fixed;inset:0;display:none;align-items:center;justify-content:center;' +
+    'position:fixed;top:0;right:0;bottom:0;left:0;display:none;align-items:center;justify-content:center;' +
     'background:rgba(0,0,0,0.55);z-index:200;user-select:none;-webkit-user-select:none';
 
   panelEl.innerHTML = `

@@ -132,7 +132,7 @@ function createDom(): void {
   panelEl = document.createElement('div');
   panelEl.id = 'quest-panel';
   panelEl.style.cssText =
-    'position:fixed;inset:0;display:none;align-items:center;justify-content:center;' +
+    'position:fixed;top:0;right:0;bottom:0;left:0;display:none;align-items:center;justify-content:center;' +
     'background:rgba(0,0,0,0.55);z-index:215;user-select:none;-webkit-user-select:none';
   panelEl.innerHTML = `
     <div style="width:min(380px,90vw);background:#3d3226;border:3px solid #8a6a45;border-radius:10px;padding:16px;color:#fff;font-family:Arial;box-shadow:0 4px 20px rgba(0,0,0,0.6)">
