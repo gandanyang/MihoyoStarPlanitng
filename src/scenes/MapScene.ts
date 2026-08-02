@@ -20,6 +20,7 @@ import {
   getTree,
   chopTree,
   refreshStumps,
+  getAllCropEntries,
 } from '../data/FarmState';
 import { addItem, getItemCount, itemIconHtml } from '../data/Inventory';
 import { formatTime, getTime, nextDay as timeNextDay, tick as timeTick } from '../data/TimeSystem';
@@ -1602,6 +1603,16 @@ export class MapScene extends Phaser.Scene {
         dailyQuest: getDailyQuestSaveData(),
       } as any);
       this.showDialogueText(treesRefreshed ? '已保存 Zzz... 树木也生长恢复了！' : '已保存 Zzz...');
+      // P2：检查是否有成熟作物可收获
+      if (this.mapKey === 'farm') {
+        const readyCrops = getAllCropEntries().filter(([, c]) => {
+          const def = CROP_DEFS[c.cropType];
+          return def && getTime().day >= c.plantDay + def.growthDays;
+        });
+        if (readyCrops.length > 0) {
+          setTimeout(() => this.showDialogueText(`🌱 有 ${readyCrops.length} 块作物成熟了，快去收获吧！`), 1200);
+        }
+      }
     } finally {
       this.sleeping = false;
     }

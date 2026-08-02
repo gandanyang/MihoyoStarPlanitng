@@ -301,7 +301,7 @@ export class StoryDialogue {
       } else {
         this.finishTyping();
       }
-    }, 35);
+    }, 28);
   }
 
   private finishTyping(): void {
