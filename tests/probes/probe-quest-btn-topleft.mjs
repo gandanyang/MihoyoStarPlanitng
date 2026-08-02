@@ -1,4 +1,4 @@
-// 验证任务按钮移到左上角（制作人需求）
+// 验证触屏控件（摇杆/按钮）放在画面外（FIT 缩放黑边区域），不遮挡游戏画面（制作人需求）
 // 前置：dev server localhost:5173
 import puppeteer from 'puppeteer-core';
 
@@ -23,7 +23,47 @@ async function run() {
     defaultViewport: { width: 844, height: 390, isMobile: true, hasTouch: true },
     args: ['--no-sandbox'],
   });
+
+  // 收集控件矩形 + 画布矩形，并检查每个控件中心点是否在画布外（画面外）
+  const collectAndCheck = async (page, prefix) => {
+    const data = await page.evaluate(() => {
+      const cv = document.querySelector('#game-container canvas');
+      if (!cv) return null;
+      const c = cv.getBoundingClientRect();
+      const rect = sel => {
+        const el = document.querySelector(sel);
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) };
+      };
+      return {
+        canvas: { x: Math.round(c.x), y: Math.round(c.y), w: Math.round(c.width), h: Math.round(c.height), r: Math.round(c.right), b: Math.round(c.bottom) },
+        quest: rect('#quest-btn'),
+        joy: rect('.tc-joystick'),
+        main: rect('[data-action="interact"]'),
+        bp: rect('.tc-btn-backpack'),
+        questDisplay: document.getElementById('quest-btn') ? getComputedStyle(document.getElementById('quest-btn')).display : 'none',
+        vp: { w: innerWidth, h: innerHeight },
+      };
+    });
+    if (!data) { console.log(`${prefix} → 画布未找到`); return false; }
+    console.log(`${prefix} →`, JSON.stringify(data));
+    const out = (r) => {
+      if (!r) return null;
+      const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+      // 中心点不在画布内 → 画面外
+      return !(cx >= data.canvas.x && cx <= data.canvas.r && cy >= data.canvas.y && cy <= data.canvas.b);
+    };
+    check(`${prefix} 任务按钮显示`, data.questDisplay === 'flex');
+    check(`${prefix} 任务按钮在画面外`, out(data.quest) === true);
+    check(`${prefix} 摇杆在画面外`, out(data.joy) === true);
+    check(`${prefix} 主按钮在画面外`, out(data.main) === true);
+    check(`${prefix} 背包按钮在画面外`, out(data.bp) === true);
+    return true;
+  };
+
   try {
+    // ===== 横屏 844×390 =====
     const page = await browser.newPage();
     await page.evaluateOnNewDocument(() => {
       Object.defineProperty(navigator, 'userAgent', {
@@ -32,7 +72,6 @@ async function run() {
       });
       Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 5, configurable: true });
     });
-    // ===== 横屏 844×390 =====
     await page.setViewport({ width: 844, height: 390, isMobile: true, hasTouch: true });
     await page.goto(GAME_URL + '?reset=1', { waitUntil: 'networkidle2' });
     await sleep(2500);
@@ -46,29 +85,10 @@ async function run() {
     });
     await waitFor(page, () => page.evaluate(() => !!document.getElementById('quest-btn')));
     await sleep(600);
-    const q = await page.evaluate(() => {
-      const b = document.getElementById('quest-btn');
-      const cv = document.querySelector('#game-container canvas');
-      if (!b || !cv) return null;
-      const r = b.getBoundingClientRect();
-      const c = cv.getBoundingClientRect();
-      return {
-        btn: { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) },
-        canvas: { x: Math.round(c.x), y: Math.round(c.y), w: Math.round(c.width), h: Math.round(c.height), r: Math.round(c.right), b: Math.round(c.bottom) },
-        display: getComputedStyle(b).display,
-        vp: { w: innerWidth, h: innerHeight },
-      };
-    });
-    console.log('横屏844×390 →', JSON.stringify(q));
-    if (q) {
-      check('任务按钮显示', q.display === 'flex');
-      check('按钮在画布左 15% 内', q.btn.x < q.canvas.x + q.canvas.w * 0.15);
-      check('按钮在画布上部 40% 内', q.btn.y < q.canvas.y + q.canvas.h * 0.4);
-      check('按钮整体在画布内', q.btn.x >= q.canvas.x && q.btn.x + q.btn.w <= q.canvas.r && q.btn.y >= q.canvas.y && q.btn.y + q.btn.h <= q.canvas.b);
-    }
+    await collectAndCheck(page, '横屏844×390');
     await page.close();
 
-    // ===== 竖屏 390×844 =====
+    // ===== 竖屏 390×844（真机竖屏会被 rotate-hint 遮挡，此处验证布局计算不越界） =====
     const page2 = await browser.newPage();
     await page2.evaluateOnNewDocument(() => {
       Object.defineProperty(navigator, 'userAgent', {
@@ -90,26 +110,7 @@ async function run() {
     });
     await waitFor(page2, () => page2.evaluate(() => !!document.getElementById('quest-btn')));
     await sleep(600);
-    const q2 = await page2.evaluate(() => {
-      const b = document.getElementById('quest-btn');
-      const cv = document.querySelector('#game-container canvas');
-      if (!b || !cv) return null;
-      const r = b.getBoundingClientRect();
-      const c = cv.getBoundingClientRect();
-      return {
-        btn: { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) },
-        canvas: { x: Math.round(c.x), y: Math.round(c.y), w: Math.round(c.width), h: Math.round(c.height), r: Math.round(c.right), b: Math.round(c.bottom) },
-        display: getComputedStyle(b).display,
-        vp: { w: innerWidth, h: innerHeight },
-      };
-    });
-    console.log('竖屏390×844 →', JSON.stringify(q2));
-    if (q2) {
-      check('竖屏任务按钮显示', q2.display === 'flex');
-      check('竖屏按钮在画布左 15% 内', q2.btn.x < q2.canvas.x + q2.canvas.w * 0.15);
-      check('竖屏按钮在画布上部 40% 内', q2.btn.y < q2.canvas.y + q2.canvas.h * 0.4);
-      check('竖屏按钮整体在画布内', q2.btn.x >= q2.canvas.x && q2.btn.x + q2.btn.w <= q2.canvas.r && q2.btn.y >= q2.canvas.y && q2.btn.y + q2.btn.h <= q2.canvas.b);
-    }
+    await collectAndCheck(page2, '竖屏390×844');
     await page2.close();
   } finally {
     await browser.close();

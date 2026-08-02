@@ -58,16 +58,17 @@ function createDom(): void {
 
   const container = document.createElement('div');
   container.id = 'touch-controls';
-  // 相对 #game-container（画布区域）定位：画布居中时摇杆/按钮不偏到 FIT 黑边区（横屏）
+  // fixed 定位相对视口：控件可放在画布外（FIT 缩放产生的黑边区域），不遮挡游戏画面
+  // 水平位置由 layoutControls() 按黑边宽度动态计算
   container.style.cssText =
-    'position:absolute;inset:0;pointer-events:none;z-index:100;user-select:none;-webkit-user-select:none';
+    'position:fixed;inset:0;pointer-events:none;z-index:100;user-select:none;-webkit-user-select:none';
 
-  // 摇杆容器（左下角）
+  // 摇杆容器（左下角，画面外左侧黑边）
   const joy = document.createElement('div');
   joy.className = 'tc-joystick';
   joystickEl = joy;
   joy.style.cssText =
-    'position:absolute;left:30px;bottom:30px;width:130px;height:130px;display:none;';
+    'position:absolute;bottom:30px;width:130px;height:130px;display:none;';
   joystickBase = document.createElement('div');
   joystickBase.className = 'tc-joystick-base';
   joystickBase.style.cssText =
@@ -117,7 +118,7 @@ function createDom(): void {
   btn.className = 'tc-btn tc-btn-main';
   mainBtn = btn;
   btn.style.cssText =
-    'position:absolute;right:24px;bottom:24px;width:74px;height:74px;' +
+    'position:absolute;bottom:24px;width:74px;height:74px;' +
     'touch-action:none;display:none;';
   // 稳定标识：探针/测试按 data-action 查找按钮，不依赖文字（文字会随场景变化）
   btn.dataset.action = 'interact';
@@ -149,7 +150,7 @@ function createDom(): void {
   backpackBtn = document.createElement('div');
   backpackBtn.className = 'tc-btn tc-btn-backpack';
   backpackBtn.style.cssText =
-    'position:absolute;right:30px;bottom:110px;width:58px;height:58px;' +
+    'position:absolute;bottom:110px;width:58px;height:58px;' +
     'touch-action:none;display:none;';
   backpackBtn.innerHTML =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -176,9 +177,9 @@ function createDom(): void {
   questBtn = document.createElement('div');
   questBtn.id = 'quest-btn';
   questBtn.className = 'tc-btn tc-btn-quest';
-  // 制作人需求：任务按钮移到左上角偏下（避开左上角时间/经验条；safe-area 避开状态栏/挖孔屏；仅触屏显示）
+  // 制作人需求：任务按钮放左上角画面外（左侧黑边区域），避开时间/经验条；safe-area 避开状态栏/挖孔屏
   questBtn.style.cssText =
-    'position:absolute;left:8px;top:calc(90px + env(safe-area-inset-top, 0px));width:58px;height:58px;' +
+    'position:absolute;top:calc(90px + env(safe-area-inset-top, 0px));width:58px;height:58px;' +
     'touch-action:none;display:none;';
   questBtn.innerHTML =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -201,14 +202,31 @@ function createDom(): void {
 
   container.appendChild(joy);
   container.appendChild(btn);
-  // 挂到画布容器（横屏黑边场景下 UI 与画布对齐）；兜底 body
-  const host = document.getElementById('game-container') ?? document.body;
-  host.appendChild(container);
+  // 挂到 body（视口全屏）：fixed 定位允许控件显示在画布外（FIT 黑边区域）
+  document.body.appendChild(container);
+  // 初始布局 + 视口/旋转变化时重算黑边
+  layoutControls();
+  window.addEventListener('resize', layoutControls);
+  window.addEventListener('orientationchange', layoutControls);
 
   // 统一可见性：所有控件只在移动端显示
   updateControlsVisibility();
   window.addEventListener('resize', updateControlsVisibility);
   window.addEventListener('orientationchange', updateControlsVisibility);
+}
+
+/** 画面外布局：把摇杆/按钮放到 FIT 缩放产生的左右黑边区域（不遮挡游戏画面）
+ * gapX = 左右黑边宽度 = (视口宽 - 画布显示宽) / 2。
+ * 控件贴黑边内靠画面侧，方便操作；黑边不足时贴屏幕边缘。
+ */
+function layoutControls(): void {
+  const host = document.getElementById('game-container');
+  const canvasW = host?.clientWidth ?? innerWidth;
+  const gapX = Math.max(0, (innerWidth - canvasW) / 2);
+  if (joystickEl) joystickEl.style.left = `${Math.max(16, gapX - 130)}px`;
+  if (questBtn) questBtn.style.left = `${Math.max(16, gapX - 58)}px`;
+  if (mainBtn) mainBtn.style.right = `${Math.max(16, gapX - 74)}px`;
+  if (backpackBtn) backpackBtn.style.right = `${Math.max(16, gapX - 74)}px`;
 }
 
 /** 是否触屏设备（统一入口在 config.ts，用触屏能力判断，而非窗口宽度——手机横屏宽度可能 ≥800） */
