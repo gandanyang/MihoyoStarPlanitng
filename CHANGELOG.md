@@ -6,6 +6,17 @@
 
 ## [未发布]
 
+### v0.5.2 移动端点击种田（触控重构，`55e93b8`）
+- **背景**：种田在移动端操作不顺畅——需要摇杆靠近 + 点「使用工具」对准面前格，精准度要求高
+- **点击种田**（`MapScene.ts`）：触屏设备在农场点击可操作农田格 → 直接执行对应操作（锄地/播种/浇水/收获）
+  - 新增 `handleFarmTap()`：`pointerdown` → `cameras.main.getWorldPoint()` 换算世界坐标 → 计算格坐标 → 复用操作逻辑
+  - `tryFarmInteract()` 拆出 `tryFarmInteractAt(col, row)`，面前格交互与点击格交互共用同一套判定/操作（含 `isTileActionable` 判定一致）
+  - 面板/对话打开时忽略点击；非触屏设备完全忽略（桌面保留 WASD+E）
+- **点击反馈**：操作后目标格短暂高亮（`tapFlashKey`，500ms），反馈"刚才操作了哪一格"
+- **交互按钮防抖**（`TouchControls.ts`）：`ACTION_DEBOUNCE_MS` 500 → 150ms——原 500ms 会拖累连锄/连种手感；150ms 仍防 touchstart→mousedown 双击
+- **验证**：新增 `probe-farm-tap.mjs`（移动端点击种田 E2E：点击农田格 → 锄地成功）；tsc / test-tutorial（13）/ probe-mobile-tutorial（10）/ test-ch1-story（24）全绿
+- **同批含 v0.5.3 剧情密度实现代码**（NPC 每日随机一句 + 清晨夏雅偶遇 E1，随文件一起提交防覆盖）
+
 ### v0.5.2 制作人接管 + 移动端真机测试推进 + 移动端操作文案适配（BUG-011）
 - **制作人接管**（顶层设计.md v0.5，`8ccc34d`）：Codex → opencode 接任顶层设计/决策/评审角色；执行原则「先稳定再打磨」
 - **竖屏方案拍板**（`f3b0723`）：BUG-007 采用方案 A（竖屏横屏提示），但**实现延后**——优先移动端真机测试，拿到实测数据后再排期
