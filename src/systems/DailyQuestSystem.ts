@@ -83,7 +83,7 @@ const QUEST_POOL: DailyQuestTemplate[] = [
   { id: 'talk_shopkeeper', title: '光顾商店', desc: '与商店老板对话', objective: { type: 'talk_npc', npcId: 'shopkeeper', npcName: '商店老板' }, reward: 1 },
   { id: 'talk_miner', title: '矿工闲谈', desc: '与矿工老张对话', objective: { type: 'talk_npc', npcId: 'miner', npcName: '矿工老张' }, reward: 1 },
   { id: 'talk_gardener', title: '花匠私语', desc: '与花匠小梅对话', objective: { type: 'talk_npc', npcId: 'gardener', npcName: '花匠小梅' }, reward: 1 },
-  { id: 'talk_adventurer', title: '冒险传说', desc: '与冒险家阿飞对话', objective: { type: 'talk_npc', npcId: 'adventurer', npcName: '冒险家阿飞' }, reward: 1 },
+  { id: 'talk_adventurer', title: '冒险传说', desc: '与冒险家阿风对话', objective: { type: 'talk_npc', npcId: 'adventurer', npcName: '冒险家阿风' }, reward: 1 },
 
   // --- 商店类 ---
   { id: 'buy_1', title: '小小消费', desc: '在商店购买 1 件物品', objective: { type: 'buy_shop', count: 1 }, reward: 1 },

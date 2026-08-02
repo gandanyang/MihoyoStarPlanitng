@@ -76,39 +76,80 @@ const SPOTS: { farm: SpotMap; town: SpotMap; forest: SpotMap; mine: SpotMap } = 
   },
 };
 
-/** 构建日程（按 NPC id 查专属站位） */
+/**
+ * 虚拟隐藏位置：NPC 在自己家（不在林澈家），不匹配任何 sceneKey。
+ * getNPCsForScene() 按 sceneKey 过滤，'home' 自然被排除 → NPC 此时不渲染。
+ * NPC.update() 首行 `if (!this.sprite) return;` → 无 sprite 时安全跳过。
+ */
+const VIRTUAL_HOME_POSITION = { x: 0, y: 0 };
+
+/**
+ * 构建日程（按 NPC id 查专属站位）。
+ * v0.5.4 错峰重构：NPC 不再"跟团旅游"，每个 NPC 有独立作息。
+ * 设计原则：
+ *   - 06:00-08:00 NPC 在自己家（'home' 虚拟位置，不渲染）
+ *   - 08:00-18:00 按职业分流到不同场景（避免全员挤同一地图）
+ *   - 18:00 后陆续回家（夜晚村庄安静）
+ *   - 神秘少女保留森林出现 + 增加隐藏时段（避免全天固定遇见）
+ */
 function buildSchedule(npcId: NpcId): ScheduleEntry[] {
-  // 矿工：上午在矿洞，下午在农场
+  // 村长：晨起在家 → 上午下午镇上办公 → 晚归
+  if (npcId === 'elder') {
+    return [
+      { time: '06:00', location: 'home', ...VIRTUAL_HOME_POSITION },
+      { time: '08:00', location: 'town', ...SPOTS.town.elder },
+      { time: '18:00', location: 'home', ...VIRTUAL_HOME_POSITION },
+    ];
+  }
+  // 商店老板：晨起在家 → 全天镇上开店 → 晚归
+  if (npcId === 'shopkeeper') {
+    return [
+      { time: '06:00', location: 'home', ...VIRTUAL_HOME_POSITION },
+      { time: '08:00', location: 'town', ...SPOTS.town.shopkeeper },
+      { time: '18:00', location: 'home', ...VIRTUAL_HOME_POSITION },
+    ];
+  }
+  // 神秘少女：只在特定时段出现森林，其余时段隐身（神秘感）
+  //   清晨 06:00-08:00 森林晨雾 → 隐藏 → 傍晚 16:00-20:00 森林暮色 → 隐藏
+  //   玩家不会全天固定遇见她，符合"行踪不定"的人设
+  if (npcId === 'mystery') {
+    return [
+      { time: '06:00', location: 'forest', ...SPOTS.forest.mystery },
+      { time: '08:00', location: 'home', ...VIRTUAL_HOME_POSITION },
+      { time: '16:00', location: 'forest', ...SPOTS.forest.mystery },
+      { time: '20:00', location: 'home', ...VIRTUAL_HOME_POSITION },
+    ];
+  }
+  // 矿工老张：晨起在家 → 上午下午矿洞 → 傍晚镇上喝酒 → 晚归
   if (npcId === 'miner') {
     return [
-      { time: '06:00', location: 'farm', ...SPOTS.farm.miner },
+      { time: '06:00', location: 'home', ...VIRTUAL_HOME_POSITION },
       { time: '08:00', location: 'mine', ...SPOTS.mine.miner },
-      { time: '16:00', location: 'farm', ...SPOTS.farm.miner },
+      { time: '18:00', location: 'town', ...SPOTS.town.miner },
+      { time: '20:00', location: 'home', ...VIRTUAL_HOME_POSITION },
     ];
   }
-  // 花匠：全天在农场附近
+  // 花匠小梅：晨起在家 → 白天农场照料花圃 → 下午森林采撷 → 晚归
   if (npcId === 'gardener') {
     return [
-      { time: '06:00', location: 'farm', ...SPOTS.farm.gardener },
-      { time: '10:00', location: 'forest', ...SPOTS.forest.gardener },
-      { time: '14:00', location: 'farm', ...SPOTS.farm.gardener },
+      { time: '06:00', location: 'home', ...VIRTUAL_HOME_POSITION },
+      { time: '07:00', location: 'farm', ...SPOTS.farm.gardener },
+      { time: '14:00', location: 'forest', ...SPOTS.forest.gardener },
+      { time: '18:00', location: 'home', ...VIRTUAL_HOME_POSITION },
     ];
   }
-  // 冒险家：上午在小镇，下午在森林
+  // 冒险家阿风：晨起在家 → 早起森林探险 → 下午镇上讲见闻 → 晚归
   if (npcId === 'adventurer') {
     return [
-      { time: '06:00', location: 'farm', ...SPOTS.farm.adventurer },
-      { time: '08:00', location: 'town', ...SPOTS.town.adventurer },
-      { time: '14:00', location: 'forest', ...SPOTS.forest.adventurer },
-      { time: '18:00', location: 'farm', ...SPOTS.farm.adventurer },
+      { time: '06:00', location: 'home', ...VIRTUAL_HOME_POSITION },
+      { time: '08:00', location: 'forest', ...SPOTS.forest.adventurer },
+      { time: '14:00', location: 'town', ...SPOTS.town.adventurer },
+      { time: '18:00', location: 'home', ...VIRTUAL_HOME_POSITION },
     ];
   }
-  // 原有 NPC：老日程
+  // 兜底（所有分支已覆盖，不会到达）
   return [
-    { time: '06:00', location: 'farm', ...SPOTS.farm[npcId] },
-    { time: '08:00', location: 'town', ...SPOTS.town[npcId] },
-    { time: '12:00', location: 'forest', ...SPOTS.forest[npcId] },
-    { time: '18:00', location: 'farm', ...SPOTS.farm[npcId] },
+    { time: '06:00', location: 'home', ...VIRTUAL_HOME_POSITION },
   ];
 }
 
