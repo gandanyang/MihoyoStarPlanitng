@@ -19,6 +19,7 @@ APK 查找逻辑（--variant auto 时）：
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -65,11 +66,32 @@ def run(cmd: list[str], timeout: int = 180) -> subprocess.CompletedProcess[str]:
     )
 
 
-def probe_adb() -> str:
+def _find_adb() -> str | None:
+    """定位 adb：先查 PATH，再兜底 Windows/常见 SDK 默认位置。
+
+    PATH 里没有 platform-tools 时（常见于只装了 Android Studio 的用户），
+    shutil.which('adb') 会返回 None，直接报"找不到 adb"；这里补常见目录。
+    """
     adb = shutil.which("adb")
+    if adb:
+        return adb
+    candidates = [
+        Path(os.environ.get("LOCALAPPDATA", "")) / "Android" / "Sdk" / "platform-tools" / "adb.exe",
+        Path(os.environ.get("ANDROID_HOME", "")) / "platform-tools" / "adb.exe",
+        Path(os.environ.get("ANDROID_SDK_ROOT", "")) / "platform-tools" / "adb.exe",
+    ]
+    for c in candidates:
+        if c.is_file():
+            return str(c)
+    return None
+
+
+def probe_adb() -> str:
+    adb = _find_adb()
     if not adb:
         print("[FATAL] 找不到 adb。请安装 Android Studio 的 SDK Platform-Tools，"
               "或把 Android SDK 的 platform-tools 目录加到 PATH。")
+        print("       本机常见位置：%LOCALAPPDATA%\\Android\\Sdk\\platform-tools\\adb.exe")
         sys.exit(2)
     print(f"  ADB: {adb}")
     return adb
