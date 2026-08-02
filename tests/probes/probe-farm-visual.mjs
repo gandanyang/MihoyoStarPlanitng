@@ -1,5 +1,5 @@
 /**
- * M1-1 农场地图升级运行时验证探针（五区布局 v0.1）
+ * M1 农场升级运行时验证探针（M1-1 五区布局 + M1-2 动态氛围）
  *
  * 验证：
  *   1. 地图加载：种子存档 scene='farm' → 直达农场，tiles 纹理 = 128px（8 格 tileset，未扩展）
@@ -9,6 +9,7 @@
  *   5. 碰撞：水塘 gid 4 / 石墙 gid 3 可碰撞；路径 gid 7 / 花 gid 8 不碰撞
  *   6. 出口：顶 gap (14..15,0)、右 gap (38..39, 9..10)、门洞均无瓦片
  *   7. 五区视觉抽查：森林入口 / 花园 / 农田过渡 / 住宅 / 水塘
+ *   8. M1-2 动态氛围：花精灵 spritesheet tiles_fs 就绪 + 循环 tween ≥10（涟漪3+花6+光斑1）
  *
  * 前置：dev server；node probe-farm-visual.mjs
  */
@@ -72,6 +73,11 @@ const FARM_CHECKS = `(() => {
     farmL: t(gLD, 11, 8), farmR: t(gLD, 29, 8),
     homePath: t(gLD, 6, 18), homeFlower: t(wLD, 10, 21),
     pondWater: t(wLD, 32, 20), pondBank: t(gLD, 30, 19), pondTop: t(wLD, 33, 18),
+  };
+  // M1-2 动态氛围：花精灵 spritesheet 就绪 + 循环 tween 已注册（涟漪 3 + 花摆动 6 + 光斑 1）
+  result.ambience = {
+    flowerSheet: window.__game.textures.exists('tiles_fs'),
+    tweenCount: s.tweens.getTweens().length,
   };
   return result;
 })()`;
@@ -172,6 +178,11 @@ async function run() {
       check('五区-水塘 水(32,20)=4/岸(30,19)=2/塘上花(33,18)=8',
         z.pondWater === 4 && z.pondBank === 2 && z.pondTop === 8,
         `水=${z.pondWater} 岸=${z.pondBank} 花=${z.pondTop}`);
+      // M1-2 动态氛围
+      check('氛围：花精灵 spritesheet "tiles_fs" 已就绪', d.ambience.flowerSheet === true,
+        `实际=${d.ambience.flowerSheet}`);
+      check('氛围：循环 tween 已注册（涟漪3+花6+光斑1≥10）', d.ambience.tweenCount >= 10,
+        `实际=${d.ambience.tweenCount}`);
     }
 
     // 5. 截图

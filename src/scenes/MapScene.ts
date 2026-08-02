@@ -437,6 +437,11 @@ export class MapScene extends Phaser.Scene {
     // 创建当前场景的 NPC（根据 TimeSystem 时间判定 location）
     this.setupNPCs();
 
+    // M1-2 农场动态氛围（方案 B：水塘涟漪 / 花草摆动 / 暖色光斑，零资源纯代码）
+    if (this.mapKey === 'farm') {
+      this.setupFarmAmbience();
+    }
+
     // 第一章：首次进入小镇触发剧情（教程完成后、且从未触发过）
     if (this.mapKey === 'town' && isTutorialDone() && !isCh1TownIntroDone()) {
       if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
@@ -936,6 +941,84 @@ export class MapScene extends Phaser.Scene {
     reloadBtn.style.cssText = 'padding:8px 20px;font-size:14px;cursor:pointer';
     reloadBtn.addEventListener('click', () => location.reload());
     el.appendChild(reloadBtn);
+  }
+
+  /**
+   * M1-2 农场动态氛围（方案 B，v0.6 视觉增强）
+   * 零资源纯代码：水塘涟漪 + 花草摆动 + 暖色光斑。
+   * 仅 farm 场景调用；纯视觉装饰，不触碰碰撞/存档/出口/玩法逻辑。
+   * tween 随场景 shutdown 自动销毁，无需手动清理。
+   */
+  private setupFarmAmbience(): void {
+    const T = TILE_SIZE; // 16
+
+    // 1) 水塘涟漪：Walls 层水塘区 (cols 31-33, rows 19-22)，3 个错落扩散光斑
+    const pond: Array<{ c: number; r: number }> = [
+      { c: 31, r: 20 }, { c: 32, r: 21 }, { c: 33, r: 19 },
+    ];
+    pond.forEach((p, i) => {
+      const ring = this.add.graphics();
+      ring.fillStyle(0x9fd8f5, 0.32);
+      ring.fillCircle(0, 0, 4);
+      ring.setPosition(p.c * T + T / 2, p.r * T + T / 2);
+      ring.setDepth(2);
+      this.tweens.add({
+        targets: ring,
+        scale: { from: 0.3, to: 1.15 },
+        alpha: { from: 0.55, to: 0 },
+        duration: 2200,
+        delay: i * 700,
+        repeat: -1,
+        ease: 'Quad.Out',
+      });
+    });
+
+    // 2) 花草摆动：花园/森林入口/住宅右侧花丛上方叠动态花精灵（瓦片纹理 gid 8）
+    //    位置与 FARM_TREE_POSITIONS、木屋石墙、农田、路径均无重叠
+    //    注意：addTilesetImage 不生成 tileset 纹理（'tiles' 仍是 image），需手动切 spritesheet。
+    //    ⚠️ Phaser 3.80：addSpriteSheet 的 source 传 Texture 对象会把 key 覆盖为源纹理 key 并直接返回，
+    //    不会创建新纹理 —— 必须传 HTMLImageElement（getSourceImage()）才会走 create 分支。
+    if (!this.textures.exists('tiles_fs')) {
+      const tilesImg = this.textures.get('tiles').getSourceImage() as HTMLImageElement;
+      this.textures.addSpriteSheet('tiles_fs', tilesImg, {
+        frameWidth: TILE_SIZE,
+        frameHeight: TILE_SIZE,
+      });
+    }
+    const flowerSpots: Array<[number, number]> = [
+      [4, 3], [7, 4], [5, 3], // 花园区
+      [12, 2], [17, 3],       // 森林入口两侧
+      [10, 22],               // 住宅右侧
+    ];
+    flowerSpots.forEach(([c, r], i) => {
+      const f = this.add.sprite(c * T + T / 2, r * T + T / 2, 'tiles_fs', 7);
+      f.setDepth(4);
+      f.setAlpha(0.92);
+      this.tweens.add({
+        targets: f,
+        angle: { from: -8, to: 8 },
+        duration: 1500 + i * 300,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.InOut',
+      });
+    });
+
+    // 3) 暖色光斑：农田上空缓慢漂移（低透明度大圆，模拟日光斑驳）
+    const glow = this.add.graphics();
+    glow.fillStyle(0xffeec8, 0.13);
+    glow.fillCircle(0, 0, 34);
+    glow.setPosition(20 * T, 12 * T);
+    glow.setDepth(2);
+    this.tweens.add({
+      targets: glow,
+      x: { from: 20 * T - 26, to: 20 * T + 26 },
+      y: { from: 12 * T - 14, to: 12 * T + 14 },
+      duration: 6000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.InOut',
+    });
   }
 
   /**
