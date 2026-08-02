@@ -78,6 +78,10 @@ export const XIYA_DIALOGUE: DialogueLine[] = [
   { speaker: '夏雅', color: COLORS.xiya, text: '当然。你爷爷走得太突然了，镇上的人都在猜……还会不会有人回来。' },
   { speaker: '夏雅', color: COLORS.xiya, text: '你的家人离开之后，这里已经荒废好多年了。大家都以为……不会有人再回来了。' },
   { speaker: '林澈', color: COLORS.linche, text: '我也没想到自己会回来。本来只是想处理一下庄园。然后……看看以后怎么办。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '你刚才在门口站了很久。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '是在想爷爷的事吗？' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '如果现在还不想说，也没关系。' },
+  { speaker: '林澈', color: COLORS.linche, text: '只是有点想知道，爷爷最后看到的，会不会也是这样的天空。' },
   { speaker: '夏雅', color: COLORS.xiya, text: '那就从这里开始吧。房子虽然旧了，田地虽然荒了。但是只要有人愿意重新照顾它，总会慢慢恢复的。' },
   { speaker: '', color: COLORS.system, text: '（夏雅递出钥匙。）' },
   { speaker: '', color: COLORS.system, text: hint('获得物品：【庄园钥匙】  按 [B] 键打开背包，使用钥匙打开大门。', '获得物品：【庄园钥匙】  点按右下角「背包」按钮，使用钥匙打开大门。') },
@@ -109,6 +113,8 @@ export const SOW_SEEDS_DIALOGUE: DialogueLine[] = [
 export const WATER_CROPS_DIALOGUE: DialogueLine[] = [
   { speaker: '', color: COLORS.system, text: '（井边。）' },
   { speaker: '夏雅', color: COLORS.xiya, text: '每天照顾它们。它们才会回应你的努力。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '不用着急。土地不会催你，它只会等着。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '在这里，慢一点也没关系。' },
   { speaker: '', color: COLORS.system, text: '获得物品：【旧水壶】' },
   { speaker: '', color: COLORS.system, text: hint('对已播种的土地按 [E] 键浇水。为所有作物浇水。', '对已播种的土地点「交互」浇水。为所有作物浇水。') },
 ];
@@ -201,6 +207,8 @@ export const MINE_TIP_DIALOGUE: DialogueLine[] = [
 export const DEMO_ENDING_DIALOGUE: DialogueLine[] = [
   { speaker: '', color: COLORS.system, text: '（夜幕降临。庄园外，今天的星空格外明亮。）' },
   { speaker: '夏雅', color: COLORS.xiya, text: '你爷爷以前每天都会坐在这里。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '他走以后，岛上的人还是会偶尔来看这里。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '大家都觉得，总有一天，会有人重新打开这扇门。' },
   { speaker: '林澈', color: COLORS.linche, text: '他也喜欢看星星？' },
   { speaker: '夏雅', color: COLORS.xiya, text: '嗯。他说，总有一天，会有人回来继续看。' },
   { speaker: '', color: COLORS.system, text: '（夏雅看了看林澈，没有继续说下去。）' },
@@ -231,6 +239,7 @@ export const DEMO_ENDING_BRANCHES: Record<'try_stay' | 'unknown' | 'tonight', Di
 export const DEMO_ENDING_FINALE: DialogueLine[] = [
   { speaker: '', color: COLORS.system, text: '（那一夜，他没有再说话。只有风穿过田野。）' },
   { speaker: '', color: COLORS.system, text: '第二天清晨，新的早晨开始了。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '已经很久了，庄园没有这么热闹过。' },
   { speaker: '夏雅', color: COLORS.xiya, text: '归星镇，欢迎你。' },
   { speaker: '', color: COLORS.system, text: '已存档。现在开始，这座岛都是你的了。' },
 ];

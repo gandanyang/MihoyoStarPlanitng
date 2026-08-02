@@ -292,7 +292,8 @@ async function run() {
     }
     ok('11. 夏雅立绘头像显示', portraitSrc.includes('xiya.png'), portraitSrc || '<无立绘>');
 
-    await skipDialogue(page, 10); // 推进到选项行
+    await skipDialogue(page, 12); // 推进到选项行（DEMO_ENDING_DIALOGUE 选项行前 14 行，已推进 1 行）
+
     const options = await page.evaluate(() =>
       [...document.querySelectorAll('button')].map(b => b.textContent?.trim()).filter(t => /^\d\./.test(t ?? ''))
     );
@@ -309,7 +310,7 @@ async function run() {
     ok('13. 分支 B 独白', branchText.includes('比一封信更多'), branchText.substring(0, 40));
 
     await skipDialogue(page, 1); // 分支 → FINALE
-    await skipDialogue(page, 4); // FINALE → 结算面板 + 存档
+    await skipDialogue(page, 5); // FINALE → 结算面板 + 存档
     const panel = await page.evaluate(() => {
       const el = document.getElementById('ending-panel');
       return { exists: !!el, display: el?.style.display ?? '' };

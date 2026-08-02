@@ -168,7 +168,7 @@ async function run() {
     // 夏雅在 gate (15*16+8, 11*16+8)=(248,184)，玩家靠到旁边按 E
     await teleport(page, 'gate', 248, 204, 'up');
     await pressE(page);
-    await waitAndSkipDialogue(page, 9); // XIYA_DIALOGUE 9 行
+    await waitAndSkipDialogue(page, 13); // XIYA_DIALOGUE 13 行（含夏雅观察式关心）
 
     info = await sceneInfo(page);
     result('5. 获得庄园钥匙', info.step === 'get_key', `步骤=${info.step}`);
@@ -229,7 +229,7 @@ async function run() {
       await pressE(page);
       await sleep(400);
     }
-    await waitAndSkipDialogue(page, 4); // WATER_CROPS_DIALOGUE 4 行
+    await waitAndSkipDialogue(page, 6); // WATER_CROPS_DIALOGUE 6 行（含"土地不会催你"）
 
     info = await sceneInfo(page);
     result('9. 播种完成 → 浇水教学', info.step === 'water_crops', `步骤=${info.step}`);
