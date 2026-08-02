@@ -710,9 +710,11 @@ export class MapScene extends Phaser.Scene {
     const dy = 11 * TILE_SIZE + TILE_SIZE / 2;
     this.dawnXiya = this.add.sprite(dx, dy, 'npc_xiya');
     this.dawnXiya.setScale(0.5).setDepth(5);
-    this.dawnXiyaLabel = this.add.text(dx, dy - 16, '夏雅', {
-      fontSize: '10px', color: '#f0a050',
+    this.dawnXiyaLabel = this.add.text(dx, dy - 14, '夏雅', {
+      fontSize: '13px', color: '#f0a050',
       stroke: '#000000', strokeThickness: 3,
+      backgroundColor: 'rgba(0,0,0,0.45)',
+      padding: { x: 3, y: 2 },
     }).setShadow(0, 1, '#000000', 2).setOrigin(0.5).setDepth(6);
   }
 
@@ -941,9 +943,11 @@ export class MapScene extends Phaser.Scene {
       const xiyaY = 11 * TILE_SIZE + TILE_SIZE / 2;
       this.xiyaSprite = this.add.sprite(xiyaX, xiyaY, 'npc_xiya');
       this.xiyaSprite.setDepth(5);
-      this.add.text(xiyaX, xiyaY - 16, '夏雅', {
-        fontSize: '10px', color: '#f0a050',
+      this.add.text(xiyaX, xiyaY - 14, '夏雅', {
+        fontSize: '13px', color: '#f0a050',
         stroke: '#000000', strokeThickness: 3,
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        padding: { x: 3, y: 2 },
       }).setShadow(0, 1, '#000000', 2).setOrigin(0.5).setDepth(6);
     }
 

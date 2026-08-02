@@ -100,7 +100,7 @@ export class NPC {
     this.sprite.y = this.targetY;
     if (this.label) {
       this.label.x = this.sprite.x;
-      // 33x32 NPC 缩放 0.5 后，标签在头顶上方 14 像素
+      // 32x32 NPC 缩放 0.5 后，标签在头顶上方 14 像素
       this.label.y = this.sprite.y - 14;
     }
   }
