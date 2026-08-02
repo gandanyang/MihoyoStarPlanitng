@@ -6,6 +6,28 @@
 
 ## [未发布]
 
+### v0.5.3 iOS 兼容性修复 + APK 打包落地
+
+> iOS 审查报告：《iOS兼容性专项审查报告-v0.5.3.md》（§E 修复记录）| APK 方案：《APK打包可行性方案.md》（§8 实施记录）
+> 目标：补齐 iPhone 兼容缺口 + 打通 Android APK 出包链路
+
+**iOS 兼容性修复**（`54fb1c1`，审查 B1-B5 + D5 全落地）：
+- safe-area：`viewport-fit=cover` + 摇杆/交互/背包/任务按钮 `env(safe-area-inset-bottom)`（Home Indicator 不再遮挡）
+- `inset:0` → 显式 `top/right/bottom/left` 共 8 处（旧 iOS <14.5 兼容）
+- `AudioContext` 补 `webkitAudioContext` 回退（iOS 12- Safari）
+- `-webkit-backdrop-filter` + `-webkit-touch-callout:none` + `apple-mobile-web-app-capable`
+
+**APK 打包落地**（`36f9680`，Capacitor 8.5）：
+- 环境：JDK 17（Gradle 引导）+ JDK 21（Capacitor 8 编译要求）+ Android SDK 34 纯命令行安装
+- 产出：`app-debug.apk`（19.5MB，Debug 未签名，包名 `com.starvalley.returntostar`）
+- 坑：Gradle 下载不走系统代理 → `GRADLE_OPTS` 显式传 `127.0.0.1:7897`
+- `.gitignore` 覆盖 android 构建产物 + 临时探针；`local.properties` 不入库
+- 遗留：物理返回键拦截 / Release 签名 / 真机冒烟（见方案 §8.5）
+
+**回归**：tsc ✅；`probe-bug012`（13/13）、`probe-density-v053`（9/9）、`test-tutorial`（18/18）全绿
+
+---
+
 ### v0.5.3 剧情密度增强（E1-E6 六事件 + 引导剧情 + 四要素规范）
 
 > 设计稿：《任务-剧情密度增强设计稿-v0.5.3.md》| 任务书：《任务-剧情密度增强规划-v0.5.3.md》

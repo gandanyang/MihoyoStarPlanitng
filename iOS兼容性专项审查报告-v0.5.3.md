@@ -3,7 +3,8 @@
 **版本**：v0.5.3
 **日期**：2026-08-02
 **审查范围**：全部 7 个场景、输入/音频/存档/UI 系统、Phaser 配置、资源清单
-**方式**：只读静态分析（未改代码）
+**方式**：只读静态分析（未改代码）→ 后续已按 B 表实施修复（见 §E）
+**状态**：✅ 审查完成 + P1/P2 已修复
 
 ---
 
@@ -92,3 +93,24 @@
 ## 总结
 
 **iOS 风险等级：低**。核心玩法无 P0 阻断，仅 2 个 P1（Home Indicator 遮挡 + safe-area）值得优先修复，其余为 P2 兼容性缺口（`inset`、`backdrop-filter` 前缀、AudioContext 回退）。项目资源轻量、存档机制稳健、输入系统已做多事件兜底，整体对 iOS 友好。
+
+---
+
+## E. 修复实施记录（2026-08-02，提交 `54fb1c1`）
+
+审查完成后按 B 表执行修复，全部落地并回归通过（tsc + 探针 13/13 + 9/9 + 18/18）。
+
+| 编号 | 修复项 | 实施内容 |
+|------|--------|----------|
+| B1+B2 | safe-area 适配 | `index.html` viewport 加 `viewport-fit=cover`；TouchControls 摇杆/交互/背包/任务按钮 `bottom: calc(Npx + env(safe-area-inset-bottom, 0px))` |
+| B3 | `inset:0` 兼容 | 全部 8 处改为显式 `top:0;right:0;bottom:0;left:0`（TouchControls 容器/摇杆底 + Shop/Backpack/Quest/Ending 面板 + MapScene 全屏层） |
+| B4 | backdrop-filter 前缀 | 每日任务面板补 `-webkit-backdrop-filter: blur(4px)` |
+| B5 | AudioContext 回退 | `AudioSystem.getCtx()` 改用 `window.AudioContext || (window as any).webkitAudioContext`（iOS 12- Safari） |
+| D5 | 长按系统菜单 | `index.html` html/body 加 `-webkit-touch-callout: none` |
+| 附加 | Web App 元信息 | `apple-mobile-web-app-capable=yes` |
+
+**遗留（需真机验证，见 §D）**：
+- D1-D4、D6 静态无法确认，需 iPhone 真机执行 §C 测试流程
+- Home Indicator 手势冲突程度需真机实测（代码已给 safe-area 预留空间）
+
+**注意**：§B 中 B2 的"对话层 bottom:20px"（StoryDialogue.ts:62）未随本轮修改，如 iPhone 横屏对话被遮挡需后续补 `env(safe-area-inset-bottom)`。

@@ -2,8 +2,11 @@
 
 **版本**：v0.5.3
 **日期**：2026-08-02
-**状态**：可行性评估（未实施）
+**状态**：✅ 已实施（v0.5.3）
 **适用**：将 Web 游戏打包为 Android APK
+
+> **2026-08-02 实施更新**：Capacitor 方案已落地，成功产出 `app-debug.apk`（19.5MB）。
+> 新增文档章节：§8 实施记录（实际执行过程 + 环境差异 + 产物验证）。
 
 ---
 
@@ -134,3 +137,55 @@ npx cap open android # 或在 android/ 目录下执行 gradlew assembleDebug
 - **技术上完全可行**，项目 `base:'./'` + 轻量资源是天然优势，Capacitor 适配成本预计 1-2 天（含环境）。
 - **硬性前置**：安装 Java 17 + Android SDK（本机缺失）。
 - **推荐路径**：先修 iOS 审查 P1（safe-area，复用 Android WebView 同样受益）→ 装环境 → Capacitor 打包 → Debug APK 真机冒烟。
+
+---
+
+## 8. 实施记录（2026-08-02 已落地）
+
+### 8.1 环境安装（本机实际执行）
+
+| 依赖 | 方案文档预期 | 实际安装 | 差异说明 |
+|------|--------------|----------|----------|
+| Java | JDK 17（`winget install Microsoft.OpenJDK.17`） | **JDK 17**（Temurin 17.0.20+8，ZIP 解压到 `C:\Java\jdk-17.0.20+8`）+ **JDK 21**（Temurin 21.0.12+8，`C:\Java\jdk-21.0.12+8`） | Capacitor 8 要求 Java 21 编译（报错"无效的源发行版：21"），JDK 17 仅满足 Gradle 引导 |
+| Android SDK | Android Studio 或 cmdline-tools | **cmdline-tools**（11076708）+ `platforms;android-34` + `build-tools;34.0.0` + platform-tools | 未装 Android Studio（体积大），纯命令行，`$env:LOCALAPPDATA\Android\Sdk` |
+| Android SDK Platform | API 34 | API 34 ✅ | 与 Capacitor 8 默认 compileSdk 34 一致 |
+
+### 8.2 网络问题与代理（关键坑）
+
+- Gradle 官方源 `services.gradle.org` 在代理环境下载超时（Java 不读系统代理）
+- 解决：`gradle-wrapper.properties` 换腾讯镜像 `mirrors.cloud.tencent.com`（后也超时），最终 **GRADLE_OPTS 显式传 JVM 代理**：
+  `-Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897`
+- 系统代理为 `127.0.0.1:7897`（Clash 类工具），需每次构建前设置 `GRADLE_OPTS`
+
+### 8.3 构建命令（Windows PowerShell）
+
+```powershell
+$env:JAVA_HOME = "C:\Java\jdk-21.0.12+8"
+$env:Path = "C:\Java\jdk-21.0.12+8\bin;$env:Path"
+$env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
+$env:GRADLE_OPTS = "-Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897"
+cd android; .\gradlew.bat assembleDebug --no-daemon
+```
+
+### 8.4 产物与配置
+
+| 项 | 值 |
+|----|-----|
+| APK 产物 | `android/app/build/outputs/apk/debug/app-debug.apk`（**19.5MB**，Debug 未签名） |
+| 包名 | `com.starvalley.returntostar` |
+| Capacitor | 8.5.x（core + cli + android） |
+| 本地配置 | `android/local.properties`（sdk.dir）不入库；`.gitignore` 已覆盖 `android/app/build` 等构建产物 |
+| 提交 | `36f9680` feat(apk): Capacitor Android 打包 |
+
+### 8.5 真机验证（待执行）
+
+- [ ] 安装 `app-debug.apk` → 新游戏 → 教程 → 睡觉跨天 → 存档刷新恢复（对应 `test-tutorial.mjs` 18 项）
+- [ ] 触屏专项：摇杆 / 交互按钮 / 背包 / 任务 / 每日任务领奖
+- [ ] 物理返回键（当前默认退出 App，后续需拦截为"关面板→退场景"）
+- [ ] Release 签名打包（keystore + `assembleRelease`）
+
+### 8.6 环境变量备注（本机）
+
+- `JAVA_HOME` → 指向 JDK 21（Capacitor 构建需要），JDK 17 保留用于其他场景
+- `ANDROID_HOME` → `%LOCALAPPDATA%\Android\Sdk`
+- Gradle 代理通过 `GRADLE_OPTS` 每次构建时传递（未写死到 gradle.properties，避免入库泄露代理配置）
