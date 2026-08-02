@@ -71,6 +71,19 @@
 - 立绘 `xiya.png` 512×768 RGBA 已接入 `PORTRAIT_MAP`
 - farm 教程无夏雅 sprite 记为实现设计差异（非缺陷），后续如需要教程陪伴演出作为剧情/演出任务单独规划
 
+### v0.6 视觉升级 — 3.4 村长立绘
+
+> 任务卡：《任务-美术v0.6视觉升级.md》§3.4（美术线收尾项）
+
+**产出**：
+- `public/assets/portraits/elder.png`：512×768 RGBA 米黄长者风立绘（制作人选 `elder_s202608021.png`，经 `gen_portrait_final.py` 统一裁剪缩放管线）
+- `gen_portrait_comfy.py` / `gen_portrait_final.py` 扩展村长 prompt + 任务（可重复生成）
+
+**接线**：
+- `PORTRAIT_MAP` 新增 `村长: 'assets/portraits/elder.png'`（`StoryDialogue.ts`）；运行时村长对话显示立绘，图片加载失败自动回退首字占位（既有兜底逻辑，无空白头像框风险）
+
+**验证**：tsc ✅；build ✅；`probe-elder-portrait` 5/5 全绿（纹理系统 / HTTP 200 / 运行时立绘 img src / 512×768 / 无加载失败）；`probe-mobile-tutorial` 全流程回归通过
+
 
 
 > iOS 审查报告：《iOS兼容性专项审查报告-v0.5.3.md》（§E 修复记录）| APK 方案：《APK打包可行性方案.md》（§8 实施记录）

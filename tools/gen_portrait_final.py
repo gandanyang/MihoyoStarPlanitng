@@ -23,6 +23,7 @@ TARGET = (512, 768)
 JOBS = [
     ("linchen_s777001_cfg2.png", "linchen.png"),
     ("xiya.png", "xiya.png"),
+    ("elder_s202608021.png", "elder.png"),
 ]
 
 
