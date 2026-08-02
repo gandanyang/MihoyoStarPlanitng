@@ -47,7 +47,7 @@ import {
   injectGuideQuests,
 } from '../systems/DailyQuestSystem';
 import { InputManager } from '../systems/InputManager';
-import { TouchControls, setActionButtonLabel } from '../systems/TouchControls';
+import { TouchControls, setActionButtonLabel, setQuestRedDot } from '../systems/TouchControls';
 import { ShopPanel } from '../ui/ShopPanel';
 import { BackpackPanel } from '../ui/BackpackPanel';
 import { QuestPanel } from '../ui/QuestPanel';
@@ -1232,9 +1232,10 @@ export class MapScene extends Phaser.Scene {
   private tryOpenQuest(): void {
     if (this.transitioning) return;
     if (this.storyDialogue && this.storyDialogue.isOpen()) return;
-    if (this.shopPanel.isOpen() || this.backpackPanel.isOpen() || this.questPanel.isOpen()) return;
+    if (this.shopPanel.isOpen() || this.backpackPanel.isOpen()) return;
     this.inputManager.clearAction();
-    this.questPanel.open();
+    // 切换每日任务面板（收起/展开）
+    this.toggleDailyQuestPanel();
   }
 
   /** 教程提示文案：移动端（无键盘）与桌面端差异 */
@@ -2252,7 +2253,8 @@ export class MapScene extends Phaser.Scene {
     el.style.cssText =
       panelPos + 'width:min(190px,38vw);background:rgba(25,20,15,0.92);' +
       'border:1px solid rgba(138,106,69,0.6);border-radius:10px;padding:6px 8px;color:#fff;font-size:11px;' +
-      'font-family:Arial;z-index:10;user-select:none;pointer-events:auto;backdrop-filter:blur(4px);';
+      'font-family:Arial;z-index:10;user-select:none;pointer-events:auto;backdrop-filter:blur(4px);' +
+      'display:none;';
 
     // 分离：可领奖 / 进行中 / 已领奖
     const canClaim = quests.filter(q => q.completed && !q.claimed);
@@ -2302,5 +2304,20 @@ export class MapScene extends Phaser.Scene {
   private updateDailyQuestPanel(): void {
     this.createDailyQuestPanel();
     if (this.questPanel) this.questPanel.refresh();
+    // 更新任务按钮红点
+    setQuestRedDot(this.hasClaimableDailyQuest());
+  }
+
+  /** 切换每日任务面板显示/隐藏 */
+  private toggleDailyQuestPanel(): void {
+    const el = document.getElementById('daily-quest-panel');
+    if (!el) return;
+    el.style.display = el.style.display === 'none' ? '' : 'none';
+  }
+
+  /** 是否有可领奖的每日任务（用于红点提示） */
+  private hasClaimableDailyQuest(): boolean {
+    const quests = getDailyQuests();
+    return quests.some(q => q.completed && !q.claimed);
   }
 }

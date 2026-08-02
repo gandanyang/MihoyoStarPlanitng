@@ -267,12 +267,21 @@ export const DEMO_ENDING_DIALOGUE: DialogueLine[] = [
 export const DEMO_ENDING_BRANCHES: Record<'try_stay' | 'unknown' | 'tonight', DialogueLine[]> = {
   try_stay: [
     { speaker: '', color: COLORS.system, text: '（林澈把信收好。这一次，他不想再走了。）' },
+    { speaker: '林澈', color: COLORS.linche, text: '这些年换了几个城市，没有哪个地方让我觉得……是应该留下的。' },
+    { speaker: '夏雅', color: COLORS.xiya, text: '（轻轻笑了笑）那就别走了。' },
+    { speaker: '', color: COLORS.system, text: '（她说话的语气，就像在说"今天天气不错"一样自然。）' },
   ],
   unknown: [
     { speaker: '', color: COLORS.system, text: '（林澈把信收好。爷爷在这里留下的东西，比一封信更多。）' },
+    { speaker: '林澈', color: COLORS.linche, text: '他为什么来这里？他一个人在这里住了多久？' },
+    { speaker: '林澈', color: COLORS.linche, text: '……我好像从来没问过他这些。' },
+    { speaker: '', color: COLORS.system, text: '（夏雅没有说话，只是安静地站在一旁。）' },
   ],
   tonight: [
     { speaker: '', color: COLORS.system, text: '（林澈把信收好。城市还在那里，但今晚，他属于这里。）' },
+    { speaker: '林澈', color: COLORS.linche, text: '……说实话，我连明天会怎样都不知道。' },
+    { speaker: '夏雅', color: COLORS.xiya, text: '不需要知道。' },
+    { speaker: '夏雅', color: COLORS.xiya, text: '你在这里，就足够了。' },
   ],
 };
 

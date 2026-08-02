@@ -38,6 +38,7 @@ let backpackBtn: HTMLDivElement | null = null;
 let backpackHandler: (() => void) | null = null;
 /** 任务按钮（移动端显示，对应键盘 J） */
 let questBtn: HTMLDivElement | null = null;
+let questRedDot: HTMLDivElement | null = null;
 let questHandler: (() => void) | null = null;
 /** DOM 是否已创建（防止重复创建） */
 let domCreated = false;
@@ -157,6 +158,13 @@ function createDom(): void {
   questBtn.style.cssText =
     'position:absolute;right:28px;bottom:172px;width:52px;height:52px;border-radius:50%;background:rgba(120,90,180,0.4);border:2px solid rgba(255,255,255,0.5);pointer-events:auto;display:none;align-items:center;justify-content:center;color:#fff;font:bold 13px Arial;touch-action:none;cursor:pointer;';
   questBtn.textContent = '任务';
+  // 红点提示（可领奖时显示）
+  questRedDot = document.createElement('div');
+  questRedDot.style.cssText =
+    'position:absolute;top:-4px;right:-4px;width:12px;height:12px;border-radius:50%;' +
+    'background:#ff4444;border:2px solid rgba(0,0,0,0.5);display:none;';
+  questBtn.appendChild(questRedDot);
+  questBtn.style.position = 'relative';
   let lastQuestTime = 0;
   const questPress = (e: Event) => {
     e.preventDefault();
@@ -194,6 +202,11 @@ function updateBackpackVisibility(): void {
 function updateQuestVisibility(): void {
   if (!questBtn) return;
   questBtn.style.display = isTouchDevice() ? 'flex' : 'none';
+}
+
+/** 设置任务按钮红点可见性 */
+export function setQuestRedDot(visible: boolean): void {
+  if (questRedDot) questRedDot.style.display = visible ? '' : 'none';
 }
 
 /** 开始拖动摇杆 */
