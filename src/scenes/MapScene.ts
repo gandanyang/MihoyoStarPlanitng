@@ -1526,6 +1526,35 @@ export class MapScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * 浇水反馈：水花粒子（零资源，纯 Graphics + tween）
+   * 制作人反馈：手机端模型小、浇水特效不明显 → 格子上方喷出 6 滴水珠，
+   * 即使是 FIT 小画布也能感知"这次浇水成功了"。
+   * 纯视觉装饰，不触碰状态/存档/玩法逻辑；tween 完成后自动销毁。
+   */
+  private waterSplash(worldX: number, worldY: number): void {
+    const DROP_COUNT = 6;
+    for (let i = 0; i < DROP_COUNT; i++) {
+      const drop = this.add.circle(worldX, worldY - 2, 2.2, 0x9fd8f5, 0.95);
+      drop.setDepth(6);
+      // 向上扇形喷射（-135° ~ -45°，y 轴向下故取负角），随机距离 10-20px
+      const angle = Phaser.Math.FloatBetween(-Math.PI * 0.75, -Math.PI * 0.25);
+      const dist = Phaser.Math.Between(10, 20);
+      const dx = Math.cos(angle) * dist;
+      const dy = Math.sin(angle) * dist - 4;
+      this.tweens.add({
+        targets: drop,
+        x: worldX + dx,
+        y: worldY + dy,
+        alpha: 0,
+        scale: 0.35,
+        duration: Phaser.Math.Between(320, 560),
+        ease: 'Quad.Out',
+        onComplete: () => drop.destroy(),
+      });
+    }
+  }
+
   /** v0.5.3：NPC 每日随机句的"当天已说过"内存标记（不进入存档） */
   private npcDailySaid = new Map<string, number>();
 
@@ -2223,6 +2252,41 @@ export class MapScene extends Phaser.Scene {
     // 蝴蝶 ×2（花丛间飞）
     this.createButterfly(1 * T + T / 2, 18 * T + T / 2);
     this.createButterfly(1 * T + T / 2, 22 * T + T / 2);
+
+    // 制作人反馈：花圃在左下角角落，静态瓦片花太小看不清 → 动态花精灵（摆动）+ 暖色光斑提亮
+    if (!this.textures.exists('tiles_fs')) {
+      const tilesImg = this.textures.get('tiles').getSourceImage() as HTMLImageElement;
+      this.textures.addSpriteSheet('tiles_fs', tilesImg, {
+        frameWidth: TILE_SIZE,
+        frameHeight: TILE_SIZE,
+      });
+    }
+    flowerSpots.forEach(([c, r], i) => {
+      const f = this.add.sprite(c * T + T / 2, r * T + T / 2, 'tiles_fs', 7);
+      f.setDepth(4);
+      f.setScale(1.3);
+      this.tweens.add({
+        targets: f,
+        angle: { from: -10, to: 10 },
+        duration: 1400 + i * 250,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.InOut',
+      });
+    });
+    const glow = this.add.graphics();
+    glow.fillStyle(0xffeec8, 0.18);
+    glow.fillCircle(0, 0, 22);
+    glow.setPosition(1 * T + T / 2, 20 * T + T / 2);
+    glow.setDepth(2);
+    this.tweens.add({
+      targets: glow,
+      alpha: { from: 0.55, to: 1 },
+      duration: 1400,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.InOut',
+    });
   }
 
   /** 创建一只蝴蝶（Graphics 双翼 + 扇动/绕飞 tween，随场景 shutdown 自动销毁） */
@@ -2704,6 +2768,7 @@ export class MapScene extends Phaser.Scene {
       if (crop) setCrop(col, row, { ...crop, watered: true });
       addXp(1, 'water');
       play('water');
+      this.waterSplash(tileCenterX, tileCenterY); // 制作人反馈：手机端浇水特效不明显 → 水花粒子增强
       this.showFloatText(tileCenterX, tileCenterY, '浇水');
       onDQWater();
       this.updateDailyQuestPanel();

@@ -59,10 +59,19 @@ async function run() {
       await page.close();
     }
 
-    // ============ 段B：任务面板位置（全新档） ============
+    // ============ 段B：任务面板位置（全新档，横屏手机 844×390） ============
     console.log('--- 段B：任务面板布局 ---');
     {
       const page = await browser.newPage();
+      // 手机横屏：launch 级 isMobile 只模拟视口/触屏，不改变 UA；需显式注入移动 UA，
+      // 否则 isTouchDevice() 的 UA 判定走桌面分支（BUG-030 设计如此）→ 面板错误出现在右上。
+      await page.evaluateOnNewDocument(() => {
+        Object.defineProperty(navigator, 'userAgent', {
+          get: () => 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36',
+          configurable: true,
+        });
+        Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 5, configurable: true });
+      });
       await page.goto(GAME_URL + '?reset=1', { waitUntil: 'networkidle2' });
       await sleep(3000);
       // 等 title 场景 ready 再 Enter
@@ -100,6 +109,9 @@ async function run() {
       await sleep(800);
 
       const layout = await page.evaluate(() => {
+        // daily-quest-panel 默认 display:none（bb1e424 有意折叠），测量前先置可见（与 probe-bug031 一致）
+        const qp = document.getElementById('daily-quest-panel');
+        if (qp) qp.style.display = 'block';
         const r = el => { if (!el) return null; const b = el.getBoundingClientRect(); return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height), b: Math.round(b.bottom) }; };
         const btns = [...document.querySelectorAll('#touch-controls div')].map(x => {
           const b = x.getBoundingClientRect();
@@ -107,7 +119,7 @@ async function run() {
         });
         return {
           vp: { w: innerWidth, h: innerHeight },
-          questPanel: r(document.getElementById('daily-quest-panel')),
+          questPanel: r(qp),
           touch: btns,
         };
       });
@@ -157,6 +169,7 @@ async function run() {
       const qpv = await page.evaluate(() => {
         const el = document.getElementById('daily-quest-panel');
         if (!el) return null;
+        el.style.display = 'block'; // 折叠状态下强制测量实际布局位置（与 probe-bug031 一致）
         const b = el.getBoundingClientRect();
         return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width) };
       });
@@ -207,6 +220,7 @@ async function run() {
       const qpd = await page.evaluate(() => {
         const el = document.getElementById('daily-quest-panel');
         if (!el) return null;
+        el.style.display = 'block'; // 折叠状态下强制测量实际布局位置（与 probe-bug031 一致）
         const b = el.getBoundingClientRect();
         return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width) };
       });

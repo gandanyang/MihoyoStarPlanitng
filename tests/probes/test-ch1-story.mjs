@@ -309,13 +309,19 @@ async function run() {
     const branchText = await dialogueText(page);
     ok('13. 分支 B 独白', branchText.includes('比一封信更多'), branchText.substring(0, 40));
 
-    await skipDialogue(page, 1); // 分支 → FINALE
-    await skipDialogue(page, 5); // FINALE → 结算面板 + 存档
-    const panel = await page.evaluate(() => {
-      const el = document.getElementById('ending-panel');
-      return { exists: !!el, display: el?.style.display ?? '' };
+    // 分支 → FINALE → 结算面板 + 存档
+    // 行数不定：unknown 分支 4 行 + FINALE 5 行，共需 18 次 advance；原硬编码 skip(1)+skip(5)=14 次
+    // 会停在 FINALE 中途（结算面板/存档永不触发，存的是 beforeunload 兜底档）。改为同步循环推进直到面板打开。
+    const panelOpen = await page.evaluate(() => {
+      const s = window.__game.scene.getScenes(true)[0];
+      for (let i = 0; i < 80; i++) {
+        if (s?.storyDialogue?.isOpen()) s.storyDialogue.advance();
+        const el = document.getElementById('ending-panel');
+        if (el && el.style.display === 'flex') return true;
+      }
+      return false;
     });
-    ok('14. 结算面板打开', panel.exists && panel.display === 'flex', JSON.stringify(panel));
+    ok('14. 结算面板打开', !!panelOpen, panelOpen ? 'flex' : 'false');
 
     info = await sceneInfo(page);
     ok('15. storyStep = observatory_complete', info.step === 'observatory_complete', `步骤=${info.step}`);
