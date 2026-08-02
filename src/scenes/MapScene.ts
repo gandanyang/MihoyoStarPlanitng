@@ -542,8 +542,14 @@ export class MapScene extends Phaser.Scene {
         // 重置帧计时，防止关店后时间跳跃（lastFrameTime 仍停在开店前）
         this.lastFrameTime = performance.now();
       },
-      // 购买回调：通知每日任务
-      (count: number) => { onDQBuyShop(count); this.updateDailyQuestPanel(); },
+      // 购买回调：通知每日任务 + 自动选中刚买的种子（HUD「种子」按钮立即显示新种子）
+      (itemId: string, _count: number) => {
+        onDQBuyShop(1);
+        this.updateDailyQuestPanel();
+        const bought = itemId.replace(/_seed$/, '') as CropType;
+        if (CROP_TYPES.includes(bought)) this.selectedCropType = bought;
+        this.updateHUD();
+      },
       // 卖出回调：通知每日任务
       (count: number) => { onDQSellShop(count); this.updateDailyQuestPanel(); },
     );
@@ -1341,7 +1347,7 @@ export class MapScene extends Phaser.Scene {
       advanceStory(); // → done
       addItem('old_axe', 1); // 完成教程赠送斧头（解锁砍树玩法）
       this.removeTutorialHint();
-      this.showDialogueText('第一天：归乡 — 游戏保存中…（获得🪓旧斧头）');
+      this.showDialogueText('第一天：归乡 — 游戏保存中…');
       timeNextDay();
       resetStamina();
       resetOres();
@@ -1813,6 +1819,7 @@ export class MapScene extends Phaser.Scene {
         treesRefreshed = true;
       }
       refreshDailyQuests();
+      injectGuideQuests(); // 引导任务（挖矿/砍树）未完成时跨天保留补发，旧存档玩家也能拿到
       this.createDailyQuestPanel();
       this.refreshFarmVisual();
       this.rebuildNPCs();

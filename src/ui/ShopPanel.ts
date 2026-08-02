@@ -121,8 +121,8 @@ let open = false;
 let onDataChange: OnDataChange | null = null;
 /** 关店回调（MapScene 注册：清除残留 E 键 + 重置帧计时） */
 let onClose: (() => void) | null = null;
-/** 购买回调（每日任务通知） */
-let onBuyCallback: ((count: number) => void) | undefined;
+/** 购买回调（itemId + 数量；每日任务通知 + 自动选中新种子） */
+let onBuyCallback: ((itemId: string, count: number) => void) | undefined;
 /** 卖出回调（每日任务通知） */
 let onSellCallback: ((count: number) => void) | undefined;
 
@@ -132,6 +132,18 @@ function closePanel(): void {
   open = false;
   if (panelEl) panelEl.style.display = 'none';
   onClose?.();
+}
+
+/** 购买成功提示（面板内短暂 toast，确认「买到的是什么」） */
+let toastTimer: ReturnType<typeof setTimeout> | null = null;
+function showToast(msg: string): void {
+  if (!panelEl) return;
+  const t = panelEl.querySelector('#shop-toast') as HTMLElement | null;
+  if (!t) return;
+  t.textContent = msg;
+  t.style.display = 'block';
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.style.display = 'none'; }, 1200);
 }
 
 /** 创建面板 DOM（模块级，只创建一次） */
@@ -150,7 +162,8 @@ function createDom(): void {
     'background:rgba(0,0,0,0.55);z-index:200;user-select:none;-webkit-user-select:none';
 
   panelEl.innerHTML = `
-    <div style="width:min(440px,92vw);background:#3d3226;border:3px solid #8a6a45;border-radius:10px;padding:16px;color:#fff;font-family:Arial;box-shadow:0 4px 20px rgba(0,0,0,0.6)">
+    <div style="position:relative;width:min(440px,92vw);background:#3d3226;border:3px solid #8a6a45;border-radius:10px;padding:16px;color:#fff;font-family:Arial;box-shadow:0 4px 20px rgba(0,0,0,0.6)">
+      <div id="shop-toast" style="position:absolute;left:50%;top:-2px;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#7ef0a0;font-size:13px;padding:4px 14px;border-radius:6px;display:none;pointer-events:none;white-space:nowrap;"></div>
       <div style="text-align:center;font-size:18px;font-weight:bold;margin-bottom:8px;color:#ffd700;letter-spacing:1px;">星辰杂货店</div>
       <div id="shop-coins" style="text-align:center;font-size:14px;margin-bottom:12px;color:#ffe082;"></div>
       <div style="display:flex;gap:12px;">
@@ -181,8 +194,12 @@ function createDom(): void {
     const item = SHOP_ITEMS.find(i => i.action === action);
     if (item) {
       item.do();
-      if (item.type === 'buy') onBuyCallback?.(1);
-      else if (item.type === 'sell') onSellCallback?.(1);
+      if (item.type === 'buy') {
+        onBuyCallback?.(item.id, 1);
+        showToast(`已购买 ${item.label} ×1`);
+      } else if (item.type === 'sell') {
+        onSellCallback?.(1);
+      }
       play(item.type === 'sell' ? 'sell' : 'buy');
       refresh();
     }
@@ -241,7 +258,7 @@ function refresh(): void {
 }
 
 export class ShopPanel {
-  constructor(onChange: OnDataChange, onCloseCb?: () => void, onBuy?: (count: number) => void, onSell?: (count: number) => void) {
+  constructor(onChange: OnDataChange, onCloseCb?: () => void, onBuy?: (itemId: string, count: number) => void, onSell?: (count: number) => void) {
     onDataChange = onChange;
     if (onCloseCb) onClose = onCloseCb;
     onBuyCallback = onBuy;
