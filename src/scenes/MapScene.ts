@@ -60,7 +60,7 @@ import {
   XIYA_DIALOGUE, GATE_OPENED_DIALOGUE, SOW_SEEDS_DIALOGUE,
   WATER_CROPS_DIALOGUE, EVENING_DIALOGUE, TOWN_INTRO_DIALOGUE,
   FOREST_SHARD_DIALOGUE, DEMO_ENDING_DIALOGUE, DEMO_ENDING_BRANCHES, DEMO_ENDING_FINALE,
-  WOODCUT_TIP_DIALOGUE, MINE_TIP_DIALOGUE, XIYA_DAWN_DIALOGUE, getGrandpaNote,
+  WOODCUT_TIP_DIALOGUE, MINE_TIP_DIALOGUE, XIYA_DAWN_DIALOGUE, XIYA_EVENING_DIALOGUE, getGrandpaNote,
   FIRST_HARVEST_DIALOGUE,
 } from '../systems/StorySystem';
 import { hasSave, load, apply, save, getLastIncompatibleVersion, clearIncompatibleVersion, SAVE_VERSION } from '../systems/SaveSystem';
@@ -157,6 +157,11 @@ export class MapScene extends Phaser.Scene {
   private dawnXiyaLabel: Phaser.GameObjects.Text | null = null;
   // E1 当天是否已触发过（跨天重置：由 onDayChange 清空）
   private dawnXiyaDay = 0;
+  // v0.5.3 剧情密度 E9：傍晚关心的夏雅（教程完成后，傍晚 18-20 时在农场出现）
+  private eveningXiya: Phaser.GameObjects.Sprite | null = null;
+  private eveningXiyaLabel: Phaser.GameObjects.Text | null = null;
+  // E9 当天是否已触发过（跨天重置）
+  private eveningXiyaDay = 0;
   // v0.5.3 剧情密度 E5：爷爷的笔记（庄园角落可读物件）
   private grandpaNote: Phaser.GameObjects.Text | null = null;
   // 爷爷笔记交互基准坐标（椭圆实际位置，label 有 -8px 偏移）
@@ -192,6 +197,9 @@ export class MapScene extends Phaser.Scene {
     this.closeSeedSelector();
     // 对话残留跨场景传递会导致新场景按交互被对话拦截（reset 不触发 onComplete，安全）
     this.storyDialogue?.reset();
+    // E1/E9 夏雅精灵清理（场景切换时销毁，防止残留）
+    this.clearDawnXiya();
+    this.clearEveningXiya();
   }
 
   preload(): void {
@@ -433,6 +441,7 @@ export class MapScene extends Phaser.Scene {
     // v0.5.3 剧情密度 E1：教程完成后，清晨（06-08 时）在农场出现夏雅（纯陪伴事件，非任务）
     if (this.mapKey === 'farm' && isTutorialDone()) {
       this.setupDawnXiya();
+      this.setupEveningXiya();
     }
 
     // v0.5.3 剧情密度 E5：爷爷的笔记（庄园角落可读物件，多条轮换、不解释）
@@ -735,6 +744,55 @@ export class MapScene extends Phaser.Scene {
       this.updateHUD();
     });
     return true;
+  }
+
+  /**
+   * v0.5.3 剧情密度 E9：傍晚关心的夏雅
+   * 教程完成后，傍晚 18-20 时进入农场时在庄园出现；玩家靠近按 E 播放 XIYA_EVENING_DIALOGUE。
+   * 当天触发过一次后不再出现（eveningXiyaDay 记录，跨天重置）。
+   * 纯陪伴事件：无任务、无奖励、不影响主线/教程。
+   */
+  private setupEveningXiya(): void {
+    const t = getTime();
+    if (t.hour < 18 || t.hour >= 20) return;
+    if (this.eveningXiyaDay === t.day) return;
+
+    const dx = 14 * TILE_SIZE + TILE_SIZE / 2;
+    const dy = 6 * TILE_SIZE + TILE_SIZE / 2;
+    this.eveningXiya = this.add.sprite(dx, dy, 'npc_xiya');
+    this.eveningXiya.setScale(0.5).setDepth(5);
+    this.eveningXiya.setFlipX(true);
+    this.eveningXiyaLabel = this.add.text(dx, dy - 14, '夏雅', {
+      fontSize: '13px', color: '#f0a050',
+      stroke: '#000000', strokeThickness: 3,
+      backgroundColor: 'rgba(0,0,0,0.45)',
+      padding: { x: 3, y: 2 },
+    }).setShadow(0, 1, '#000000', 2).setOrigin(0.5).setDepth(6);
+  }
+
+  /** 与傍晚夏雅交互（靠近按 E → 播放关心对话） */
+  private tryEveningXiyaInteract(): boolean {
+    if (!this.eveningXiya || !this.eveningXiya.visible) return false;
+    if (getTime().hour < 18 || getTime().hour >= 20) return false;
+    const dx = this.player.x - this.eveningXiya.x;
+    const dy = this.player.y - this.eveningXiya.y;
+    if (dx * dx + dy * dy > 28 * 28) return false;
+
+    this.eveningXiyaDay = getTime().day;
+    this.eveningXiya.destroy();
+    this.eveningXiya = null;
+    if (this.eveningXiyaLabel) { this.eveningXiyaLabel.destroy(); this.eveningXiyaLabel = null; }
+    if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+    this.storyDialogue.play(XIYA_EVENING_DIALOGUE, () => {
+      this.updateHUD();
+    });
+    return true;
+  }
+
+  /** 清除傍晚夏雅精灵（场景切换/跨天时调用） */
+  private clearEveningXiya(): void {
+    if (this.eveningXiya) { this.eveningXiya.destroy(); this.eveningXiya = null; }
+    if (this.eveningXiyaLabel) { this.eveningXiyaLabel.destroy(); this.eveningXiyaLabel = null; }
   }
 
   /**
@@ -1378,6 +1436,11 @@ export class MapScene extends Phaser.Scene {
       if (this.tryDawnXiyaInteract()) return;
     }
 
+    // v0.5.3 剧情密度 E9：傍晚关心夏雅（教程完成后，仅傍晚 18-20 时）
+    if (this.mapKey === 'farm' && this.eveningXiya) {
+      if (this.tryEveningXiyaInteract()) return;
+    }
+
     // v0.5.3 剧情密度 E5：爷爷的笔记（庄园角落可读物件）
     if (this.mapKey === 'farm' && this.grandpaNote) {
       if (this.tryGrandpaNoteInteract()) return;
@@ -1684,8 +1747,11 @@ export class MapScene extends Phaser.Scene {
     this.setupNPCs();
     // v0.5.3 E1：跨天后重新判断清晨夏雅（清空旧精灵 + 按新天数重建）
     this.clearDawnXiya();
+    // v0.5.3 E9：跨天后重新判断傍晚夏雅
+    this.clearEveningXiya();
     if (this.mapKey === 'farm' && isTutorialDone()) {
       this.setupDawnXiya();
+      this.setupEveningXiya();
     }
     // v0.5.3 E5：跨天后刷新爷爷笔记（按新天数轮换，重建精灵保持坐标）
     if (this.mapKey === 'farm') {

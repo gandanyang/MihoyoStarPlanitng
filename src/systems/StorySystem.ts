@@ -122,6 +122,15 @@ export const FIRST_HARVEST_DIALOGUE: DialogueLine[] = [
   { speaker: '林澈', color: COLORS.linche, text: '（低头看了看手里的萝卜）……确实。' },
 ];
 
+/** v0.5.3 剧情密度 E9：夏雅傍晚关心（教程完成后，傍晚 18-20 时进入农场触发） */
+export const XIYA_EVENING_DIALOGUE: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（傍晚的庄园染上一层金色。夏雅坐在栅栏边，看着远处的海。）' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '今天过得怎么样？' },
+  { speaker: '林澈', color: COLORS.linche, text: '……挺累的。但是和以前那种累不一样。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '（笑了笑）这里没有KPI，没有周报。你做的事情，土地都会记得。' },
+  { speaker: '林澈', color: COLORS.linche, text: '（沉默片刻）……谢谢。' },
+];
+
 /** 清理完成 → 播种 */
 export const SOW_SEEDS_DIALOGUE: DialogueLine[] = [
   { speaker: '', color: COLORS.system, text: '（土地整理完成，阳光洒在新翻开的土地上。）' },
