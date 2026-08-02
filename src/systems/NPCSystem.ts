@@ -198,6 +198,18 @@ const ADVENTURER_DIALOGUES: DialogueLine[] = [
 // 状态：由 MapScene 持有"当天已说过"的内存标记（Map<npcId, day>），不进入存档。
 
 const NPC_DAILY_LINES: Record<string, DialogueLine[]> = {
+  elder: [
+    { speaker: '村长', color: '#c8b898', text: '你爷爷以前每天傍晚都会来我这儿坐坐。' },
+    { speaker: '村长', color: '#c8b898', text: '这座岛啊，安静太久了。有人回来，挺好的。' },
+    { speaker: '村长', color: '#c8b898', text: '星星的事……你慢慢来，别着急。' },
+    { speaker: '村长', color: '#c8b898', text: '今天的天气，适合看星星。' },
+  ],
+  shopkeeper: [
+    { speaker: '商店老板', color: '#8ac8a0', text: '今天有批新货到了，来看看？' },
+    { speaker: '商店老板', color: '#8ac8a0', text: '最近买种子的人多了，看来大家都开始种地了。' },
+    { speaker: '商店老板', color: '#8ac8a0', text: '镇上好久没这么热闹了。你来了之后，感觉不一样了。' },
+    { speaker: '商店老板', color: '#8ac8a0', text: '我年轻的时候也种过地，后来……算了，不提了。' },
+  ],
   miner: [
     { speaker: '矿工老张', color: '#d8a050', text: '今天风不错，适合晒木材。' },
     { speaker: '矿工老张', color: '#d8a050', text: '今年雨水比去年多，地倒是好挖了。' },
