@@ -103,9 +103,9 @@ function createDom(): void {
   // 防抖：同一手势 500ms 内只触发一次（touchstart→mousedown 跨帧双击发防护）
   const btn = document.createElement('div');
   btn.style.cssText =
-    'position:absolute;right:30px;bottom:30px;width:90px;height:90px;border-radius:50%;' +
-    'background:rgba(76,175,80,0.5);border:2px solid rgba(255,255,255,0.6);pointer-events:auto;' +
-    'display:flex;align-items:center;justify-content:center;color:#fff;font:bold 18px Arial;' +
+    'position:absolute;right:24px;bottom:24px;width:72px;height:72px;border-radius:50%;' +
+    'background:rgba(76,175,80,0.45);border:2px solid rgba(255,255,255,0.5);pointer-events:auto;' +
+    'display:flex;align-items:center;justify-content:center;color:#fff;font:bold 15px Arial;' +
     'touch-action:none;cursor:pointer;user-select:none;-webkit-user-select:none';
   // 稳定标识：探针/测试按 data-action 查找按钮，不依赖文字（文字会随场景变化）
   btn.dataset.action = 'interact';
@@ -131,7 +131,7 @@ function createDom(): void {
   // 背包按钮（仅移动端显示；桌面端用键盘 B）
   backpackBtn = document.createElement('div');
   backpackBtn.style.cssText =
-    'position:absolute;right:30px;bottom:135px;width:64px;height:64px;border-radius:50%;background:rgba(33,150,243,0.5);border:2px solid rgba(255,255,255,0.6);pointer-events:auto;display:none;align-items:center;justify-content:center;color:#fff;font:bold 15px Arial;touch-action:none;cursor:pointer';
+    'position:absolute;right:28px;bottom:108px;width:52px;height:52px;border-radius:50%;background:rgba(33,150,243,0.4);border:2px solid rgba(255,255,255,0.5);pointer-events:auto;display:none;align-items:center;justify-content:center;color:#fff;font:bold 13px Arial;touch-action:none;cursor:pointer';
   backpackBtn.textContent = '背包';
   let lastBackpackTime = 0;
   const BP_DEBOUNCE_MS = 300;

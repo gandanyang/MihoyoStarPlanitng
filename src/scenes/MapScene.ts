@@ -1967,9 +1967,12 @@ export class MapScene extends Phaser.Scene {
     if (!isInFarmArea(col, row)) return;
     if (!this.isTileActionable(col, row)) return;
     this.tryFarmInteractAt(col, row);
-    // 点击反馈：目标格短暂高亮（反馈"刚才操作了哪一格"）
+    // 点击反馈：目标格短暂高亮 + 触屏振动
     this.tapFlashKey = `${col},${row}`;
     this.tapFlashUntil = this.time.now + 500;
+    if (isTouchDevice()) {
+      try { navigator.vibrate(15); } catch {}
+    }
   }
 
   /**
@@ -2139,25 +2142,36 @@ export class MapScene extends Phaser.Scene {
       ? 'position:fixed;left:8px;top:70px;'
       : 'position:fixed;right:4px;top:70px;';
     el.style.cssText =
-      panelPos + 'width:min(200px,40vw);background:rgba(30,25,20,0.9);' +
-      'border:2px solid #8a6a45;border-radius:8px;padding:8px;color:#fff;font-size:11px;' +
-      'font-family:Arial;z-index:10;user-select:none;pointer-events:auto;';
+      panelPos + 'width:min(190px,38vw);background:rgba(25,20,15,0.92);' +
+      'border:1px solid rgba(138,106,69,0.6);border-radius:10px;padding:6px 8px;color:#fff;font-size:11px;' +
+      'font-family:Arial;z-index:10;user-select:none;pointer-events:auto;backdrop-filter:blur(4px);';
 
-    let html = '<div style="text-align:center;font-weight:bold;font-size:13px;margin-bottom:4px;color:#ffd700;">每日任务 💠</div>';
+    // 分离：可领奖 / 进行中 / 已领奖
+    const canClaim = quests.filter(q => q.completed && !q.claimed);
+    const active = quests.filter(q => !q.completed && !q.claimed);
+    const claimed = quests.filter(q => q.claimed);
 
-    for (const q of quests) {
-      const done = q.claimed;
-      const canClaim = q.completed && !q.claimed;
-      const progress = q.target > 1 ? ` ${q.progress}/${q.target}` : '';
-      const color = done ? '#6a6a6a' : canClaim ? '#ffd700' : '#ccc';
-      const status = done ? '✅' : canClaim ? '🎁' : '⬜';
-      const btnHtml = canClaim
-        ? `<button class="dq-claim" data-id="${q.id}" style="font-size:10px;padding:1px 4px;background:#ffd700;color:#000;border:none;border-radius:3px;cursor:pointer;">领奖</button>`
-        : '';
-      html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;color:${color};">
-        <span>${status} ${q.desc}${progress}</span>
-        ${btnHtml}
+    let html = '<div style="text-align:center;font-weight:bold;font-size:12px;margin-bottom:5px;color:#ffd700;letter-spacing:1px;">💠 每日任务</div>';
+
+    // 可领奖（高亮）
+    for (const q of canClaim) {
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 4px;margin-bottom:2px;background:rgba(255,215,0,0.12);border-radius:5px;">
+        <span style="color:#ffd700;">🎁 ${q.desc}</span>
+        <button class="dq-claim" data-id="${q.id}" style="font-size:10px;padding:2px 6px;background:#ffd700;color:#000;border:none;border-radius:4px;cursor:pointer;font-weight:bold;">领奖</button>
       </div>`;
+    }
+
+    // 进行中
+    for (const q of active) {
+      const progress = q.target > 1 ? ` <span style="color:#aaa;">${q.progress}/${q.target}</span>` : '';
+      html += `<div style="display:flex;align-items:center;padding:3px 4px;margin-bottom:2px;color:#ccc;">
+        <span style="margin-right:4px;">⬜</span><span>${q.desc}${progress}</span>
+      </div>`;
+    }
+
+    // 已领奖（折叠）
+    if (claimed.length > 0) {
+      html += `<div style="margin-top:3px;padding-top:3px;border-top:1px solid rgba(255,255,255,0.08);color:#555;font-size:10px;text-align:center;">已完成 ${claimed.length}/${quests.length}</div>`;
     }
 
     el.innerHTML = html;
@@ -2169,8 +2183,8 @@ export class MapScene extends Phaser.Scene {
         const id = target.dataset.id!;
         if (claimReward(id)) {
           this.updateDailyQuestPanel();
-          this.updateHUD(); // 刷新 HUD 钻石显示
-          this.showDialogueText('💠+奖励已领取！');
+          this.updateHUD();
+          this.showDialogueText('💠 奖励已领取！');
         }
       }
     });
