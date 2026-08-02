@@ -1603,12 +1603,12 @@ export class MapScene extends Phaser.Scene {
     const lv = `Lv.${getLevel()}`;
     const seedDef = CROP_DEFS[this.selectedCropType];
     const seedItem = seedDef.seedItem as any;
-    const seedInfo = `${itemIconHtml(seedItem, 13)}${seedDef.name}:${getItemCount(seedItem)}`;
+    const seedInfo = `${itemIconHtml(seedItem, 13)}${seedDef.name}种子:${getItemCount(seedItem)}`;
     // 农场触屏：种子切换按钮显示当前种子 + 库存（仅触屏设备）
     if (this.seedSwitchBtn) {
       const show = isTouchDevice() && this.mapKey === 'farm';
       this.seedSwitchBtn.style.display = show ? 'block' : 'none';
-      if (show) this.seedSwitchBtn.innerHTML = `${itemIconHtml(seedItem, 14)} ${seedDef.name} ×${getItemCount(seedItem)} ▾`;
+      if (show) this.seedSwitchBtn.innerHTML = `${itemIconHtml(seedItem, 14)} ${seedDef.name}种子 · 库存 ${getItemCount(seedItem)} ▾`;
     }
     if (isMobileLayout()) {
       if (this.mapKey === 'farm') {
@@ -2706,7 +2706,7 @@ export class MapScene extends Phaser.Scene {
     setCrop(col, row, { cropType, plantDay: getTime().day, watered: false });
     addXp(3, 'plant');
     play('plant');
-    this.showFloatText(col * TILE_SIZE + TILE_SIZE / 2, row * TILE_SIZE + TILE_SIZE / 2, `${CROP_DEFS[cropType].icon} ${CROP_DEFS[cropType].name}`);
+    this.showFloatText(col * TILE_SIZE + TILE_SIZE / 2, row * TILE_SIZE + TILE_SIZE / 2, `${CROP_DEFS[cropType].icon} ${CROP_DEFS[cropType].name} · 🌱种子-1`, '#ffe082');
     onDQPlant();
     this.updateDailyQuestPanel();
     this.checkTutorialProgress('sow');

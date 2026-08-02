@@ -140,10 +140,10 @@ function showToast(msg: string): void {
   if (!panelEl) return;
   const t = panelEl.querySelector('#shop-toast') as HTMLElement | null;
   if (!t) return;
-  t.textContent = msg;
+  t.innerHTML = msg; // label 来自固定配置，无注入风险；支持 <br> 两行展示
   t.style.display = 'block';
   if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.style.display = 'none'; }, 1200);
+  toastTimer = setTimeout(() => { t.style.display = 'none'; }, 1400);
 }
 
 /** 创建面板 DOM（模块级，只创建一次） */
@@ -163,7 +163,7 @@ function createDom(): void {
 
   panelEl.innerHTML = `
     <div style="position:relative;width:min(440px,92vw);background:#3d3226;border:3px solid #8a6a45;border-radius:10px;padding:16px;color:#fff;font-family:Arial;box-shadow:0 4px 20px rgba(0,0,0,0.6)">
-      <div id="shop-toast" style="position:absolute;left:50%;top:-2px;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#7ef0a0;font-size:13px;padding:4px 14px;border-radius:6px;display:none;pointer-events:none;white-space:nowrap;"></div>
+      <div id="shop-toast" style="position:absolute;left:50%;top:-2px;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#7ef0a0;font-size:13px;padding:4px 14px;border-radius:6px;display:none;pointer-events:none;white-space:normal;line-height:1.5;text-align:center;"></div>
       <div style="text-align:center;font-size:18px;font-weight:bold;margin-bottom:8px;color:#ffd700;letter-spacing:1px;">星辰杂货店</div>
       <div id="shop-coins" style="text-align:center;font-size:14px;margin-bottom:12px;color:#ffe082;"></div>
       <div style="display:flex;gap:12px;">
@@ -196,7 +196,7 @@ function createDom(): void {
       item.do();
       if (item.type === 'buy') {
         onBuyCallback?.(item.id, 1);
-        showToast(`已购买 ${item.label} ×1`);
+        showToast(`已购买 ${item.label} ×1<br>当前拥有：${item.label} ×${getItemCount(item.id as any)}`);
       } else if (item.type === 'sell') {
         onSellCallback?.(1);
       }
