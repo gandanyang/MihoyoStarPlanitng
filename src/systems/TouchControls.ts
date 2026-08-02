@@ -39,6 +39,10 @@ let backpackHandler: (() => void) | null = null;
 /** 任务按钮（移动端显示，对应键盘 J） */
 let questBtn: HTMLDivElement | null = null;
 let questHandler: (() => void) | null = null;
+/** 主交互按钮（移动端显示；桌面端用键盘 E/空格） */
+let mainBtn: HTMLDivElement | null = null;
+/** 摇杆容器（移动端显示；桌面端用 WASD） */
+let joystickEl: HTMLDivElement | null = null;
 /** DOM 是否已创建（防止重复创建） */
 let domCreated = false;
 
@@ -61,8 +65,9 @@ function createDom(): void {
   // 摇杆容器（左下角）
   const joy = document.createElement('div');
   joy.className = 'tc-joystick';
+  joystickEl = joy;
   joy.style.cssText =
-    'position:absolute;left:30px;bottom:30px;width:130px;height:130px;';
+    'position:absolute;left:30px;bottom:30px;width:130px;height:130px;display:none;';
   joystickBase = document.createElement('div');
   joystickBase.className = 'tc-joystick-base';
   joystickBase.style.cssText =
@@ -110,9 +115,10 @@ function createDom(): void {
   // 防抖：同一手势 150ms 内只触发一次（touchstart→mousedown 跨帧双击发防护）
   const btn = document.createElement('div');
   btn.className = 'tc-btn tc-btn-main';
+  mainBtn = btn;
   btn.style.cssText =
     'position:absolute;right:24px;bottom:24px;width:74px;height:74px;' +
-    'touch-action:none;';
+    'touch-action:none;display:none;';
   // 稳定标识：探针/测试按 data-action 查找按钮，不依赖文字（文字会随场景变化）
   btn.dataset.action = 'interact';
   btn.innerHTML =
@@ -170,8 +176,9 @@ function createDom(): void {
   questBtn = document.createElement('div');
   questBtn.id = 'quest-btn';
   questBtn.className = 'tc-btn tc-btn-quest';
+  // 制作人需求：任务按钮移到左上角偏下（避开左上角时间/经验条；safe-area 避开状态栏/挖孔屏；仅触屏显示）
   questBtn.style.cssText =
-    'position:absolute;right:30px;bottom:176px;width:58px;height:58px;' +
+    'position:absolute;left:8px;top:calc(90px + env(safe-area-inset-top, 0px));width:58px;height:58px;' +
     'touch-action:none;display:none;';
   questBtn.innerHTML =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -197,6 +204,11 @@ function createDom(): void {
   // 挂到画布容器（横屏黑边场景下 UI 与画布对齐）；兜底 body
   const host = document.getElementById('game-container') ?? document.body;
   host.appendChild(container);
+
+  // 统一可见性：所有控件只在移动端显示
+  updateControlsVisibility();
+  window.addEventListener('resize', updateControlsVisibility);
+  window.addEventListener('orientationchange', updateControlsVisibility);
 }
 
 /** 是否触屏设备（统一入口在 config.ts，用触屏能力判断，而非窗口宽度——手机横屏宽度可能 ≥800） */
@@ -206,6 +218,15 @@ export function setActionButtonLabel(label: string): void {
   const btn = document.querySelector<HTMLElement>('#touch-controls [data-action="interact"]');
   const labelEl = btn?.querySelector<HTMLElement>('.tc-btn-label');
   if (labelEl) labelEl.textContent = label;
+}
+
+/** 是否移动端显示：主按钮/摇杆/背包/任务只在真移动设备显示（BUG-030：桌面触屏笔记本不显示） */
+function updateControlsVisibility(): void {
+  const show = isTouchDevice();
+  if (mainBtn) mainBtn.style.display = show ? 'flex' : 'none';
+  if (joystickEl) joystickEl.style.display = show ? 'block' : 'none';
+  if (backpackBtn) backpackBtn.style.display = show ? 'flex' : 'none';
+  if (questBtn) questBtn.style.display = show ? 'flex' : 'none';
 }
 
 /** 背包按钮仅触屏设备显示（竖屏/横屏/平板都显示；桌面无触屏时用键盘 B） */
@@ -280,8 +301,7 @@ export class TouchControls {
     if (!domCreated) {
       createDom();
     } else {
-      updateBackpackVisibility();
-      updateQuestVisibility();
+      updateControlsVisibility();
     }
   }
 
