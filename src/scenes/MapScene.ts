@@ -159,6 +159,8 @@ export class MapScene extends Phaser.Scene {
   private dawnXiyaDay = 0;
   // v0.5.3 剧情密度 E5：爷爷的笔记（庄园角落可读物件）
   private grandpaNote: Phaser.GameObjects.Text | null = null;
+  // 爷爷笔记交互基准坐标（椭圆实际位置，label 有 -8px 偏移）
+  private grandpaNotePos: { x: number; y: number } = { x: 0, y: 0 };
   // v0.5.3 剧情密度 E2：第一次收获反馈（一次性，内存 flag，不进存档）
   private firstHarvestShown = false;
   // 教程提示 DOM
@@ -1433,8 +1435,14 @@ export class MapScene extends Phaser.Scene {
 
     // 0.6 矿洞挖矿：靠近矿脉 E 键开采
     if (this.mapKey === 'mine') {
-      // 挖矿引导（仅第一次进入矿洞触发）
-      if (!this.mineTipShown) {
+      // 挖矿引导（仅第一次在矿脉旁交互时触发，对话结束后本次不开采，需再按一次）
+      const nearOre = this.oreSprites.some((e) => {
+        if (!e.sprite.visible) return false;
+        const dx = this.player.x - e.sprite.x;
+        const dy = this.player.y - e.sprite.y;
+        return dx * dx + dy * dy < 24 * 24;
+      });
+      if (nearOre && !this.mineTipShown) {
         this.mineTipShown = true;
         if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
         this.storyDialogue.play(MINE_TIP_DIALOGUE);
@@ -1687,21 +1695,25 @@ export class MapScene extends Phaser.Scene {
   /** v0.5.3 剧情密度 E5：创建爷爷的笔记（庄园左上角落可读物件，纸面风 label） */
   private setupGrandpaNote(): void {
     if (this.mapKey !== 'farm') return;
+    // 位置 (1,6)：远离第一棵树 (2,3)（原 (1,3) 距树仅 17.9px，会抢占砍树引导）
     const nx = 1 * TILE_SIZE + TILE_SIZE / 2;
-    const ny = 3 * TILE_SIZE + TILE_SIZE / 2;
+    const ny = 6 * TILE_SIZE + TILE_SIZE / 2;
     const note = this.add.ellipse(nx, ny, 16, 16, 0xe8d8a8, 0.55);
     note.setDepth(3);
     const mark = this.add.text(nx, ny - 8, '笔记', {
       fontFamily: 'Arial', fontSize: '10px', color: '#e8d8a8',
     }).setOrigin(0.5).setDepth(4);
+    // 交互基准用椭圆实际坐标（label 相对偏移 -8px，用它判定会偏上）
     this.grandpaNote = mark;
+    this.grandpaNotePos = { x: nx, y: ny };
   }
 
   /** 与爷爷笔记交互（靠近按 E → 播放当天一条笔记） */
   private tryGrandpaNoteInteract(): boolean {
     if (!this.grandpaNote || !this.grandpaNote.visible) return false;
-    const dx = this.player.x - this.grandpaNote.x;
-    const dy = this.player.y - this.grandpaNote.y;
+    const p = this.grandpaNotePos;
+    const dx = this.player.x - p.x;
+    const dy = this.player.y - p.y;
     if (dx * dx + dy * dy > 28 * 28) return false;
     if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
     const note = getGrandpaNote(getTime().day);
