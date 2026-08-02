@@ -146,6 +146,10 @@ export class MapScene extends Phaser.Scene {
   private seedSwitchCooldown = 0;
   // 种子选择器 DOM
   private seedSelectorEl: HTMLDivElement | null = null;
+  // 农场触屏：种子切换按钮（点击弹作物选择器预选播种作物；桌面用 R 键）
+  private seedSwitchBtn: HTMLDivElement | null = null;
+  // 作物选择器（预选播种作物，不播种）
+  private cropPickerEl: HTMLDivElement | null = null;
   // 移动端点击种田：点击操作后的短暂反馈高亮（key = "col,row"，至 tapFlashUntil 过期）
   private tapFlashKey = '';
   private tapFlashUntil = 0;
@@ -198,6 +202,7 @@ export class MapScene extends Phaser.Scene {
   private cleanupSceneDom(): void {
     this.removeTutorialHint();
     this.closeSeedSelector();
+    this.closeCropPicker();
     // 背包/任务面板跨场景清理（防止残留打开态）
     this.backpackPanel?.close();
     this.questPanel?.close();
@@ -381,6 +386,20 @@ export class MapScene extends Phaser.Scene {
     this.hudAreaDom.style.cssText =
       'position:absolute;top:24px;left:50%;transform:translateX(-50%);color:#fff;font-size:13px;text-shadow:1px 1px 0 #000;white-space:nowrap';
     this.hudDom.appendChild(this.hudAreaDom);
+
+    // 农场触屏：种子切换按钮（点击弹作物选择器预选播种作物；桌面保留 R 键）
+    if (this.mapKey === 'farm') {
+      this.seedSwitchBtn = document.createElement('div');
+      this.seedSwitchBtn.id = 'seed-switch-btn';
+      this.seedSwitchBtn.style.cssText =
+        'position:absolute;top:46px;left:8px;pointer-events:auto;cursor:pointer;' +
+        'background:rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.35);border-radius:6px;' +
+        'color:#fff;font-size:12px;padding:3px 8px;text-shadow:1px 1px 0 #000;' +
+        'user-select:none;-webkit-user-select:none';
+      this.seedSwitchBtn.textContent = '';
+      this.seedSwitchBtn.addEventListener('click', () => this.showCropPicker());
+      this.hudDom.appendChild(this.seedSwitchBtn);
+    }
 
     // 右上：任务目标
     this.hudQuestDom = document.createElement('div');
@@ -1403,6 +1422,12 @@ export class MapScene extends Phaser.Scene {
     const seedDef = CROP_DEFS[this.selectedCropType];
     const seedItem = seedDef.seedItem as any;
     const seedInfo = `${seedDef.icon}${seedDef.name}:${getItemCount(seedItem)}`;
+    // 农场触屏：种子切换按钮显示当前种子 + 库存（仅触屏设备）
+    if (this.seedSwitchBtn) {
+      const show = isTouchDevice() && this.mapKey === 'farm';
+      this.seedSwitchBtn.style.display = show ? 'block' : 'none';
+      if (show) this.seedSwitchBtn.textContent = `${seedDef.icon} ${seedDef.name} ×${getItemCount(seedItem)} ▾`;
+    }
     if (isMobileLayout()) {
       if (this.mapKey === 'farm') {
         this.hudAreaDom.textContent = `${name} ${day} ${lv} | ${seedInfo} ${coins} ${diamonds}`;
@@ -2081,6 +2106,7 @@ export class MapScene extends Phaser.Scene {
     if (this.backpackPanel.isOpen()) return;
     if (this.endingPanel?.isOpen()) return;
     if (this.seedSelectorEl) return;
+    if (this.cropPickerEl) return;
     const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
     const col = Math.floor(world.x / TILE_SIZE);
     const row = Math.floor(world.y / TILE_SIZE);
@@ -2245,6 +2271,66 @@ export class MapScene extends Phaser.Scene {
   private closeSeedSelector(): void {
     this.seedSelectorEl?.remove();
     this.seedSelectorEl = null;
+  }
+
+  /** 农场触屏：作物选择器（预选播种作物，仅切换 selectedCropType，不播种） */
+  private showCropPicker(): void {
+    this.closeCropPicker();
+
+    const el = document.createElement('div');
+    el.id = 'crop-picker';
+    el.style.cssText =
+      'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;' +
+      'background:rgba(0,0,0,0.5);z-index:225;user-select:none;';
+
+    const cardStyle =
+      'width:min(300px,85vw);background:#3d3226;border:3px solid #8a6a45;border-radius:10px;' +
+      'padding:16px;color:#fff;font-family:Arial;box-shadow:0 4px 20px rgba(0,0,0,0.6);';
+
+    let itemsHtml = '';
+    for (const ct of CROP_TYPES) {
+      const def = CROP_DEFS[ct];
+      const count = getItemCount(def.seedItem as any);
+      const sel = ct === this.selectedCropType;
+      const border = sel ? '2px solid #ffd700' : '2px solid rgba(255,255,255,0.15)';
+      const countColor = count > 0 ? '#ffe082' : '#888';
+      itemsHtml += `<div class="crop-pick-opt" data-crop="${ct}" style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;margin-bottom:6px;border:${border};border-radius:6px;cursor:pointer;background:rgba(255,255,255,0.06);">
+        <span style="font-size:15px;">${itemIconHtml(ct, 18)} ${def.name}</span>
+        <span style="font-size:13px;color:${countColor};">×${count}${sel ? ' ✓' : ''}</span>
+      </div>`;
+    }
+
+    el.innerHTML = `<div style="${cardStyle}">
+      <div style="text-align:center;font-size:16px;font-weight:bold;margin-bottom:10px;">选择播种作物</div>
+      ${itemsHtml}
+      <div style="text-align:center;margin-top:10px;">
+        <button id="crop-pick-close" style="font-size:13px;padding:5px 20px;background:#8a6a45;border:none;border-radius:4px;color:#fff;cursor:pointer;">取消 (Esc)</button>
+      </div>
+    </div>`;
+    document.body.appendChild(el);
+    this.cropPickerEl = el;
+
+    el.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (target.id === 'crop-pick-close') { this.closeCropPicker(); return; }
+      const opt = target.closest('.crop-pick-opt') as HTMLElement | null;
+      if (opt?.dataset.crop) {
+        this.selectedCropType = opt.dataset.crop as CropType;
+        this.closeCropPicker();
+        this.updateHUD();
+      }
+    });
+
+    const escHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); this.closeCropPicker(); window.removeEventListener('keydown', escHandler); }
+    };
+    window.addEventListener('keydown', escHandler);
+  }
+
+  /** 关闭作物选择器 */
+  private closeCropPicker(): void {
+    this.cropPickerEl?.remove();
+    this.cropPickerEl = null;
   }
 
   /** 创建/刷新每日任务面板（public：debug API 调用） */
