@@ -144,11 +144,11 @@ async function run() {
     });
     await sleep(1200);
 
-    // 传送到摊位旁（col 20, row 17 中心 328,280，站位上方 row 16）
+    // 传送到摊位旁（col 24, row 18 中心 392,296，站位上方一格 row 17）
     const shopRes = await page.evaluate(() => {
       const s = window.__game.scene.getScene('farm');
       const p = s.player;
-      p.setPosition(20 * 16 + 8, 16 * 16 + 8); // 摊位正上方一格
+      p.setPosition(24 * 16 + 8, 17 * 16 + 8); // 摊位正上方一格
       p.setVelocity(0, 0);
       p.facing = 'down';
       // 模拟一次交互（对应按 E / 交互按钮）

@@ -2279,41 +2279,42 @@ export class MapScene extends Phaser.Scene {
 
   /**
    * 创建农场商店摊位（v0.6 商店入口：靠近按 E 打开 ShopPanel）
-   * 位置：农田正下方空地 (col 20, row 17)，玩家在农田 row 16 面向下（距离 16px）即可触发。
+   * 位置：农田右下方空地 (col 24, row 18)，与农田（rows 8-16）隔开约 2 格，
+   *   避开玩家出生点 (col 20, row 18.75) / 树木 / 水塘，摊位主体不压在土地上。
    * 纯视觉（Graphics 柜台 + 文字标签），不放瓦片——
    * 原因：Walls 层 gid 6 是睡觉判定格（会误判睡觉）、gid 3 石墙会挡路挡碰撞。
    */
   private setupFarmShop(): void {
     const T = TILE_SIZE;
-    const x = 20 * T + T / 2; // 328
-    const y = 17 * T + T / 2; // 280
+    const x = 24 * T + T / 2; // 392
+    const y = 18 * T + T / 2; // 296
     const g = this.add.graphics();
     g.setDepth(3);
     // 遮阳棚（红底 + 白条纹）
     g.fillStyle(0xc0392b, 1);
-    g.fillRect(x - 22, y - 18, 44, 7);
+    g.fillRect(x - 22, y - 16, 44, 7);
     g.fillStyle(0xf5f5f5, 1);
-    g.fillRect(x - 16, y - 18, 6, 7);
-    g.fillRect(x - 4, y - 18, 6, 7);
-    g.fillRect(x + 8, y - 18, 6, 7);
+    g.fillRect(x - 16, y - 16, 6, 7);
+    g.fillRect(x - 4, y - 16, 6, 7);
+    g.fillRect(x + 8, y - 16, 6, 7);
     // 支撑柱（左右）
     g.fillStyle(0x6b4a2a, 1);
-    g.fillRect(x - 20, y - 11, 3, 15);
-    g.fillRect(x + 17, y - 11, 3, 15);
+    g.fillRect(x - 20, y - 9, 3, 15);
+    g.fillRect(x + 17, y - 9, 3, 15);
     // 柜台（木色桌面 + 深色台沿）
     g.fillStyle(0x8a5a33, 1);
-    g.fillRect(x - 22, y - 10, 44, 9);
+    g.fillRect(x - 22, y - 8, 44, 9);
     g.fillStyle(0x6b4423, 1);
-    g.fillRect(x - 22, y - 2, 44, 2);
+    g.fillRect(x - 22, y - 1, 44, 2);
     // 柜台货品（萝卜红 / 叶绿 / 玉米黄 三色点）
     g.fillStyle(0xe74c3c, 1);
-    g.fillCircle(x - 12, y - 5, 2.5);
+    g.fillCircle(x - 12, y - 3, 2.5);
     g.fillStyle(0x2ecc71, 1);
-    g.fillCircle(x - 2, y - 5, 2.5);
+    g.fillCircle(x - 2, y - 3, 2.5);
     g.fillStyle(0xf1c40f, 1);
-    g.fillCircle(x + 8, y - 5, 2.5);
-    // 标签
-    const mark = this.add.text(x, y - 26, '商店', {
+    g.fillCircle(x + 8, y - 3, 2.5);
+    // 标签（放摊位下方空地，不压农田）
+    const mark = this.add.text(x, y + 16, '商店', {
       fontFamily: 'Arial',
       fontSize: '10px',
       color: '#ffe082',
