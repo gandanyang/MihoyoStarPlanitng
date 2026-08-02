@@ -1308,6 +1308,53 @@ export class MapScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * BUG-026 A1：无效操作反馈——目标格短暂红闪 + 低音（区分成功反馈）
+   * 用独立闪烁矩形叠加，不改原 rect 的 fillStyle，避免破坏格子恢复逻辑
+   */
+  private flashTileError(col: number, row: number): void {
+    const cx = col * TILE_SIZE + TILE_SIZE / 2;
+    const cy = row * TILE_SIZE + TILE_SIZE / 2;
+    const flash = this.add
+      .rectangle(cx, cy, TILE_SIZE, TILE_SIZE, 0xff6b5e, 0.55)
+      .setDepth(4)
+      .setScrollFactor(1);
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      duration: 260,
+      onComplete: () => flash.destroy(),
+    });
+    play('invalid');
+  }
+
+  /**
+   * BUG-026 A2：格子处成功飘字（播种/收获/浇水等奖励瞬间）
+   * 在世界坐标格子处上浮淡出；带描边保证可读性
+   */
+  private showFloatText(worldX: number, worldY: number, text: string, color = '#ffe082'): void {
+    const t = this.add
+      .text(worldX, worldY - 4, text, {
+        fontFamily: 'Arial',
+        fontSize: '13px',
+        fontStyle: 'bold',
+        color,
+        stroke: '#000000',
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5)
+      .setDepth(201)
+      .setScrollFactor(1);
+    this.tweens.add({
+      targets: t,
+      y: t.y - 22,
+      alpha: 0,
+      duration: 900,
+      ease: 'Quad.easeOut',
+      onComplete: () => t.destroy(),
+    });
+  }
+
   /** v0.5.3：NPC 每日随机句的"当天已说过"内存标记（不进入存档） */
   private npcDailySaid = new Map<string, number>();
 
@@ -2109,8 +2156,18 @@ export class MapScene extends Phaser.Scene {
     const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
     const col = Math.floor(world.x / TILE_SIZE);
     const row = Math.floor(world.y / TILE_SIZE);
-    if (!isInFarmArea(col, row)) return;
-    if (!this.isTileActionable(col, row)) return;
+    if (!isInFarmArea(col, row)) {
+      this.flashTileError(col, row);
+      this.showFloatText(col * TILE_SIZE + TILE_SIZE / 2, row * TILE_SIZE + TILE_SIZE / 2, '不能在这里', '#ff8a80');
+      return;
+    }
+    if (!this.isTileActionable(col, row)) {
+      this.flashTileError(col, row);
+      const state = getTileState(col, row);
+      const msg = state === 'watered' ? '还没成熟' : '没有种子';
+      this.showFloatText(col * TILE_SIZE + TILE_SIZE / 2, row * TILE_SIZE + TILE_SIZE / 2, msg, '#ff8a80');
+      return;
+    }
     this.tryFarmInteractAt(col, row);
     // 点击反馈：目标格短暂高亮 + 触屏振动
     this.tapFlashKey = `${col},${row}`;
@@ -2129,10 +2186,13 @@ export class MapScene extends Phaser.Scene {
     if (!isInFarmArea(col, row)) return;
 
     const state = getTileState(col, row);
+    const tileCenterX = col * TILE_SIZE + TILE_SIZE / 2;
+    const tileCenterY = row * TILE_SIZE + TILE_SIZE / 2;
     if (state === 'empty') {
       // 锄地：空地 → 耕地
       setTileState(col, row, 'tilled');
       play('hoe');
+      this.showFloatText(tileCenterX, tileCenterY, '锄地');
       this.checkTutorialProgress('till');
     } else if (state === 'tilled') {
       // 播种：优先使用 R 键选中的种子，不足时才弹出选择器
@@ -2149,7 +2209,11 @@ export class MapScene extends Phaser.Scene {
           const count = getItemCount(seedItem);
           if (count > 0) availableSeeds.push({ cropType: ct, count });
         }
-        if (availableSeeds.length === 0) return;
+        if (availableSeeds.length === 0) {
+          this.flashTileError(col, row);
+          this.showFloatText(tileCenterX, tileCenterY, '没有种子', '#ff8a80');
+          return;
+        }
         if (availableSeeds.length === 1) {
           this.doPlant(col, row, availableSeeds[0].cropType);
         } else {
@@ -2163,6 +2227,7 @@ export class MapScene extends Phaser.Scene {
       if (crop) setCrop(col, row, { ...crop, watered: true });
       addXp(1, 'water');
       play('water');
+      this.showFloatText(tileCenterX, tileCenterY, '浇水');
       onDQWater();
       this.updateDailyQuestPanel();
       this.checkTutorialProgress('water');
@@ -2175,6 +2240,7 @@ export class MapScene extends Phaser.Scene {
       addItem(cropType, 1);
       addXp(10, 'harvest');
       play('harvest');
+      this.showFloatText(tileCenterX, tileCenterY, `+1 ${CROP_DEFS[cropType].icon}`, '#7ef0a0');
       onDQHarvest(cropType);
       this.updateDailyQuestPanel();
       // v0.5.3 剧情密度 E2：第一次收获反馈（一次性，夏雅口头肯定，不影响收获本身）
@@ -2186,7 +2252,9 @@ export class MapScene extends Phaser.Scene {
         });
       }
     } else {
-      // watered 已浇水未成熟，暂不处理
+      // watered 已浇水未成熟，暂不处理 → 给无效反馈
+      this.flashTileError(col, row);
+      this.showFloatText(tileCenterX, tileCenterY, '还没成熟', '#ff8a80');
       return;
     }
 
@@ -2204,6 +2272,7 @@ export class MapScene extends Phaser.Scene {
     setCrop(col, row, { cropType, plantDay: getTime().day, watered: false });
     addXp(3, 'plant');
     play('plant');
+    this.showFloatText(col * TILE_SIZE + TILE_SIZE / 2, row * TILE_SIZE + TILE_SIZE / 2, `${CROP_DEFS[cropType].icon} ${CROP_DEFS[cropType].name}`);
     onDQPlant();
     this.updateDailyQuestPanel();
     this.checkTutorialProgress('sow');
