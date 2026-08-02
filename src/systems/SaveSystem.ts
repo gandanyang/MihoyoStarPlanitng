@@ -29,6 +29,7 @@ import {
   type TreeState,
 } from '../data/FarmState';
 import { getAllInventoryEntries, restoreAllInventory, type ItemType } from '../data/Inventory';
+import { getRestoreEntries, restoreRestoreEntries } from '../data/FarmRestore';
 import { getTime, setTimeFull } from '../data/TimeSystem';
 import { getStamina, setStamina as restoreStamina } from '../data/Stamina';
 import { getMinedOreIds, restoreMinedOres } from '../data/MineState';
@@ -70,11 +71,13 @@ export interface SaveData {
     questState: QuestState;
     dailyQuest?: DailyQuestSaveData;
   };
-  /** 农场：土地 / 作物 / 树木 */
+  /** 农场：土地 / 作物 / 树木 / 环境恢复点 */
   farm: {
     tiles: [string, TileState][];
     crops: [string, CropData][];
     trees: [string, TreeState][];
+    /** M1-3 环境恢复点状态（可选，旧档无此字段视为全部未恢复） */
+    restore?: Record<string, boolean>;
   };
   /** 剧情进度 */
   story: {
@@ -133,6 +136,7 @@ export function save(player: {
       tiles: getAllTileEntries(),
       crops: getAllCropEntries(),
       trees: getAllTreeEntries(),
+      restore: getRestoreEntries(),
     },
     story: {
       storyStep: getStoryStep(),
@@ -273,6 +277,7 @@ export function apply(data: SaveData): void {
   restoreTileEntries(data.farm.tiles as [string, TileState][]);
   restoreCropEntries(data.farm.crops as [string, CropData][]);
   restoreTreeEntries((data.farm.trees as [string, TreeState][]) ?? []);
+  restoreRestoreEntries(data.farm.restore);
   // 剧情
   setStoryStep(data.story.storyStep ?? 'done');
   if (data.story.ch1TownIntroDone) markCh1TownIntroDone();

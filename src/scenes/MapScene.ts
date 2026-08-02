@@ -22,6 +22,7 @@ import {
   refreshStumps,
   getAllCropEntries,
 } from '../data/FarmState';
+import { isRestored, markRestored } from '../data/FarmRestore';
 import { addItem, getItemCount, itemIconHtml } from '../data/Inventory';
 import { formatTime, getTime, nextDay as timeNextDay, tick as timeTick } from '../data/TimeSystem';
 import { getCoins } from '../data/Economy';
@@ -90,6 +91,7 @@ export class MapScene extends Phaser.Scene {
   private readonly mapKey: string;
   private player!: Player;
   private wallsLayer!: Phaser.Tilemaps.TilemapLayer;
+  private groundLayer!: Phaser.Tilemaps.TilemapLayer;
   private spawn: { x: number; y: number } | undefined;
   // 切换中标记，防止同一帧重复触发
   private transitioning = false;
@@ -173,6 +175,19 @@ export class MapScene extends Phaser.Scene {
   private grandpaNote: Phaser.GameObjects.Text | null = null;
   // 爷爷笔记交互基准坐标（椭圆实际位置，label 有 -8px 偏移）
   private grandpaNotePos: { x: number; y: number } = { x: 0, y: 0 };
+  // M1-3 爷爷旧花园恢复点（farm 左下角木屋旁）：三阶段清理交互状态
+  private gardenRestore: {
+    /** 0=未清理 1=已清倒木 2=已清破花架 3=已恢复 */
+    stage: number;
+    /** 恢复前装饰分 3 组（倒木/破花架/荒草），每组 Graphics，按阶段销毁 */
+    debris: Phaser.GameObjects.Graphics[];
+    /** 恢复后蝴蝶 */
+    butterflies: Phaser.GameObjects.Container[];
+    /** 交互提示标记（未恢复时显示） */
+    mark: Phaser.GameObjects.Text | null;
+    /** 交互基准点（区域中心像素坐标） */
+    pos: { x: number; y: number };
+  } | null = null;
   // v0.5.3 剧情密度 E2：第一次收获反馈（一次性，内存 flag，不进存档）
   private firstHarvestShown = false;
   // 教程提示 DOM
@@ -291,9 +306,9 @@ export class MapScene extends Phaser.Scene {
     }
 
     // 渲染图层
-    const groundLayer = map.createLayer('Ground', tileset, 0, 0);
+    this.groundLayer = map.createLayer('Ground', tileset, 0, 0)!;
     this.wallsLayer = map.createLayer('Walls', tileset, 0, 0)!;
-    groundLayer?.setDepth(0);
+    this.groundLayer.setDepth(0);
     this.wallsLayer.setDepth(1);
 
     // 碰撞：仅石墙(3)、水(4)、树木(9-12)、树桩(13) 参与碰撞
@@ -440,6 +455,11 @@ export class MapScene extends Phaser.Scene {
     // M1-2 农场动态氛围（方案 B：水塘涟漪 / 花草摆动 / 暖色光斑，零资源纯代码）
     if (this.mapKey === 'farm') {
       this.setupFarmAmbience();
+    }
+
+    // M1-3 爷爷旧花园恢复点（玩家清理荒废角落 → 环境变化 + 存档持久化）
+    if (this.mapKey === 'farm') {
+      this.setupGardenRestore();
     }
 
     // 第一章：首次进入小镇触发剧情（教程完成后、且从未触发过）
@@ -1646,6 +1666,11 @@ export class MapScene extends Phaser.Scene {
       if (this.tryGrandpaNoteInteract()) return;
     }
 
+    // M1-3 爷爷旧花园恢复点（未恢复时靠近按 E 三阶段清理）
+    if (this.mapKey === 'farm' && this.gardenRestore && this.gardenRestore.stage < 3) {
+      if (this.tryGardenRestoreInteract()) return;
+    }
+
     // 2. 优先检测靠近 NPC（所有场景）：取交互范围内最近的一个
     // 注意：不能用数组顺序取第一个，否则多个 NPC 靠近时 elder 永远先被触发
     let nearest: NPC | null = null;
@@ -2012,6 +2037,158 @@ export class MapScene extends Phaser.Scene {
   /** 清除爷爷笔记精灵（场景切换/跨天时调用） */
   private clearGrandpaNote(): void {
     if (this.grandpaNote) { this.grandpaNote.destroy(); this.grandpaNote = null; }
+  }
+
+  // ============ M1-3 爷爷旧花园恢复点 ============
+
+  /**
+   * 初始化爷爷旧花园恢复点（farm 木屋左侧 col 1 / rows 18-22）。
+   * 注意：实际地图木屋石墙（Walls gid 3 碰撞）在 col 2（rows 19-23），
+   * 花园可用空间仅 col 1 一列，交互锚点必须选在可走格、且距床铺格（gid 6）≥2 格，
+   * 否则 tryInteract 的床铺分支（优先于花园分支）会拦截按 E。
+   * 恢复前：荒土瓦片（gid 2）+ 倒木/破花架/荒草（Graphics）
+   * 恢复后：花丛（gid 8）+ 小路（gid 7）+ 蝴蝶
+   * 状态持久化：FarmRestore.isRestored('garden')，刷新/重进保持恢复态。
+   */
+  private setupGardenRestore(): void {
+    if (this.mapKey !== 'farm') return;
+    const T = TILE_SIZE;
+    const restored = isRestored('garden');
+    this.gardenRestore = {
+      stage: restored ? 3 : 0,
+      debris: [],
+      butterflies: [],
+      mark: null,
+      // 区域中心（col 1, row 20）作交互基准：可走格，距床格 (3,20) 两格
+      pos: { x: 1 * T + T / 2, y: 20 * T + T / 2 },
+    };
+    if (restored) {
+      this.buildGardenRestored();
+    } else {
+      this.buildGardenRuined();
+    }
+  }
+
+  /** 恢复前视觉：荒土瓦片 + 三组装饰（倒木/破花架/荒草）+ 交互提示标记 */
+  private buildGardenRuined(): void {
+    const g = this.gardenRestore;
+    if (!g) return;
+    const T = TILE_SIZE;
+    // 荒土（gid 2）：col 1, rows 18-22（col 2 是木屋石墙，不可占用）
+    for (let r = 18; r <= 22; r++) {
+      this.groundLayer.putTileAt(2, 1, r);
+    }
+    // 组1 倒木：横躺木段 ×2
+    const log = this.add.graphics();
+    log.fillStyle(0x8d6e4a, 1);
+    log.fillRoundedRect(-9, -3, 18, 6, 3);
+    log.setPosition(1 * T + T / 2, 18 * T + T / 2);
+    log.setRotation(-0.25);
+    log.setDepth(3);
+    // 组2 破花架：歪斜木架（两竖 + 横梁）
+    const frame = this.add.graphics();
+    frame.fillStyle(0x9c7b52, 1);
+    frame.fillRect(-1, -7, 2, 14);
+    frame.fillRect(5, -7, 2, 14);
+    frame.fillRect(-1, -7, 8, 2);
+    frame.setPosition(1 * T + T / 2, 21 * T + T / 2);
+    frame.setRotation(0.3);
+    frame.setDepth(3);
+    // 组3 荒草：绿色短线 ×5
+    const weeds = this.add.graphics();
+    weeds.fillStyle(0x7a9a4a, 1);
+    for (let i = 0; i < 5; i++) {
+      weeds.fillRect(-12 + i * 6, 0, 1, 4 + (i % 3) * 2);
+    }
+    weeds.setPosition(1 * T + T / 2, 22 * T + T / 2);
+    weeds.setDepth(3);
+    g.debris = [log, frame, weeds];
+    // 交互提示标记
+    g.mark = this.add.text(g.pos.x, g.pos.y - 10, '旧花圃', {
+      fontFamily: 'Arial', fontSize: '10px', color: '#e8d8a8',
+    }).setOrigin(0.5).setDepth(4);
+  }
+
+  /** 恢复后视觉：清除荒土 → 花丛 + 小路 + 蝴蝶 */
+  private buildGardenRestored(): void {
+    const T = TILE_SIZE;
+    // 荒土（gid 2）→ 草地（gid 1）：col 1, rows 18-22
+    for (let r = 18; r <= 22; r++) {
+      this.groundLayer.putTileAt(1, 1, r);
+    }
+    // 小路（gid 7）：col 1, rows 19-21
+    for (let r = 19; r <= 21; r++) {
+      this.groundLayer.putTileAt(7, 1, r);
+    }
+    // 花丛（gid 8）：col 1 交错 3 朵（不可放 col 2，会覆盖木屋石墙 gid 3 破坏碰撞）
+    const flowerSpots: [number, number][] = [
+      [1, 18], [1, 20], [1, 22],
+    ];
+    for (const [c, r] of flowerSpots) {
+      this.wallsLayer.putTileAt(8, c, r);
+    }
+    // 提示标记消失
+    if (this.gardenRestore?.mark) {
+      this.gardenRestore.mark.destroy();
+      this.gardenRestore.mark = null;
+    }
+    // 蝴蝶 ×2（花丛间飞）
+    this.createButterfly(1 * T + T / 2, 18 * T + T / 2);
+    this.createButterfly(1 * T + T / 2, 22 * T + T / 2);
+  }
+
+  /** 创建一只蝴蝶（Graphics 双翼 + 扇动/绕飞 tween，随场景 shutdown 自动销毁） */
+  private createButterfly(x: number, y: number): void {
+    const wings = this.add.graphics();
+    wings.fillStyle(0xffd6a5, 1);
+    wings.fillEllipse(-3, 0, 6, 4);
+    wings.fillEllipse(3, 0, 6, 4);
+    wings.fillStyle(0xff9e80, 1);
+    wings.fillCircle(0, 0, 1);
+    const c = this.add.container(x, y, [wings]);
+    c.setDepth(4);
+    this.tweens.add({
+      targets: wings,
+      scaleX: { from: 1, to: 0.25 },
+      duration: 130, yoyo: true, repeat: -1,
+    });
+    this.tweens.add({
+      targets: c,
+      x: x + 8, y: y - 6,
+      duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.InOut',
+    });
+    this.gardenRestore?.butterflies.push(c);
+  }
+
+  /** 与旧花园交互：未恢复时靠近按 E，三阶段清理推进（0→1 倒木 →2 破花架 →3 花丛） */
+  private tryGardenRestoreInteract(): boolean {
+    const g = this.gardenRestore;
+    if (!g || g.stage >= 3) return false;
+    const dx = this.player.x - g.pos.x;
+    const dy = this.player.y - g.pos.y;
+    if (dx * dx + dy * dy > 34 * 34) return false;
+
+    const next = g.stage + 1;
+    const msgs = [
+      '这里乱糟糟的……像是很久没人打理了。',
+      '把破花架也收拾一下吧。',
+      '重新翻土，种上花。',
+    ];
+    this.showDialogueText(msgs[next - 1]);
+    g.debris[next - 1]?.destroy();
+    g.stage = next;
+    if (next === 3) {
+      this.buildGardenRestored();
+      markRestored('garden');
+      // 里程碑入档：恢复完成后立即保存（刷新/重进保持恢复态）
+      save({
+        x: this.player.x, y: this.player.y,
+        scene: this.mapKey, facing: this.player.facing,
+        dailyQuest: getDailyQuestSaveData(),
+      } as any);
+      setTimeout(() => this.showDialogueText('爷爷的花园又活过来了！🌼'), 1400);
+    }
+    return true;
   }
 
   /**
