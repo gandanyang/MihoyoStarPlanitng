@@ -28,7 +28,7 @@ import { addXp, getLevel, getXp, getXpToNext, setOnLevelUp } from '../data/FarmP
 import { getStamina, consumeStamina, resetStamina, MAX_STAMINA } from '../data/Stamina';
 import { ORE_DEPOSITS, OreDeposit, isOreMined, markMined, resetOres } from '../data/MineState';
 import { NPC } from '../entities/NPC';
-import { getNPCsForScene, refreshSchedule, updateNPCs, getDailyNpcLine } from '../systems/NPCSystem';
+import { getNPCsForScene, refreshSchedule, updateNPCs, getDailyNpcLine, getMysteryAfterObservatory } from '../systems/NPCSystem';
 import { collectShard, getElderDialogue, getQuestObjective, getQuestState } from '../systems/QuestSystem';
 import {
   getDailyQuests,
@@ -60,7 +60,8 @@ import {
   XIYA_DIALOGUE, GATE_OPENED_DIALOGUE, SOW_SEEDS_DIALOGUE,
   WATER_CROPS_DIALOGUE, EVENING_DIALOGUE, TOWN_INTRO_DIALOGUE,
   FOREST_SHARD_DIALOGUE, DEMO_ENDING_DIALOGUE, DEMO_ENDING_BRANCHES, DEMO_ENDING_FINALE,
-  WOODCUT_TIP_DIALOGUE, MINE_TIP_DIALOGUE, XIYA_DAWN_DIALOGUE,
+  WOODCUT_TIP_DIALOGUE, MINE_TIP_DIALOGUE, XIYA_DAWN_DIALOGUE, getGrandpaNote,
+  FIRST_HARVEST_DIALOGUE,
 } from '../systems/StorySystem';
 import { hasSave, load, apply, save, getLastIncompatibleVersion, clearIncompatibleVersion, SAVE_VERSION } from '../systems/SaveSystem';
 import { play } from '../systems/AudioSystem';
@@ -156,6 +157,10 @@ export class MapScene extends Phaser.Scene {
   private dawnXiyaLabel: Phaser.GameObjects.Text | null = null;
   // E1 当天是否已触发过（跨天重置：由 onDayChange 清空）
   private dawnXiyaDay = 0;
+  // v0.5.3 剧情密度 E5：爷爷的笔记（庄园角落可读物件）
+  private grandpaNote: Phaser.GameObjects.Text | null = null;
+  // v0.5.3 剧情密度 E2：第一次收获反馈（一次性，内存 flag，不进存档）
+  private firstHarvestShown = false;
   // 教程提示 DOM
   private tutorialHint: HTMLDivElement | null = null;
   // 教程进度计数（锄地/播种/浇水各需3次）
@@ -426,6 +431,11 @@ export class MapScene extends Phaser.Scene {
       this.setupDawnXiya();
     }
 
+    // v0.5.3 剧情密度 E5：爷爷的笔记（庄园角落可读物件，多条轮换、不解释）
+    if (this.mapKey === 'farm') {
+      this.setupGrandpaNote();
+    }
+
     // 触屏控件（摇杆+交互按钮，DOM 单例；移动端额外显示背包按钮）
     this.touchControls = new TouchControls(this, this.inputManager, () => this.tryOpenBackpack());
     // 农场场景操作按钮语义为「使用工具」，其余场景保持「交互」（仅影响按钮文字，逻辑不变）
@@ -609,11 +619,12 @@ export class MapScene extends Phaser.Scene {
         this.cameras.main.once('camerafadeoutcomplete', () => {
           this.scene.start(target, { spawn });
         });
-        // 兜底：fade 事件异常（如场景被提前销毁）时强制切换
+        // 兜底：fade 事件异常时强制切换；超时后无论如何重置标志防止软锁死
         this.time.delayedCall(1500, () => {
           if (this.transitioning && this.scene.isActive()) {
             this.scene.start(target, { spawn });
           }
+          this.transitioning = false;
         });
         return;
       }
@@ -662,11 +673,15 @@ export class MapScene extends Phaser.Scene {
       sprite.setDepth(5);
       npc.sprite = sprite;
       // 名字标签（32x32 缩放 0.5 后，标签上移 10 像素贴头顶）
+      // 白色 + 黑色描边 + 阴影：保证草地/浅色背景上清晰可读
       const label = this.add.text(npc.targetX, npc.targetY - 10, npc.name, {
         fontFamily: 'Arial',
-        fontSize: '10px',
+        fontSize: '11px',
         color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 3,
       });
+      label.setShadow(0, 1, '#000000', 2);
       label.setOrigin(0.5).setDepth(6).setScrollFactor(1);
       npc.label = label;
       // 立即吸附到目标位置（避免从原点滑过来）
@@ -691,7 +706,8 @@ export class MapScene extends Phaser.Scene {
     this.dawnXiya.setScale(0.5).setDepth(5);
     this.dawnXiyaLabel = this.add.text(dx, dy - 16, '夏雅', {
       fontSize: '10px', color: '#f0a050',
-    }).setOrigin(0.5).setDepth(6);
+      stroke: '#000000', strokeThickness: 3,
+    }).setShadow(0, 1, '#000000', 2).setOrigin(0.5).setDepth(6);
   }
 
   /** 与清晨夏雅交互（靠近按 E → 播放偶遇对话） */
@@ -921,7 +937,8 @@ export class MapScene extends Phaser.Scene {
       this.xiyaSprite.setDepth(5);
       this.add.text(xiyaX, xiyaY - 16, '夏雅', {
         fontSize: '10px', color: '#f0a050',
-      }).setOrigin(0.5).setDepth(6);
+        stroke: '#000000', strokeThickness: 3,
+      }).setShadow(0, 1, '#000000', 2).setOrigin(0.5).setDepth(6);
     }
 
     // 提示
@@ -1138,7 +1155,7 @@ export class MapScene extends Phaser.Scene {
     const originY = mobile ? 1 : 0.5;
     const scrollFactor = mobile ? 0 : 1;
     const fontSize = mobile ? '14px' : '12px';
-    const wrapWidth = mobile ? this.scale.width - 80 : 300;
+    const wrapWidth = mobile ? this.scale.width - 120 : 300;
 
     this.dialogueText = this.add
       .text(x, y, text, {
@@ -1180,6 +1197,10 @@ export class MapScene extends Phaser.Scene {
         lines = [...npc.dialogues, ...daily];
         this.npcDailySaid.set(npc.id, today);
       }
+    }
+    // v0.5.3 剧情密度 E6：观星夜后少女追加一句（仅观星完成，追加到固定对话末尾）
+    if (npc.id === 'mystery' && isObservatoryComplete()) {
+      lines = [...lines, ...getMysteryAfterObservatory()];
     }
     this.storyDialogue.play(lines, () => {
       // 商店老板：对话结束后自动打开商店
@@ -1345,6 +1366,11 @@ export class MapScene extends Phaser.Scene {
     // v0.5.3 剧情密度 E1：清晨偶遇夏雅（教程完成后，仅清晨 06-08 时）
     if (this.mapKey === 'farm' && this.dawnXiya) {
       if (this.tryDawnXiyaInteract()) return;
+    }
+
+    // v0.5.3 剧情密度 E5：爷爷的笔记（庄园角落可读物件）
+    if (this.mapKey === 'farm' && this.grandpaNote) {
+      if (this.tryGrandpaNoteInteract()) return;
     }
 
     // 2. 优先检测靠近 NPC（所有场景）：取交互范围内最近的一个
@@ -1645,12 +1671,49 @@ export class MapScene extends Phaser.Scene {
     if (this.mapKey === 'farm' && isTutorialDone()) {
       this.setupDawnXiya();
     }
+    // v0.5.3 E5：跨天后刷新爷爷笔记（按新天数轮换，重建精灵保持坐标）
+    if (this.mapKey === 'farm') {
+      this.clearGrandpaNote();
+      this.setupGrandpaNote();
+    }
   }
 
   /** 清除清晨夏雅精灵（场景切换/跨天时调用） */
   private clearDawnXiya(): void {
     if (this.dawnXiya) { this.dawnXiya.destroy(); this.dawnXiya = null; }
     if (this.dawnXiyaLabel) { this.dawnXiyaLabel.destroy(); this.dawnXiyaLabel = null; }
+  }
+
+  /** v0.5.3 剧情密度 E5：创建爷爷的笔记（庄园左上角落可读物件，纸面风 label） */
+  private setupGrandpaNote(): void {
+    if (this.mapKey !== 'farm') return;
+    const nx = 1 * TILE_SIZE + TILE_SIZE / 2;
+    const ny = 3 * TILE_SIZE + TILE_SIZE / 2;
+    const note = this.add.ellipse(nx, ny, 16, 16, 0xe8d8a8, 0.55);
+    note.setDepth(3);
+    const mark = this.add.text(nx, ny - 8, '笔记', {
+      fontFamily: 'Arial', fontSize: '10px', color: '#e8d8a8',
+    }).setOrigin(0.5).setDepth(4);
+    this.grandpaNote = mark;
+  }
+
+  /** 与爷爷笔记交互（靠近按 E → 播放当天一条笔记） */
+  private tryGrandpaNoteInteract(): boolean {
+    if (!this.grandpaNote || !this.grandpaNote.visible) return false;
+    const dx = this.player.x - this.grandpaNote.x;
+    const dy = this.player.y - this.grandpaNote.y;
+    if (dx * dx + dy * dy > 28 * 28) return false;
+    if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+    const note = getGrandpaNote(getTime().day);
+    this.storyDialogue.play([note], () => {
+      this.updateHUD();
+    });
+    return true;
+  }
+
+  /** 清除爷爷笔记精灵（场景切换/跨天时调用） */
+  private clearGrandpaNote(): void {
+    if (this.grandpaNote) { this.grandpaNote.destroy(); this.grandpaNote = null; }
   }
 
   /**
@@ -1946,6 +2009,14 @@ export class MapScene extends Phaser.Scene {
       play('harvest');
       onDQHarvest(cropType);
       this.updateDailyQuestPanel();
+      // v0.5.3 剧情密度 E2：第一次收获反馈（一次性，夏雅口头肯定，不影响收获本身）
+      if (!this.firstHarvestShown) {
+        this.firstHarvestShown = true;
+        if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+        this.storyDialogue.play(FIRST_HARVEST_DIALOGUE, () => {
+          this.updateHUD();
+        });
+      }
     } else {
       // watered 已浇水未成熟，暂不处理
       return;

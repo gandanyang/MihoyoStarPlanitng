@@ -43,12 +43,12 @@ type NpcId = 'elder' | 'shopkeeper' | 'mystery' | 'miner' | 'gardener' | 'advent
 type SpotMap = Record<NpcId, Spot>;
 const SPOTS: { farm: SpotMap; town: SpotMap; forest: SpotMap; mine: SpotMap } = {
   farm: {
-    elder: { x: 3 * T + 8, y: 11 * T + 8 },
-    shopkeeper: { x: 7 * T + 8, y: 11 * T + 8 },
-    mystery: { x: 3 * T + 8, y: 8 * T + 8 },
-    miner: { x: 10 * T + 8, y: 11 * T + 8 },
-    gardener: { x: 5 * T + 8, y: 8 * T + 8 },
-    adventurer: { x: 8 * T + 8, y: 8 * T + 8 },
+    elder: { x: 14 * T + 8, y: 3 * T + 8 },
+    shopkeeper: { x: 35 * T + 8, y: 3 * T + 8 },
+    mystery: { x: 34 * T + 8, y: 16 * T + 8 },
+    miner: { x: 18 * T + 8, y: 18 * T + 8 },
+    gardener: { x: 3 * T + 8, y: 14 * T + 8 },
+    adventurer: { x: 30 * T + 8, y: 7 * T + 8 },
   },
   town: {
     elder: { x: 13 * T + 8, y: 10 * T + 8 },
@@ -136,6 +136,13 @@ const MYSTERY_DIALOGUES: DialogueLine[] = [
   { speaker: '神秘少女', color: '#b8a0e8', text: '你身上……有那颗星的味道。' },
   { speaker: '神秘少女', color: '#b8a0e8', text: '你捡起的那块碎片……我也捡到过。' },
   { speaker: '', color: COLORS.system, text: '（林澈想追问，但少女已经转身消失在林间。）' },
+];
+
+/** v0.5.3 剧情密度 E6：观星夜后少女追加一句（仅观星完成后，接到固定对话末尾） */
+const MYSTERY_AFTER_OBSERVATORY_DIALOGUE: DialogueLine[] = [
+  { speaker: '神秘少女', color: '#b8a0e8', text: '你捡到的那片……它也认识你了。' },
+  { speaker: '林澈', color: COLORS.linche, text: '你也捡到过？' },
+  { speaker: '神秘少女', color: '#b8a0e8', text: '（没有回答，只是看着天空）……快归位了。' },
 ];
 
 /** 矿工老张：挖矿引导 */
@@ -246,6 +253,11 @@ const npcs: NPC[] = [
 /** 读取全部 NPC（只读列表） */
 export function getAllNPCs(): readonly NPC[] {
   return npcs;
+}
+
+/** v0.5.3 剧情密度 E6：观星夜后少女追加台词（只读） */
+export function getMysteryAfterObservatory(): DialogueLine[] {
+  return MYSTERY_AFTER_OBSERVATORY_DIALOGUE;
 }
 
 /**
