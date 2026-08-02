@@ -150,8 +150,8 @@ function createDom(): void {
     'background:rgba(0,0,0,0.55);z-index:200;user-select:none;-webkit-user-select:none';
 
   panelEl.innerHTML = `
-    <div style="width:min(440px,92vw);background:#5b4430;border:3px solid #8a6a45;border-radius:8px;padding:16px;color:#fff;font-family:Arial;box-shadow:0 4px 16px rgba(0,0,0,0.5)">
-      <div style="text-align:center;font-size:18px;font-weight:bold;margin-bottom:8px;">星辰杂货店</div>
+    <div style="width:min(440px,92vw);background:#3d3226;border:3px solid #8a6a45;border-radius:10px;padding:16px;color:#fff;font-family:Arial;box-shadow:0 4px 20px rgba(0,0,0,0.6)">
+      <div style="text-align:center;font-size:18px;font-weight:bold;margin-bottom:8px;color:#ffd700;letter-spacing:1px;">星辰杂货店</div>
       <div id="shop-coins" style="text-align:center;font-size:14px;margin-bottom:12px;color:#ffe082;"></div>
       <div style="display:flex;gap:12px;">
         <div style="flex:1;background:#4a3626;border-radius:6px;padding:10px;">
@@ -204,7 +204,7 @@ function refresh(): void {
 
   const coinsEl = panelEl.querySelector('#shop-coins');
   if (coinsEl) {
-    coinsEl.textContent = `金币 ${coins} G`;
+    coinsEl.innerHTML = `${itemIconHtml('coin', 16)} ${coins} G`;
   }
 
   const btnBase = 'font-size:12px;padding:3px 10px;border:none;border-radius:4px;cursor:pointer;';

@@ -69,7 +69,7 @@ function createDom(): void {
   panelEl.innerHTML = `
     <div style="width:min(400px,90vw);background:#3d3226;border:3px solid #8a6a45;border-radius:10px;padding:18px;color:#fff;font-family:Arial;box-shadow:0 4px 20px rgba(0,0,0,0.6)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <span style="font-size:18px;font-weight:bold;">背包</span>
+        <span style="font-size:18px;font-weight:bold;color:#ffd700;letter-spacing:1px;">背包</span>
         <span id="bp-coins" style="font-size:14px;color:#ffe082;"></span>
       </div>
       <div id="bp-grid" style="display:flex;flex-wrap:wrap;gap:10px;min-height:80px;margin-bottom:12px;"></div>
@@ -122,7 +122,7 @@ function refresh(): void {
   // 金币
   const coinsEl = panelEl.querySelector('#bp-coins');
   if (coinsEl) {
-    coinsEl.textContent = `金币 ${coins}G`;
+    coinsEl.innerHTML = `${itemIconHtml('coin', 16)} ${coins}G`;
   }
 
   // 物品网格

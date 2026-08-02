@@ -10,7 +10,7 @@
 import { getTime } from '../data/TimeSystem';
 import { getCoins } from '../data/Economy';
 import { getLevel } from '../data/FarmProgress';
-import { getItemCount } from '../data/Inventory';
+import { getItemCount, itemIconHtml } from '../data/Inventory';
 
 // ===== 模块级单例状态 =====
 let panelEl: HTMLDivElement | null = null;
@@ -70,7 +70,7 @@ function refresh(): void {
     ['游玩天数', `${t.day} 天`],
     ['角色等级', `Lv.${getLevel()}`],
     ['金币', `${getCoins()} G`],
-    ['钻石', `💠 ${getItemCount('diamond')}`],
+    ['钻石', `${itemIconHtml('diamond', 15)} ${getItemCount('diamond')}`],
     ['星之碎片', `${getItemCount('star_shard')} / …`],
     ['收获作物', `${crops} 个`],
     ['开采矿石', `${ores} 个`],

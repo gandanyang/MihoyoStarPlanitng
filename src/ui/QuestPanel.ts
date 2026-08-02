@@ -137,7 +137,7 @@ function createDom(): void {
   panelEl.innerHTML = `
     <div style="width:min(380px,90vw);background:#3d3226;border:3px solid #8a6a45;border-radius:10px;padding:16px;color:#fff;font-family:Arial;box-shadow:0 4px 20px rgba(0,0,0,0.6)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <span style="font-size:18px;font-weight:bold;">📋 任务</span>
+        <span style="font-size:18px;font-weight:bold;color:#ffd700;letter-spacing:1px;">任务</span>
         <div style="position:relative;">
           <button data-action="close" style="width:30px;height:30px;border-radius:50%;background:#8a6a45;border:none;color:#fff;font-size:16px;cursor:pointer;line-height:1;">×</button>
         </div>
