@@ -75,6 +75,7 @@ function createDom(): void {
       <div id="bp-grid" style="display:flex;flex-wrap:wrap;gap:10px;min-height:80px;margin-bottom:12px;"></div>
       <div style="text-align:center;">
         <button data-action="close" style="font-size:14px;padding:6px 24px;background:#8a6a45;border:none;border-radius:4px;color:#fff;cursor:pointer;">关闭 (B/Esc)</button>
+        <button data-action="return-title" style="font-size:12px;padding:4px 14px;background:#5a4030;border:1px solid #6a5040;border-radius:4px;color:#ccc;cursor:pointer;margin-left:8px;">返回标题</button>
       </div>
     </div>
   `;
@@ -85,6 +86,11 @@ function createDom(): void {
     const target = e.target as HTMLElement;
     if (target.dataset?.action === 'close') {
       closePanel();
+    } else if (target.dataset?.action === 'return-title') {
+      // 返回标题画面（标题画面有删档/重置存档按钮）
+      // reload 会触发 beforeunload/pagehide 自动存档，重载后标题画面 hasSave()=true 显示删档按钮
+      closePanel();
+      location.reload();
     } else if (target.dataset?.action === 'use-key') {
       // 使用庄园钥匙
       if (onUseKey?.()) {
