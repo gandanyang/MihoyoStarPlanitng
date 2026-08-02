@@ -45,7 +45,8 @@ export class InputManager {
     this.keyD = keyboard.addKey('D');
 
     // 动作键：E / Space / Enter 都触发 action（用 keydown 事件排队）
-    keyboard.addKey('E').on('down', () => this.queueAction());
+    const keyE = keyboard.addKey('E');
+    keyE.on('down', () => this.queueAction());
     keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE).on('down', () => this.queueAction());
     keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER).on('down', () => this.queueAction());
 

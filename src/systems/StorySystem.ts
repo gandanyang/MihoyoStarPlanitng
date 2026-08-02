@@ -75,7 +75,7 @@ export const XIYA_DIALOGUE: DialogueLine[] = [
   { speaker: '', color: COLORS.system, text: '（庄园大门前，一个年轻女孩正在清理门口的杂草。她看到林澈后停下动作。）' },
   { speaker: '夏雅', color: COLORS.xiya, text: '你就是林澈吧？终于来了。' },
   { speaker: '林澈', color: COLORS.linche, text: '（愣了一下）你认识我？' },
-  { speaker: '夏雅', color: COLORS.xiya, text: '当然。这座庄园的事情，小镇上的人都知道。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '当然。你爷爷走得太突然了，镇上的人都在猜……还会不会有人回来。' },
   { speaker: '夏雅', color: COLORS.xiya, text: '你的家人离开之后，这里已经荒废好多年了。大家都以为……不会有人再回来了。' },
   { speaker: '林澈', color: COLORS.linche, text: '我也没想到自己会回来。本来只是想处理一下庄园。然后……看看以后怎么办。' },
   { speaker: '夏雅', color: COLORS.xiya, text: '那就从这里开始吧。房子虽然旧了，田地虽然荒了。但是只要有人愿意重新照顾它，总会慢慢恢复的。' },
@@ -89,7 +89,7 @@ export const GATE_OPENED_DIALOGUE: DialogueLine[] = [
   { speaker: '夏雅', color: COLORS.xiya, text: '这里以前可是镇上最漂亮的庄园。现在嘛……可能需要一点时间。' },
   { speaker: '', color: COLORS.system, text: '（夏雅拿出一把旧锄头。）' },
   { speaker: '夏雅', color: COLORS.xiya, text: '这个应该还能用。虽然旧了点。' },
-  { speaker: '林澈', color: COLORS.linche, text: '以前我每天面对的是屏幕。现在突然让我面对一块地……感觉屏幕外的东西，确实不太一样。' },
+  { speaker: '林澈', color: COLORS.linche, text: '以前我每天面对的是屏幕。现在突然让我面对一块地……感觉屏幕外的东西，确实不太一样，有点不习惯。' },
   { speaker: '夏雅', color: COLORS.xiya, text: '放心。很多事情都是从第一次开始的。' },
   { speaker: '', color: COLORS.system, text: hint('获得物品：【旧锄头】  对着农田区域按 [E] 键锄地，清理 3 块土地。', '获得物品：【旧锄头】  对着农田区域点「交互」锄地，清理 3 块土地。') },
 ];
@@ -97,8 +97,8 @@ export const GATE_OPENED_DIALOGUE: DialogueLine[] = [
 /** 清理完成 → 播种 */
 export const SOW_SEEDS_DIALOGUE: DialogueLine[] = [
   { speaker: '', color: COLORS.system, text: '（土地整理完成，阳光洒在新翻开的土地上。）' },
-  { speaker: '夏雅', color: COLORS.xiya, text: '不错。至少这片土地已经重新醒过来了。' },
-  { speaker: '夏雅', color: COLORS.xiya, text: '这里还有一些种子。试试看吧。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '不错。开了个好头，这片土地已经重新醒过来了。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '这里还有一些种子。你试试看吧。' },
   { speaker: '', color: COLORS.system, text: '获得物品：【萝卜种子】×3' },
   { speaker: '林澈', color: COLORS.linche, text: '种下一颗种子。然后等待它成长……这种感觉，好像和写代码完全不一样。' },
   { speaker: '夏雅', color: COLORS.xiya, text: '但是它们都有一点相同。需要时间。也需要耐心。' },
@@ -141,9 +141,12 @@ export const ELDER_QUEST_DIALOGUE: DialogueLine[] = [
   { speaker: '林澈', color: COLORS.linche, text: '您好，您是……' },
   { speaker: '村长', color: COLORS.elder, text: '我是星火镇的镇长。你的爷爷，是这座岛上看星星看得最久的人。' },
   { speaker: '村长', color: COLORS.elder, text: '他年轻时发现了这片土地的秘密——森林深处藏着一种会发光的「星之碎片」。' },
-  { speaker: '村长', color: COLORS.elder, text: '传说当所有碎片归位，这座岛会重新苏醒。可这些年，碎片散落各处，森林里那一块……我老了，走不动了。' },
-  { speaker: '村长', color: COLORS.elder, text: '年轻人，能帮我取回森林里的星之碎片吗？' },
-  { speaker: '林澈', color: COLORS.linche, text: '星之碎片……听起来像是爷爷留给我的一道题。好，我去看看。' },
+  { speaker: '', color: COLORS.system, text: '（村长停顿了一下，看向远处的森林。）' },
+  { speaker: '村长', color: COLORS.elder, text: '他以前每天晚上都坐在观星台上。他跟我说，那些碎片……是星星留在这座岛上的东西。' },
+  { speaker: '村长', color: COLORS.elder, text: '他说，总有一天会有人回来，替他把碎片找齐。' },
+  { speaker: '', color: COLORS.system, text: '（村长转过头，看着林澈。）' },
+  { speaker: '村长', color: COLORS.elder, text: '看来...那个人……应该就是你了。' },
+  { speaker: '林澈', color: COLORS.linche, text: '……我试试看。' },
   { speaker: '', color: COLORS.system, text: '主线任务已接受：前往森林采集星之碎片。' },
 ];
 
@@ -151,10 +154,12 @@ export const ELDER_QUEST_DIALOGUE: DialogueLine[] = [
 export const SHARD_DELIVER_DIALOGUE: DialogueLine[] = [
   { speaker: '林澈', color: COLORS.linche, text: '镇长，星之碎片……我拿到了。' },
   { speaker: '', color: COLORS.system, text: '（林澈摊开手掌，一枚泛着幽蓝光芒的碎片静静躺在掌心。）' },
-  { speaker: '村长', color: COLORS.elder, text: '这光泽……没错，就是星之碎片。你已经能让它认主了。' },
-  { speaker: '村长', color: COLORS.elder, text: '岛屿在呼应你，林澈。你爷爷选择让这座庄园回到你手里，不是没有道理的。' },
-  { speaker: '村长', color: COLORS.elder, text: '把碎片收好吧。等集齐更多碎片，星辰岛真正苏醒的那一天，你会明白这一切。' },
-  { speaker: '', color: COLORS.system, text: '主线任务完成：星之碎片（1/…）。岛屿的秘密，才刚刚开始。' },
+  { speaker: '村长', color: COLORS.elder, text: '这光泽……没错，就是星之碎片。你爷爷当年捡到第一片的时候，也是这样的光。' },
+  { speaker: '村长', color: COLORS.elder, text: '他跟我说过，这座岛上的碎片，只有真正"想留下来"的人才能拿起来。' },
+  { speaker: '村长', color: COLORS.elder, text: '你能把它带回来，说明这座岛……已经认你了。' },
+  { speaker: '林澈', color: COLORS.linche, text: '……我其实没做什么。它就在那儿，我只是走过去拿起来而已。' },
+  { speaker: '村长', color: COLORS.elder, text: '（笑）那就够了。有时候，不是人找到东西，是东西找到人。' },
+  { speaker: '', color: COLORS.system, text: '主线任务完成：星之碎片（1/…）。' },
 ];
 
 // ============ Demo 结尾：观星 ============
@@ -206,19 +211,19 @@ export const DEMO_ENDING_DIALOGUE: DialogueLine[] = [
   { speaker: '', color: COLORS.system, text: '（林澈握着信，抬头看向星空。）' },
   { speaker: '', color: COLORS.system, text: '（他没有说话。）' },
   { speaker: '', color: COLORS.system, text: '（远处传来虫鸣。星光落在庄园旧墙上。）' },
-  { speaker: '', color: COLORS.system, text: '', options: ['爷爷，我会试着留下。', '我还不知道答案。', '至少今晚，我想待在这里。'] },
+  { speaker: '', color: COLORS.system, text: '', options: ['我会留下的。这次我不走了。', '我想先弄清楚爷爷到底在这里经历了什么。', '我只是……还没想好怎么回那个城市。'] },
 ];
 
 /** 观星夜三选项分支独白（选择后播放，随后汇聚到结局） */
 export const DEMO_ENDING_BRANCHES: Record<'try_stay' | 'unknown' | 'tonight', DialogueLine[]> = {
   try_stay: [
-    { speaker: '', color: COLORS.system, text: '（林澈把信收好。也许这一次，可以试试看。）' },
+    { speaker: '', color: COLORS.system, text: '（林澈把信收好。这一次，他不想再走了。）' },
   ],
   unknown: [
-    { speaker: '', color: COLORS.system, text: '（林澈把信收好。有些答案，也许要在这里住很久才能找到。）' },
+    { speaker: '', color: COLORS.system, text: '（林澈把信收好。爷爷在这里留下的东西，比一封信更多。）' },
   ],
   tonight: [
-    { speaker: '', color: COLORS.system, text: '（林澈把信收好。至少今晚，他想待在这里。）' },
+    { speaker: '', color: COLORS.system, text: '（林澈把信收好。城市还在那里，但今晚，他属于这里。）' },
   ],
 };
 

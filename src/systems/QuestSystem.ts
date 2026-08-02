@@ -58,6 +58,7 @@ export function deliverQuest(): void {
  * 返回 DialogueLine[] 供 StoryDialogue 全屏播放
  */
 export function getElderDialogue(): DialogueLine[] {
+  console.log('[DEBUG] getElderDialogue called, questState=', questState);
   switch (questState) {
     case 'not_started':
       acceptQuest();

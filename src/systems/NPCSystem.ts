@@ -133,13 +133,17 @@ const MYSTERY_DIALOGUES: DialogueLine[] = [
   { speaker: '神秘少女', color: '#b8a0e8', text: '……你来了。' },
   { speaker: '林澈', color: COLORS.linche, text: '你认识我？' },
   { speaker: '神秘少女', color: '#b8a0e8', text: '不认识。……只是觉得，你应该会来。' },
-  { speaker: '神秘少女', color: '#b8a0e8', text: '你身上……有那颗星的味道。夜深的时候，记得抬头看看。' },
-  { speaker: '', color: COLORS.system, text: '（少女说完，转身消失在林间。）' },
+  { speaker: '神秘少女', color: '#b8a0e8', text: '你身上……有那颗星的味道。' },
+  { speaker: '神秘少女', color: '#b8a0e8', text: '你捡起的那块碎片……我也捡到过。' },
+  { speaker: '', color: COLORS.system, text: '（林澈想追问，但少女已经转身消失在林间。）' },
 ];
 
 /** 矿工老张：挖矿引导 */
 const MINER_DIALOGUES: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（老张看到林澈，咧嘴一笑，露出一口白牙。）' },
   { speaker: '矿工老张', color: '#d8a050', text: '哟，新来的小伙子！我是老张，矿洞这片归我管。' },
+  { speaker: '', color: COLORS.system, text: '（老张掏出一块泛着微光的石头，递给林澈。）' },
+  { speaker: '矿工老张', color: '#d8a050', text: '这矿里挖出来的东西，比你见过的所有代码都老。' },
   { speaker: '矿工老张', color: '#d8a050', text: '矿洞里能挖到石头、铜矿、铁矿。拿到镇上卖了能换钱。' },
   { speaker: '矿工老张', color: '#d8a050', text: '不过挖矿费体力，别把自个儿累趴下咯。' },
   { speaker: '', color: COLORS.system, text: hint('（靠近发光的矿脉，按 [E] 键开采。矿洞可从小镇进入。）', '（靠近发光的矿脉，点「交互」开采。矿洞可从小镇进入。）') },
@@ -151,7 +155,10 @@ const MINER_DIALOGUES: DialogueLine[] = [
 
 /** 花匠小梅：种植话题 */
 const GARDENER_DIALOGUES: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（小梅蹲在花圃边，正给一株花松土。她抬头看见林澈，笑了。）' },
   { speaker: '花匠小梅', color: '#a0d888', text: '你好呀，我叫小梅。这些花都是我亲手种的，漂亮吧？' },
+  { speaker: '', color: COLORS.system, text: '（小梅指了指身旁的一株花。）' },
+  { speaker: '花匠小梅', color: '#a0d888', text: '你爷爷以前每天下午都会来闻这株花的味道。他说这和城市的空气不一样。' },
   { speaker: '花匠小梅', color: '#a0d888', text: '种东西啊，没什么秘诀。每天来看看它们，浇水、除草……' },
   { speaker: '花匠小梅', color: '#a0d888', text: '只要用心，土地就会用丰收回报你。你的庄园也会一样的。' },
   { speaker: '花匠小梅', color: '#a0d888', text: '这花不是卖的，是有人托我种的。' },
