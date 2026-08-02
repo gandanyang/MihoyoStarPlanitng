@@ -19,7 +19,7 @@ export const GAME_TITLE = '归星物语';
  * 统一入口，避免到处散落 window.innerWidth 判断。
  */
 export function isMobileLayout(): boolean {
-  return window.innerWidth < 800;
+  return window.innerWidth < 800 || isTouchDevice();
 }
 
 /**

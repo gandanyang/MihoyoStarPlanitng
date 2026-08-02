@@ -57,7 +57,7 @@ const inventory: Record<ItemType, number> = {
   manor_key: 0,
   old_hoe: 0,
   old_watering_can: 0,
-  old_axe: 1, // 测试用：默认给一把斧头
+  old_axe: 0,
   wood: 0,
 };
 

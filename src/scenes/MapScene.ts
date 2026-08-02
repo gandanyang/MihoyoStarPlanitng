@@ -179,6 +179,12 @@ export class MapScene extends Phaser.Scene {
     this.createFailed = false;
   }
 
+  /** 场景停止/切换时清理挂载在 document.body 上的 DOM 残留（提示条/种子选择器等） */
+  private cleanupSceneDom(): void {
+    this.removeTutorialHint();
+    this.closeSeedSelector();
+  }
+
   preload(): void {
     // 加载当前场景对应的 Tiled 地图 JSON
     this.load.tilemapTiledJSON(this.mapKey, `assets/maps/${this.mapKey}.json`);
@@ -223,6 +229,8 @@ export class MapScene extends Phaser.Scene {
   }
 
   create(): void {
+    // 场景停止/切换时清理 DOM 残留（提示条/种子选择器等），防止跨场景泄漏
+    this.events.on(Phaser.Scenes.Events.SHUTDOWN, this.cleanupSceneDom, this);
     // 兜底：create 阶段任何未预期的异常（贴图缺失/地图数据异常等）都不允许演变成黑屏，
     // 统一捕获并显示错误遮罩 + 刷新按钮
     try {
@@ -1061,26 +1069,29 @@ export class MapScene extends Phaser.Scene {
   private tryTutorialSleep(): boolean {
     if (getStoryStep() !== 'evening_talk') return false;
     this.sleeping = true;
-    advanceStory(); // → done
-    addItem('old_axe', 1); // 完成教程赠送斧头（解锁砍树玩法）
-    this.removeTutorialHint();
-    this.showDialogueText('第一天：归乡 — 游戏保存中…（获得🪓旧斧头）');
-    timeNextDay();
-    resetStamina();
-    resetOres();
-    refreshDailyQuests();
-    injectGuideQuests(); // 教程完成 → 投放挖矿/砍树引导任务（此时已获得斧头）
-    this.createDailyQuestPanel();
-    this.refreshFarmVisual();
-    this.rebuildNPCs();
-    save({
-      x: this.player.x, y: this.player.y,
-      scene: this.mapKey, facing: this.player.facing,
-      dailyQuest: getDailyQuestSaveData(),
-    } as any);
-    this.updateHUD();
-    this.sleeping = false;
-    return true;
+    try {
+      advanceStory(); // → done
+      addItem('old_axe', 1); // 完成教程赠送斧头（解锁砍树玩法）
+      this.removeTutorialHint();
+      this.showDialogueText('第一天：归乡 — 游戏保存中…（获得🪓旧斧头）');
+      timeNextDay();
+      resetStamina();
+      resetOres();
+      refreshDailyQuests();
+      injectGuideQuests(); // 教程完成 → 投放挖矿/砍树引导任务（此时已获得斧头）
+      this.createDailyQuestPanel();
+      this.refreshFarmVisual();
+      this.rebuildNPCs();
+      save({
+        x: this.player.x, y: this.player.y,
+        scene: this.mapKey, facing: this.player.facing,
+        dailyQuest: getDailyQuestSaveData(),
+      } as any);
+      this.updateHUD();
+      return true;
+    } finally {
+      this.sleeping = false;
+    }
   }
 
   /**
@@ -1423,32 +1434,29 @@ export class MapScene extends Phaser.Scene {
    */
   private trySleep(): void {
     this.sleeping = true;
-    timeNextDay();
-    // 体力恢复 + 矿脉刷新
-    resetStamina();
-    resetOres();
-    // 树木定期刷新（每 3 天树桩恢复为树）
-    let treesRefreshed = false;
-    if (getTime().day % TREE_REFRESH_INTERVAL === 0) {
-      refreshStumps();
-      if (this.mapKey === 'farm') this.refreshTreeVisuals();
-      treesRefreshed = true;
+    try {
+      timeNextDay();
+      resetStamina();
+      resetOres();
+      let treesRefreshed = false;
+      if (getTime().day % TREE_REFRESH_INTERVAL === 0) {
+        refreshStumps();
+        if (this.mapKey === 'farm') this.refreshTreeVisuals();
+        treesRefreshed = true;
+      }
+      refreshDailyQuests();
+      this.createDailyQuestPanel();
+      this.refreshFarmVisual();
+      this.rebuildNPCs();
+      save({
+        x: this.player.x, y: this.player.y,
+        scene: this.mapKey, facing: this.player.facing,
+        dailyQuest: getDailyQuestSaveData(),
+      } as any);
+      this.showDialogueText(treesRefreshed ? '已保存 Zzz... 树木也生长恢复了！' : '已保存 Zzz...');
+    } finally {
+      this.sleeping = false;
     }
-    // 每日任务：跨天刷新
-    refreshDailyQuests();
-    this.createDailyQuestPanel();
-    // 刷新农田视觉（成长后 grown 作物变大）和 HUD
-    this.refreshFarmVisual();
-    // 刷新 NPC 日程：次日 06:00，所有 NPC 应在 farm
-    this.rebuildNPCs();
-    // 睡觉后自动存档（含每日任务数据）
-    save({
-      x: this.player.x, y: this.player.y,
-      scene: this.mapKey, facing: this.player.facing,
-      dailyQuest: getDailyQuestSaveData(),
-    } as any);
-    this.showDialogueText(treesRefreshed ? '已保存 Zzz... 树木也生长恢复了！' : '已保存 Zzz...');
-    this.sleeping = false;
   }
 
   /**
@@ -1864,11 +1872,12 @@ export class MapScene extends Phaser.Scene {
     if (!isTouchDevice()) return;
     if (this.mapKey !== 'farm') return;
     if (this.transitioning) return;
-    // 面板/对话打开时忽略点击
+    // 面板/对话/种子选择器打开时忽略点击
     if (this.storyDialogue?.isOpen()) return;
     if (this.shopPanel.isOpen()) return;
     if (this.backpackPanel.isOpen()) return;
     if (this.endingPanel?.isOpen()) return;
+    if (this.seedSelectorEl) return;
     const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
     const col = Math.floor(world.x / TILE_SIZE);
     const row = Math.floor(world.y / TILE_SIZE);

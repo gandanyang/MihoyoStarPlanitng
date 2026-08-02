@@ -133,8 +133,13 @@ function createDom(): void {
   backpackBtn.style.cssText =
     'position:absolute;right:30px;bottom:135px;width:64px;height:64px;border-radius:50%;background:rgba(33,150,243,0.5);border:2px solid rgba(255,255,255,0.6);pointer-events:auto;display:none;align-items:center;justify-content:center;color:#fff;font:bold 15px Arial;touch-action:none;cursor:pointer';
   backpackBtn.textContent = '背包';
+  let lastBackpackTime = 0;
+  const BP_DEBOUNCE_MS = 300;
   const pressBackpack = (e: Event) => {
     e.preventDefault();
+    const now = Date.now();
+    if (now - lastBackpackTime < BP_DEBOUNCE_MS) return;
+    lastBackpackTime = now;
     if (backpackHandler) backpackHandler();
   };
   backpackBtn.addEventListener('touchstart', pressBackpack);
