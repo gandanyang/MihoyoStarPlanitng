@@ -133,8 +133,8 @@ export function refreshDailyQuests(): void {
   const day = getTime().day;
   if (day === currentDay && dailyQuests.length > 0) return; // 同一天不重复刷新
   const isFirstInit = dailyQuests.length === 0; // 从未初始化（首次进入地图场景）
-  // 保留未领奖的引导任务（含已完成未领取），避免过夜丢失奖励；领奖后消失
-  const keepGuide = dailyQuests.filter((q) => GUIDE_QUEST_IDS.has(q.id) && !q.claimed);
+  // 保留未领奖的引导任务 + 已完成未领奖的任务（避免过夜丢失奖励）；领奖后消失
+  const keepGuide = dailyQuests.filter((q) => (GUIDE_QUEST_IDS.has(q.id) || q.completed) && !q.claimed);
   currentDay = day;
   if (isFirstInit) {
     // 首次：教程完成后才固定投放引导任务（挖矿/砍树）；
