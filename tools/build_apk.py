@@ -73,7 +73,24 @@ def check_cmd(exe: str, friendly: str, required: bool = True) -> str | None:
     sys.exit(2)
 
 
+def _resolve_executable(cmd: list[str]) -> list[str]:
+    """Windows 下把裸命令名（npm/npx）解析为 .cmd/.exe 全路径。
+
+    subprocess.run 直接走 CreateProcess，不做 PATH 的 PATHEXT 扩展（.cmd/.bat），
+    裸 `npm` 会报 FileNotFoundError；shutil.which 则能正确解析。
+    """
+    if sys.platform != "win32" or not cmd:
+        return cmd
+    if os.path.dirname(cmd[0]):
+        return cmd  # 已是路径（如 gradlew.bat 全路径）
+    found = shutil.which(cmd[0])
+    if found:
+        return [found, *cmd[1:]]
+    return cmd
+
+
 def run(cmd: list[str], cwd: Path | None = None, label: str = "") -> subprocess.CompletedProcess[str]:
+    cmd = _resolve_executable(list(cmd))
     print(f"\n▶  {label or ' '.join(str(x) for x in cmd)}")
     print(f"   cwd = {cwd or Path.cwd()}")
     env = {**os.environ, "CI": "true", **_BUILD_ENV}
