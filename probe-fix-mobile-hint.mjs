@@ -75,10 +75,11 @@ async function run() {
     check('farm 显示教程提示条', hintInFarm.exists === true);
     check('farm 提示条为移动文案（点「交互」）', (hintInFarm.text ?? '').includes('点「交互」'));
 
-    // 进屋（farm → house 场景切换）
+    // 进屋（farm → house 场景切换，走 ScenePlugin.start 触发 SHUTDOWN）
     await page.evaluate(() => {
       const g = window.__game;
-      g.scene.start('house', { spawn: { x: 40, y: 72 } });
+      const farm = g.scene.getScene('farm');
+      farm.scene.start('house', { spawn: { x: 40, y: 72 } });
     });
     await sleep(2600);
 
