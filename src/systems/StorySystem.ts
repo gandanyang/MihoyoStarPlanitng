@@ -242,6 +242,16 @@ export const MINE_TIP_DIALOGUE: DialogueLine[] = [
   { speaker: '', color: COLORS.system, text: hint('靠近发光的矿脉，按 [E] 键开采。矿石可以卖给商店老板。', '靠近发光的矿脉，点「交互」开采。矿石可以卖给商店老板。') },
 ];
 
+/** M1-3 爷爷的旧花园：夏雅见证对白（花园恢复完成后，夏雅在花园旁出现，靠近触发）
+ *  制作人确认文案（2026-08-03）：生活记忆型——不解释主题，只补充一个生活片段。
+ *  范围限定：A/B 类生活对白，无剧情节点/任务/StoryStep/存档字段。 */
+export const GARDEN_RESTORED_XIYA_DIALOGUE: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（夏雅不知什么时候站在了花园边，看着重新种上的花。）' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '这里以前也是爷爷最喜欢来的地方。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '小时候我经常看到他坐在这里，一坐就是很久。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '他说，花开的时候，这里就像又有了新的开始。' },
+];
+
 // ============ Demo 结尾：观星夜（定稿版 v0.3） ============
 
 /** 观星夜收尾（第一章完成 + 夜晚，靠近观星点触发；含静默镜头与选项） */

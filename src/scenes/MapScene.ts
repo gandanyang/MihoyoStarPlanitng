@@ -64,6 +64,7 @@ import {
   WATER_CROPS_DIALOGUE, EVENING_DIALOGUE, TOWN_INTRO_DIALOGUE,
   FOREST_SHARD_DIALOGUE, DEMO_ENDING_DIALOGUE, DEMO_ENDING_BRANCHES, DEMO_ENDING_FINALE,
   WOODCUT_TIP_DIALOGUE, MINE_TIP_DIALOGUE, XIYA_DAWN_DIALOGUE, XIYA_EVENING_DIALOGUE, getGrandpaNote,
+  GARDEN_RESTORED_XIYA_DIALOGUE,
   FIRST_HARVEST_DIALOGUE,
 } from '../systems/StorySystem';
 import { hasSave, load, apply, save, getLastIncompatibleVersion, clearIncompatibleVersion, SAVE_VERSION } from '../systems/SaveSystem';
@@ -188,6 +189,9 @@ export class MapScene extends Phaser.Scene {
     /** 交互基准点（区域中心像素坐标） */
     pos: { x: number; y: number };
   } | null = null;
+  // M1-3 夏雅见证：花园恢复完成后，夏雅在花园旁出现，靠近触发 GARDEN_RESTORED_XIYA_DIALOGUE
+  private gardenXiya: Phaser.GameObjects.Sprite | null = null;
+  private gardenXiyaLabel: Phaser.GameObjects.Text | null = null;
   // v0.5.3 剧情密度 E2：第一次收获反馈（一次性，内存 flag，不进存档）
   private firstHarvestShown = false;
   // 教程提示 DOM
@@ -201,6 +205,12 @@ export class MapScene extends Phaser.Scene {
   private readonly STARGAZE_POS = { x: 504, y: 232 };
   private stargazeSprites: Phaser.GameObjects.Ellipse[] = [];
   private stargazeMark: Phaser.GameObjects.Text | null = null;
+  // 农场商店摊位（v0.6 商店入口：农田旁空地，靠近按 E 打开 ShopPanel）
+  private farmShop: {
+    mark: Phaser.GameObjects.Text;
+    stall: Phaser.GameObjects.Graphics;
+    pos: { x: number; y: number };
+  } | null = null;
 
   constructor(key: string) {
     super(key);
@@ -226,6 +236,8 @@ export class MapScene extends Phaser.Scene {
     // E1/E9 夏雅精灵清理（场景切换时销毁，防止残留）
     this.clearDawnXiya();
     this.clearEveningXiya();
+    // M1-3 夏雅见证精灵清理（场景切换时销毁，防止残留）
+    this.clearGardenXiya();
   }
 
   preload(): void {
@@ -313,8 +325,16 @@ export class MapScene extends Phaser.Scene {
 
     // 碰撞：仅石墙(3)、水(4)、树木(9-12)、树桩(13) 参与碰撞
     // 土壤(5)、木地板(6)、小路(7)、花(8) 不碰撞（木地板/花仅装饰）
+    // v0.6 地图重排：town 扩展瓦片 9(屋顶)/10(墙面)/11(门)/12(窗)/13(井)/14(栅栏) 全碰撞，
+    //               mine 扩展瓦片 9(岩壁)/10(矿柱)/12(矿石堆)/13(木箱) 碰撞，11(轨道)/14(木板)/15(碎石)/16(矿车) 不碰撞
     this.wallsLayer.setCollisionBetween(3, 4);
-    this.wallsLayer.setCollisionBetween(9, 13);
+    if (this.mapKey === 'mine') {
+      this.wallsLayer.setCollision([9, 10, 12, 13]);
+    } else if (this.mapKey === 'town') {
+      this.wallsLayer.setCollisionBetween(9, 14);
+    } else {
+      this.wallsLayer.setCollisionBetween(9, 13);
+    }
 
     // 存档恢复：仅在农场场景首次进入时检查
     // 若存档存在则加载数据，若玩家上次在其他场景则切换过去
@@ -460,6 +480,11 @@ export class MapScene extends Phaser.Scene {
     // M1-3 爷爷旧花园恢复点（玩家清理荒废角落 → 环境变化 + 存档持久化）
     if (this.mapKey === 'farm') {
       this.setupGardenRestore();
+    }
+
+    // 农场商店摊位（靠近按 E 打开 ShopPanel，买种子不用跑小镇）
+    if (this.mapKey === 'farm') {
+      this.setupFarmShop();
     }
 
     // 第一章：首次进入小镇触发剧情（教程完成后、且从未触发过）
@@ -1674,6 +1699,16 @@ export class MapScene extends Phaser.Scene {
       if (this.tryGardenRestoreInteract()) return;
     }
 
+    // M1-3 夏雅见证（花园恢复后，夏雅在花园旁，靠近按 E 播放生活记忆对白）
+    if (this.mapKey === 'farm' && this.gardenXiya) {
+      if (this.tryGardenXiyaInteract()) return;
+    }
+
+    // 农场商店摊位（靠近按 E 打开 ShopPanel，优先于 NPC/农田交互）
+    if (this.mapKey === 'farm' && this.farmShop) {
+      if (this.tryFarmShopInteract()) return;
+    }
+
     // 2. 优先检测靠近 NPC（所有场景）：取交互范围内最近的一个
     // 注意：不能用数组顺序取第一个，否则多个 NPC 靠近时 elder 永远先被触发
     let nearest: NPC | null = null;
@@ -2190,7 +2225,113 @@ export class MapScene extends Phaser.Scene {
         dailyQuest: getDailyQuestSaveData(),
       } as any);
       setTimeout(() => this.showDialogueText('爷爷的花园又活过来了！🌼'), 1400);
+      // M1-3 夏雅见证：恢复完成的瞬间，夏雅走到花园旁（无需等待特定时段）
+      this.spawnGardenXiya();
     }
+    return true;
+  }
+
+  /**
+   * M1-3 夏雅见证：花园恢复完成后，夏雅在花园旁出现（col 2, row 20 东侧空地），
+   * 玩家靠近按 E 播放 GARDEN_RESTORED_XIYA_DIALOGUE（生活记忆对白，A/B 类，无任务/存档字段）。
+   * 一次性：触发后销毁，跨天/重进不重复（依赖 isRestored('garden') 已在存档）。
+   */
+  private spawnGardenXiya(): void {
+    if (this.mapKey !== 'farm' || this.gardenXiya) return;
+    const T = TILE_SIZE;
+    const dx = 2 * T + T / 2;
+    const dy = 20 * T + T / 2;
+    this.gardenXiya = this.add.sprite(dx, dy, 'npc_xiya');
+    this.gardenXiya.setScale(0.5).setDepth(5);
+    this.gardenXiya.setFlipX(true);
+    this.gardenXiyaLabel = this.add.text(dx, dy - 14, '夏雅', {
+      fontSize: '13px', color: '#f0a050',
+      stroke: '#000000', strokeThickness: 3,
+      backgroundColor: 'rgba(0,0,0,0.45)',
+      padding: { x: 3, y: 2 },
+    }).setShadow(0, 1, '#000000', 2).setOrigin(0.5).setDepth(6);
+  }
+
+  /** 与花园旁夏雅交互（靠近按 E → 播放见证对白，一次性销毁） */
+  private tryGardenXiyaInteract(): boolean {
+    if (!this.gardenXiya || !this.gardenXiya.visible) return false;
+    const dx = this.player.x - this.gardenXiya.x;
+    const dy = this.player.y - this.gardenXiya.y;
+    if (dx * dx + dy * dy > 28 * 28) return false;
+
+    this.gardenXiya.destroy();
+    this.gardenXiya = null;
+    if (this.gardenXiyaLabel) { this.gardenXiyaLabel.destroy(); this.gardenXiyaLabel = null; }
+    if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+    this.storyDialogue.play(GARDEN_RESTORED_XIYA_DIALOGUE, () => {
+      this.updateHUD();
+    });
+    return true;
+  }
+
+  /** 清除花园旁夏雅精灵（场景切换/跨天时调用） */
+  private clearGardenXiya(): void {
+    if (this.gardenXiya) { this.gardenXiya.destroy(); this.gardenXiya = null; }
+    if (this.gardenXiyaLabel) { this.gardenXiyaLabel.destroy(); this.gardenXiyaLabel = null; }
+  }
+
+  // ============ 农场商店摊位 ============
+
+  /**
+   * 创建农场商店摊位（v0.6 商店入口：靠近按 E 打开 ShopPanel）
+   * 位置：农田正下方空地 (col 20, row 17)，玩家在农田 row 16 面向下（距离 16px）即可触发。
+   * 纯视觉（Graphics 柜台 + 文字标签），不放瓦片——
+   * 原因：Walls 层 gid 6 是睡觉判定格（会误判睡觉）、gid 3 石墙会挡路挡碰撞。
+   */
+  private setupFarmShop(): void {
+    const T = TILE_SIZE;
+    const x = 20 * T + T / 2; // 328
+    const y = 17 * T + T / 2; // 280
+    const g = this.add.graphics();
+    g.setDepth(3);
+    // 遮阳棚（红底 + 白条纹）
+    g.fillStyle(0xc0392b, 1);
+    g.fillRect(x - 22, y - 18, 44, 7);
+    g.fillStyle(0xf5f5f5, 1);
+    g.fillRect(x - 16, y - 18, 6, 7);
+    g.fillRect(x - 4, y - 18, 6, 7);
+    g.fillRect(x + 8, y - 18, 6, 7);
+    // 支撑柱（左右）
+    g.fillStyle(0x6b4a2a, 1);
+    g.fillRect(x - 20, y - 11, 3, 15);
+    g.fillRect(x + 17, y - 11, 3, 15);
+    // 柜台（木色桌面 + 深色台沿）
+    g.fillStyle(0x8a5a33, 1);
+    g.fillRect(x - 22, y - 10, 44, 9);
+    g.fillStyle(0x6b4423, 1);
+    g.fillRect(x - 22, y - 2, 44, 2);
+    // 柜台货品（萝卜红 / 叶绿 / 玉米黄 三色点）
+    g.fillStyle(0xe74c3c, 1);
+    g.fillCircle(x - 12, y - 5, 2.5);
+    g.fillStyle(0x2ecc71, 1);
+    g.fillCircle(x - 2, y - 5, 2.5);
+    g.fillStyle(0xf1c40f, 1);
+    g.fillCircle(x + 8, y - 5, 2.5);
+    // 标签
+    const mark = this.add.text(x, y - 26, '商店', {
+      fontFamily: 'Arial',
+      fontSize: '10px',
+      color: '#ffe082',
+      stroke: '#000000',
+      strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(4);
+    this.farmShop = { mark, stall: g, pos: { x, y } };
+  }
+
+  /** 与农场商店摊位交互（靠近按 E → 打开 ShopPanel） */
+  private tryFarmShopInteract(): boolean {
+    if (!this.farmShop) return false;
+    const dx = this.player.x - this.farmShop.pos.x;
+    const dy = this.player.y - this.farmShop.pos.y;
+    // 半径 32px（约 2 格）：农田 row 16 面向下、摊位两侧走道均能触发
+    if (dx * dx + dy * dy > 32 * 32) return false;
+    this.inputManager.clearAction();
+    this.shopPanel.open();
     return true;
   }
 
@@ -2421,6 +2562,16 @@ export class MapScene extends Phaser.Scene {
     if (this.seedSelectorEl) return;
     if (this.cropPickerEl) return;
     const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+    // 移动端点击商店摊位 → 直接打开商店（不误判为"不能在这里"）
+    if (this.farmShop) {
+      const dx = world.x - this.farmShop.pos.x;
+      const dy = world.y - this.farmShop.pos.y;
+      if (dx * dx + dy * dy <= 26 * 26) {
+        this.inputManager.clearAction();
+        this.shopPanel.open();
+        return;
+      }
+    }
     const col = Math.floor(world.x / TILE_SIZE);
     const row = Math.floor(world.y / TILE_SIZE);
     if (!isInFarmArea(col, row)) {
@@ -2655,8 +2806,9 @@ export class MapScene extends Phaser.Scene {
     const el = document.createElement('div');
     el.id = 'daily-quest-panel';
     // 触屏设备：左上（避开右侧背包/交互按钮区）；桌面：右上
+    // BUG-031：触屏端 top 下移避开状态栏/挖孔屏（env safe-area-inset-top，桌面环境恒为 0 无副作用）
     const panelPos = isTouchDevice()
-      ? 'position:fixed;left:8px;top:70px;'
+      ? 'position:fixed;left:8px;top:calc(90px + env(safe-area-inset-top, 0px));'
       : 'position:fixed;right:4px;top:70px;';
     el.style.cssText =
       panelPos + 'width:min(190px,38vw);background:rgba(25,20,15,0.92);' +
