@@ -5,7 +5,7 @@ import { MapScene } from './scenes/MapScene';
 import { StationScene } from './scenes/StationScene';
 import { getTime, nextDay as timeNextDay, setTime as setGameTime, formatTime } from './data/TimeSystem';
 import { refreshSchedule } from './systems/NPCSystem';
-import { refreshDailyQuests as refreshDQ, getDailyQuestSaveData } from './systems/DailyQuestSystem';
+import { refreshDailyQuests as refreshDQ, getDailyQuestSaveData, onWoodcut as dqOnWoodcut, getDailyQuests } from './systems/DailyQuestSystem';
 import { getQuestState } from './systems/QuestSystem';
 import { resetStamina } from './data/Stamina';
 import { resetOres } from './data/MineState';
@@ -120,6 +120,26 @@ const game = new Phaser.Game({
   },
   getQuestState: () => {
     return getQuestState();
+  },
+};
+
+// 每日任务 debug 挂载（指向游戏真实实例，供自动化测试驱动红点生命周期，绕过 dev 双模块问题）
+(window as unknown as {
+  dailyQuest: {
+    onWoodcut: () => void;
+    getClaimable: () => string[];
+    // 测试辅助：强制第一条可完成任务置为已完成未领奖（仅测试，不属产品逻辑）
+    forceClaimableFirst: () => boolean;
+  }
+}).dailyQuest = {
+  onWoodcut: () => dqOnWoodcut(),
+  getClaimable: () => getDailyQuests().filter(q => q.completed && !q.claimed).map(q => q.id),
+  forceClaimableFirst: () => {
+    const q = getDailyQuests().find(x => !x.completed && !x.claimed);
+    if (!q) return false;
+    q.progress = q.target;
+    q.completed = true;
+    return true;
   },
 };
 

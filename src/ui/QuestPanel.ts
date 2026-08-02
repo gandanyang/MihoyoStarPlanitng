@@ -108,6 +108,9 @@ function refresh(active: Tab = 'daily'): void {
 
 /** 同步任务按钮红点（日常有可领奖） */
 function syncBadge(): void {
+  // 若角标未挂载（早期场景未建 quest-btn），尝试重挂
+  const btn = document.getElementById('quest-btn');
+  if (!badgeEl && btn) refreshBadgeElement();
   if (!badgeEl) return;
   const claimable = getDailyQuests().filter(q => q.completed && !q.claimed).length;
   badgeEl.textContent = claimable > 0 ? String(claimable) : '';
@@ -203,6 +206,13 @@ export class QuestPanel {
 
   close(): void { closePanel(); }
   isOpen(): boolean { return open; }
-  /** 刷新红点 */
-  refresh(): void { syncBadge(); }
+  /** 刷新红点（每次调用先确保角标挂载，避免早期场景未建 quest-btn 导致 badge 丢失） */
+  refresh(): void {
+    refreshBadgeElement();
+    syncBadge();
+  }
+  /** 可领奖任务数（供探针/调试验证红点生命周期） */
+  claimableCount(): number {
+    return getDailyQuests().filter(q => q.completed && !q.claimed).length;
+  }
 }
