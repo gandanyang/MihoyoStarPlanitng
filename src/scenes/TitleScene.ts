@@ -117,36 +117,71 @@ export class TitleScene extends Phaser.Scene {
     this.input.once('pointerup', () => this.startGame());
   }
 
-  /** 调试专用：一键清除存档按钮（仅测试阶段保留，正式版移除） */
+  /** 清除存档按钮（有存档时显示，居中于开始提示下方；二次点击确认防误删） */
   private createClearSaveButton(): void {
     const btn = document.createElement('div');
     btn.id = 'clear-save-btn';
     Object.assign(btn.style, {
       position: 'fixed',
-      right: '16px',
-      bottom: '60px',
-      padding: '10px 16px',
-      background: 'rgba(180,40,40,0.85)',
-      color: '#fff',
+      left: '50%',
+      bottom: '90px',
+      transform: 'translateX(-50%)',
+      padding: '10px 24px',
+      background: 'rgba(120,30,30,0.75)',
+      color: '#ffb0a0',
       fontSize: '14px',
       fontFamily: 'Arial, sans-serif',
       borderRadius: '6px',
       cursor: 'pointer',
-      border: '1px solid rgba(255,255,255,0.4)',
+      border: '1px solid rgba(255,150,120,0.35)',
       zIndex: '900',
       pointerEvents: 'auto',
       userSelect: 'none',
+      textShadow: '1px 1px 0 #000',
     });
-    btn.textContent = '清除存档';
+    btn.textContent = '清除存档（重新开始）';
+    let confirming = false;
+    let confirmTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const resetConfirm = (): void => {
+      confirming = false;
+      if (confirmTimer) { clearTimeout(confirmTimer); confirmTimer = null; }
+      btn.textContent = '清除存档（重新开始）';
+      btn.style.background = 'rgba(120,30,30,0.75)';
+      btn.style.color = '#ffb0a0';
+    };
+
+    // 单击逻辑（pointerup 优先，click 兜底；pointerHandled 去重防双触发）
+    let pointerHandled = false;
+    const handleTap = (): void => {
+      if (!confirming) {
+        confirming = true;
+        btn.textContent = '再次点击确认删除';
+        btn.style.background = 'rgba(200,40,40,0.9)';
+        btn.style.color = '#fff';
+        confirmTimer = setTimeout(resetConfirm, 3000);
+        return;
+      }
+      deleteSave();
+      location.reload();
+    };
+
     btn.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
       e.preventDefault();
     });
+    btn.addEventListener('pointerup', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      pointerHandled = true;
+      handleTap();
+    });
+    // click 兜底（极旧浏览器无 pointer 事件时；有 pointerup 时跳过防误删）
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       e.preventDefault();
-      deleteSave();
-      location.reload();
+      if (pointerHandled) { pointerHandled = false; return; }
+      handleTap();
     });
     document.body.appendChild(btn);
   }

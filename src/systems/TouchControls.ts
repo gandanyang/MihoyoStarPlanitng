@@ -54,8 +54,9 @@ function createDom(): void {
 
   const container = document.createElement('div');
   container.id = 'touch-controls';
+  // 相对 #game-container（画布区域）定位：画布居中时摇杆/按钮不偏到 FIT 黑边区（横屏）
   container.style.cssText =
-    'position:fixed;top:0;right:0;bottom:0;left:0;pointer-events:none;z-index:100;user-select:none;-webkit-user-select:none';
+    'position:absolute;inset:0;pointer-events:none;z-index:100;user-select:none;-webkit-user-select:none';
 
   // 摇杆容器（左下角）
   const joy = document.createElement('div');
@@ -193,7 +194,9 @@ function createDom(): void {
 
   container.appendChild(joy);
   container.appendChild(btn);
-  document.body.appendChild(container);
+  // 挂到画布容器（横屏黑边场景下 UI 与画布对齐）；兜底 body
+  const host = document.getElementById('game-container') ?? document.body;
+  host.appendChild(container);
 }
 
 /** 是否触屏设备（统一入口在 config.ts，用触屏能力判断，而非窗口宽度——手机横屏宽度可能 ≥800） */

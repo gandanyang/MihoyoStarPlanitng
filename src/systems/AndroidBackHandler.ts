@@ -16,6 +16,7 @@ import { Capacitor } from '@capacitor/core';
 import Phaser from 'phaser';
 import { MapScene } from '../scenes/MapScene';
 import { MAP_EXITS } from '../data/exits';
+import { isTutorialDone } from './StorySystem';
 
 /** 场景回退目标表：子区域按返回 → 离农场更近的节点（与 MAP_EXITS 拓扑一致） */
 const BACK_TARGET: Record<string, string> = {
@@ -45,7 +46,10 @@ export function initAndroidBackHandler(game: Phaser.Game): void {
       // 1. 有关 UI 可关 → 关闭最上层
       if (scene.handleBackButton()) return;
 
-      // 2. 无 UI → 回退场景（如有回退目标）
+      // 2. 教程完成前：返回键只消费、不切场景不退出（防止传送跳过教程剧情导致存档卡死）
+      if (!isTutorialDone()) return;
+
+      // 3. 无 UI → 回退场景（如有回退目标）
       const to = BACK_TARGET[scene.scene.key];
       if (!to) {
         void App.exitApp();
@@ -56,7 +60,7 @@ export function initAndroidBackHandler(game: Phaser.Game): void {
       return;
     }
 
-    // 3. Title / Station 等非地图场景 → 退出
+    // 4. Title / Station 等非地图场景 → 退出
     void App.exitApp();
   });
 }

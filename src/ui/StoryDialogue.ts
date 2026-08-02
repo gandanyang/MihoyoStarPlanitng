@@ -65,9 +65,9 @@ export class StoryDialogue {
       width: '90%',
       maxWidth: '700px',
       minHeight: '120px',
-      background: 'rgba(15, 15, 25, 0.95)',
+      background: 'rgba(25, 20, 15, 0.95)',
       borderRadius: '12px',
-      border: '2px solid rgba(255,255,255,0.15)',
+      border: '2px solid #8a6a45',
       padding: '20px 24px 16px',
       boxSizing: 'border-box',
       cursor: 'pointer',
@@ -170,9 +170,16 @@ export class StoryDialogue {
       skipBtn.style.background = 'rgba(255,255,255,0.08)';
       skipBtn.style.color = '#888';
     });
+    // 触屏兼容：Android WebView 中 click 偶发不触发（真机反馈"跳过按钮没功能"），
+    // pointerdown 立即响应 + click 兜底（skip 幂等：内部有 isOpen 检查，重复调用无害）
+    const doSkip = (): void => { this.skip(); };
+    skipBtn.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      doSkip();
+    });
     skipBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.skip();
+      doSkip();
     });
     this.container.appendChild(skipBtn);
     document.body.appendChild(this.container);

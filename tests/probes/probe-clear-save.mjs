@@ -13,7 +13,7 @@
 import puppeteer from 'puppeteer-core';
 
 const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-const GAME_URL = 'http://localhost:5173/';
+const GAME_URL = process.env.GAME_URL || 'http://localhost:5173/';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function run() {
@@ -58,13 +58,22 @@ async function run() {
     const sceneBefore = await page.evaluate(() => window.__game.scene.getScenes(true).map(s => s.scene.key));
     check(`点击前场景=${sceneBefore[0]}` , sceneBefore[0] === 'title');
 
-    // 3. 点击按钮（触发 deleteSave + reload）
+    // 3. 第一次点击（仅进入确认态，不删除）
+    await page.evaluate(() => {
+      const b = document.getElementById('clear-save-btn');
+      if (b) b.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+    await sleep(200);
+    const stillThere = await page.evaluate(() => localStorage.getItem('return_star_save') !== null);
+    check('第一次点击不删除（二次确认生效）', stillThere);
+
+    // 4. 第二次点击（触发 deleteSave + reload）
     await page.evaluate(() => {
       const b = document.getElementById('clear-save-btn');
       if (b) b.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
     });
 
-    // 4. 等待 reload 完成后：存档被清除 + 按钮消失 + 场景=title
+    // 5. 等待 reload 完成后：存档被清除 + 按钮消失 + 场景=title
     await page.waitForNavigation({ waitUntil: 'networkidle2' }).catch(() => {});
     await sleep(2500);
     const cleared = await page.evaluate(() => localStorage.getItem('return_star_save') === null);

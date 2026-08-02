@@ -2274,12 +2274,13 @@ export class MapScene extends Phaser.Scene {
 
   /**
    * Android 物理返回键处理：按"最上层 UI"优先级逐个关闭。
-   * @returns true=已消费返回键（关闭了某个 UI）；false=无 UI 可关（应退场景或退出 App）
+   * 安全规则：剧情对话打开时只消费返回键、不做任何事——防止误触跳过关键剧情
+   * （真机反馈：返回键曾直接跳过夏雅对话/传送到农场导致教程卡死）。
+   * @returns true=已消费返回键；false=无 UI 可关（应退场景或退出 App）
    */
   public handleBackButton(): boolean {
+    // 剧情对话中：返回键被消费但不跳过（重要剧情不得被返回键破坏）
     if (this.storyDialogue && this.storyDialogue.isOpen()) {
-      // 跳过整段对话并触发 onComplete（剧情状态正常推进，与 Skip 按钮一致）
-      this.storyDialogue.skip();
       return true;
     }
     if (this.seedSelectorEl) {

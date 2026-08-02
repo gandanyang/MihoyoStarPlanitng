@@ -66,6 +66,23 @@ const game = new Phaser.Game({
 // Android 物理返回键层级处理（仅 Capacitor 原生环境生效；浏览器内无副作用）
 initAndroidBackHandler(game);
 
+/**
+ * 让 #game-container 尺寸 = 画布实际显示尺寸。
+ * 原因：FIT 模式下画布居中于屏幕（横屏两侧黑边），若容器占满全屏，
+ * 相对容器定位的 DOM UI（摇杆/按钮/HUD）会偏到黑边区。容器贴合画布后，
+ * 所有 DOM UI 与画布对齐（黑边在容器外，由 body 背景填充）。
+ */
+function syncGameContainer(): void {
+  const c = document.getElementById('game-container');
+  if (!c) return;
+  const size = game.scale.displaySize;
+  c.style.width = `${size.width}px`;
+  c.style.height = `${size.height}px`;
+}
+game.scale.on('resize', syncGameContainer);
+window.addEventListener('orientationchange', () => setTimeout(syncGameContainer, 300));
+syncGameContainer();
+
 // Debug API（Phase 4 仍保留，供测试用）
 // 用法：
 //   window.debug.nextDay()          结束今日，推进到次日 06:00

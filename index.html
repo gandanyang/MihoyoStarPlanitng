@@ -11,7 +11,8 @@
         padding: 0;
         height: 100%;
         overflow: hidden;
-        background: #111;
+        /* 背景与画布同色：横屏 FIT 缩放产生的两侧黑边融入画面，避免突兀 */
+        background: #2d2d2d;
         font-family: sans-serif;
         /* 阻止移动端双指缩放与橡皮筋滚动 */
         touch-action: none;
@@ -27,6 +28,8 @@
       #game-container {
         width: 100%;
         height: 100%;
+        /* 作为 DOM HUD / 触控容器的定位上下文：确保 UI 跟随画布（画布居中时 UI 不偏到黑边区） */
+        position: relative;
       }
     </style>
   </head>

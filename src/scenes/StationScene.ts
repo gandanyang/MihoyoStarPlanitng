@@ -22,6 +22,7 @@ import {
   setStoryStep,
 } from '../systems/StorySystem';
 import { hasSave, load, apply } from '../systems/SaveSystem';
+import { addItem } from '../data/Inventory';
 
 const W = 1120;   // 场景宽度（比屏幕宽，可滚动）
 const H = 600;
@@ -58,6 +59,14 @@ export class StationScene extends Phaser.Scene {
       // reload 后模块级 currentStep 仍是初始值 'station_intro'，apply() 前判断会永远跳过恢复
       if (saveData && saveData.story.storyStep !== 'station_intro') {
         apply(saveData);
+        // 坏档自愈：存档场景是 farm 但剧情卡在"大门阶段"（历史版本物理返回键传送所致，
+        // 真机反馈：教程被跳过 → 任务卡进度 → 不让睡觉）。推进到 clear_land 并补锄头，
+        // 保证锄地教程可继续，避免永久卡死。
+        const gateSteps = ['arrive_manor', 'xiya_talk', 'get_key', 'gate_opened'];
+        if (saveData.player.scene === 'farm' && gateSteps.includes(getStoryStep())) {
+          setStoryStep('clear_land');
+          addItem('old_hoe', 1);
+        }
         const targetScene = saveData.player.scene || 'farm';
         this.scene.start(targetScene, {
           spawn: { x: saveData.player.x, y: saveData.player.y },
@@ -478,7 +487,9 @@ export class StationScene extends Phaser.Scene {
     btn.textContent = '跳过开场';
     btn.addEventListener('mouseenter', () => { btn.style.background = 'rgba(80,80,80,0.8)'; });
     btn.addEventListener('mouseleave', () => { btn.style.background = 'rgba(0,0,0,0.6)'; });
-    btn.addEventListener('click', () => this.skipIntro());
+    // 触屏兼容：pointerdown 立即响应 + click 兜底（skipIntro 有 introSkipped 防重）
+    btn.addEventListener('pointerdown', (e) => { e.stopPropagation(); this.skipIntro(); });
+    btn.addEventListener('click', (e) => { e.stopPropagation(); this.skipIntro(); });
     document.body.appendChild(btn);
   }
 
