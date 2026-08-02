@@ -2,8 +2,12 @@
 # -*- coding: utf-8 -*-
 """
 一键安装 APK 到已连接的安卓手机，并启动归星物语。
-- 优先使用 dist_apk/latest.apk（build_apk.py 产物）
-- 否则回退到 android/app/build/outputs/apk/release/app-release.apk
+
+APK 查找逻辑（--variant auto 时）：
+  1. android/app/build/outputs/apk/release/app-release.apk  （Gradle 原生 release 产物）
+  2. android/app/build/outputs/apk/debug/app-debug.apk      （Gradle 原生 debug 产物）
+  3. dist_apk/latest-release.apk / latest-debug.apk         （--archive 归档副本）
+也可用 --variant release / debug 锁定只用某一种。
 
 功能：
   1. 探测 ADB（找不到就提示安装 Android Studio / 平台工具）
@@ -22,13 +26,32 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_APK_CANDIDATES = (
-    ROOT / "dist_apk" / "latest.apk",
-    ROOT / "android" / "app" / "build" / "outputs" / "apk" / "release" / "app-release.apk",
-    ROOT / "android" / "app" / "build" / "outputs" / "apk" / "debug" / "app-debug.apk",
-)
+APK_OUT_ROOT = ROOT / "android" / "app" / "build" / "outputs" / "apk"
+APK_ARCHIVE_DIR = ROOT / "dist_apk"
 APP_ID = "com.starvalley.returntostar"
 LAUNCH_ACTIVITY = f"{APP_ID}/.MainActivity"
+
+
+def build_candidates(variant: str) -> list[Path]:
+    """按 variant 策略组装候选 APK 路径列表（按优先级排序）。"""
+    if variant == "release":
+        return [
+            APK_OUT_ROOT / "release" / "app-release.apk",
+            APK_ARCHIVE_DIR / "latest-release.apk",
+        ]
+    if variant == "debug":
+        return [
+            APK_OUT_ROOT / "debug" / "app-debug.apk",
+            APK_ARCHIVE_DIR / "latest-debug.apk",
+        ]
+    # auto：release 优先 → debug 兜底 → 归档副本
+    return [
+        APK_OUT_ROOT / "release" / "app-release.apk",
+        APK_OUT_ROOT / "debug" / "app-debug.apk",
+        APK_ARCHIVE_DIR / "latest-release.apk",
+        APK_ARCHIVE_DIR / "latest-debug.apk",
+        APK_ARCHIVE_DIR / "latest.apk",  # 兼容老脚本归档名
+    ]
 
 
 def run(cmd: list[str], timeout: int = 180) -> subprocess.CompletedProcess[str]:
@@ -78,21 +101,40 @@ def pick_device(adb: str) -> str:
     return devices[0]
 
 
-def choose_apk(user_spec: Path | None) -> Path:
-    candidates: list[Path] = ([user_spec] if user_spec else []) + list(DEFAULT_APK_CANDIDATES)
-    for c in candidates:
-        if c.exists() and c.stat().st_size >= 4 * 1024 * 1024:
-            size = c.stat().st_size / (1024 * 1024)
-            print(f"  选用 APK：{c}  ({size:.1f} MB)")
-            return c
+def choose_apk(user_spec: Path | None, variant: str) -> Path:
+    policy_candidates = build_candidates(variant)
+    candidates: list[Path] = ([user_spec] if user_spec else []) + policy_candidates
+    print(f"  variant 策略：{variant}；候选路径共 {len(candidates)} 条")
+    for i, c in enumerate(candidates, 1):
+        tag = "用户指定" if i == 1 and user_spec else f"#{i}"
+        if not c.exists():
+            print(f"    [{tag}] 不存在 → {c}")
+            continue
+        size_kb = c.stat().st_size / 1024
+        if c.stat().st_size < 4 * 1024 * 1024:
+            print(f"    [{tag}] 尺寸过小 ({size_kb:.0f} KB，<4MB) → {c}")
+            continue
+        size_mb = c.stat().st_size / (1024 * 1024)
+        print(f"    [{tag}] ✅ 命中 ({size_mb:.1f} MB) → {c}")
+        return c
     print("[FATAL] 未找到可用 APK。")
-    print("  请先运行 `python tools/build_apk.py`，或用 `--apk path/to/app.apk` 指定。")
+    print(f"  已按 variant={variant} 检查以下路径：")
+    for c in policy_candidates:
+        print(f"    - {c}")
+    print("  请先运行 `python tools/build_apk.py --variant <debug|release|both>`，")
+    print("  或用 `--apk path/to/app.apk` 显式指定。")
     sys.exit(5)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--apk", type=Path, help="指定 APK 文件（默认从 dist_apk/latest.apk 找）")
+    parser = argparse.ArgumentParser(
+        description="归星物语 ADB 一键安装 + 启动（APK 优先从 Gradle 原生输出目录读取）",
+    )
+    parser.add_argument("--apk", type=Path, help="指定 APK 文件（优先级最高，跳过自动查找）")
+    parser.add_argument(
+        "--variant", choices=["auto", "release", "debug"], default="auto",
+        help="自动查找时锁定版本：release / debug / auto（默认 auto，release 优先）",
+    )
     parser.add_argument("--no-uninstall", action="store_true", help="不先卸载，直接覆盖安装（保留存档）")
     parser.add_argument("--no-launch", action="store_true", help="不自动启动")
     args = parser.parse_args()
@@ -103,7 +145,7 @@ def main() -> None:
 
     adb = probe_adb()
     dev = pick_device(adb)
-    apk = choose_apk(args.apk)
+    apk = choose_apk(args.apk, args.variant)
 
     # 可选：卸载（默认卸载，保证干净；如果要保留存档传 --no-uninstall）
     if not args.no_uninstall:

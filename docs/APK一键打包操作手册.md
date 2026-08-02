@@ -11,14 +11,23 @@
 ## 1. 快速开始（两条命令出包）
 
 ```powershell
-# 打包 APK（前端编译 → cap sync → gradle assemble → 结构校验 → dist_apk/）
-python tools/build_apk.py
+# 打包 APK（前端编译 → cap sync → gradle assemble → 结构校验）
+# 产物直接写入 Gradle 原生目录：android/app/build/outputs/apk/<release|debug>/
+python tools/build_apk.py                        # 默认 release
+python tools/build_apk.py --variant debug        # 打 debug 包（快，未签名）
+python tools/build_apk.py --variant both         # 两个都打
+python tools/build_apk.py --archive              # 额外归档时间戳副本到 dist_apk/
 
 # 连手机一键安装 + 启动（需 USB 调试）
-python tools/install_apk.py
+python tools/install_apk.py                      # auto 策略（release 优先）
+python tools/install_apk.py --variant debug      # 强制装 debug
+python tools/install_apk.py --no-uninstall       # 保留存档覆盖安装
 ```
 
-**产物路径**：`dist_apk/latest.apk`（同时生成带时间戳的版本备份）
+**产物路径（默认不用 dist_apk/）**：
+- release：`android/app/build/outputs/apk/release/app-release.apk`
+- debug：`android/app/build/outputs/apk/debug/app-debug.apk`
+- 归档（加 `--archive` 才生成）：`dist_apk/latest-<variant>.apk` + 带时间戳备份
 
 ---
 
@@ -84,6 +93,14 @@ $env:GRADLE_OPTS = "-Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttps.pro
 
 ### 3.1 `tools/build_apk.py` — 打包脚本
 
+**参数：**
+
+```text
+--variant <debug|release|both>   打包版本，默认 release（正式分发）
+--archive                        额外复制时间戳归档到 dist_apk/（默认不复制）
+--skip-frontend                  跳过 npm run build + npx cap sync（前端没改动时省时间）
+```
+
 **流程（4 步，无交互，失败非零退出）：**
 
 | 步骤 | 命令 | 产物校验 | 失败退出码 |
@@ -91,11 +108,14 @@ $env:GRADLE_OPTS = "-Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttps.pro
 | ① 环境探测 | 自动查找 Node / Java / SDK / Gradle | — | 2/3 |
 | ② 前端编译 | `npm run build` | `dist/index.html` 存在 | 10/11 |
 | ③ Capacitor 同步 | `npx cap sync android` | `android/.../assets/public/index.html` 存在 | 20/21 |
-| ④ Gradle 打包 | `gradlew :app:assembleRelease` | APK 文件存在 | 30/31 |
-| ⑤ 结构校验 | zipfile 检查 | 含 `AndroidManifest.xml` / `classes.dex` / `resources.arsc` + ≥4MB | 40/41/42 |
-| ⑥ 命名复制 | 复制到 `dist_apk/` | `latest.apk` + 时间戳备份 | — |
+| ④ Gradle 打包 | `gradlew :app:assemble<Variant>` | APK 文件存在于 `apk/<variant>/` | 30/31 |
+| ⑤ 结构校验 | zipfile 检查 | 含 `AndroidManifest.xml` / `classes.dex` / `resources.arsc` + ≥4MB | 43 |
+| ⑥ （可选）归档 | 复制到 `dist_apk/` | `latest-<variant>.apk` + 时间戳备份 | 仅 `--archive` 时执行 |
 
-**APK 产物命名规则**：`dist_apk/com.starvalley.returntostar-v{package.json version}-{YYYYMMDD-HHMMSS}.apk`
+**APK 产物路径（默认写入 Gradle 原生目录，不复制到 dist_apk/）：**
+- release：`android/app/build/outputs/apk/release/app-release.apk`
+- debug：`android/app/build/outputs/apk/debug/app-debug.apk`
+- 归档（`--archive`）：`dist_apk/com.starvalley.returntostar-v{ver}-{stamp}-{variant}.apk`，并复制 `latest-<variant>.apk`
 
 **退出码含义**（便于 AI 判断失败原因）：
 
@@ -106,19 +126,27 @@ $env:GRADLE_OPTS = "-Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttps.pro
 | 10/11 | `npm run build` 失败（TypeScript / Vite 编译错误） |
 | 20/21 | `cap sync` 失败（Capacitor 依赖缺失） |
 | 30/31 | Gradle 构建失败（Java 版本 / SDK / 签名 / 代理问题） |
-| 40/41/42 | APK 结构校验失败（伪包 / 损坏 / 空壳） |
+| 43 | APK 结构校验失败（ZIP 损坏 / 缺关键条目 / <4MB） |
 
 ### 3.2 `tools/install_apk.py` — 安装脚本
 
 **参数：**
 
 ```text
---apk APK            指定 APK 文件（默认从 dist_apk/latest.apk 找）
+--apk APK            指定 APK 文件（优先级最高，跳过自动查找）
+--variant <auto|release|debug>   自动查找时锁定版本，默认 auto（release 优先）
 --no-uninstall       不先卸载，直接覆盖安装（保留存档）
 --no-launch          不自动启动
 ```
 
-**APK 查找优先级**：`dist_apk/latest.apk` → `android/.../release/app-release.apk` → `android/.../debug/app-debug.apk`（必须 ≥4MB）
+**APK 查找优先级（默认 `--variant auto`）：**
+1. `android/app/build/outputs/apk/release/app-release.apk`
+2. `android/app/build/outputs/apk/debug/app-debug.apk`
+3. `dist_apk/latest-release.apk`（`--archive` 归档产物）
+4. `dist_apk/latest-debug.apk`
+5. `dist_apk/latest.apk`（兼容老脚本命名）
+- 所有候选必须 ≥4MB，否则判定为坏包跳过。
+- `--variant release` 时只查 release 相关路径；`--variant debug` 时只查 debug 相关路径。
 
 **安全限制**：只允许 1 台设备在线（多台会报错退出，避免装错手机）
 
@@ -137,13 +165,23 @@ cd c:\Users\Gdy\Documents\trae_projects\mihoyoStarPlanting
 # 2.（可选）加载本地环境
 if (Test-Path tools/local.env.ps1) { . .\tools\local.env.ps1 }
 
-# 3. 打包
+# 3. 打包（默认 release，产物在 Gradle 原生目录）
 python tools/build_apk.py
-# 成功 → exit 0，产物在 dist_apk/latest.apk
+#  可选变体：
+#   --variant debug     打 debug 包（快，未签名）
+#   --variant both      release + debug 都打
+#   --archive           额外归档副本到 dist_apk/（一般不需要）
+#   --skip-frontend     前端没改时省时间（跳过 npm build + cap sync）
+# 成功 → exit 0
+#   release 产物：android/app/build/outputs/apk/release/app-release.apk
+#   debug 产物：  android/app/build/outputs/apk/debug/app-debug.apk
 # 失败 → 看退出码（见上表），不要无脑重试
 
 # 4. 安装到手机（需 adb devices 能看到设备）
-python tools/install_apk.py --no-uninstall   # 保留存档
+python tools/install_apk.py --no-uninstall   # auto 策略 + 保留存档
+#  可选参数：
+#   --variant release|debug|auto   锁定装哪种（默认 auto，release 优先）
+#   --apk path/to/file.apk         显式指定 APK
 ```
 
 ### 4.2 失败处理决策树
@@ -161,20 +199,23 @@ build_apk.py 失败
 ├─ 退出码 30/31（Gradle 失败）
 │   → 看 stderr 末尾 40 行
 │   → "SDK not found" → 检查 ANDROID_SDK_ROOT
-│   → "class file version" → Java 版本不对（需 21）
+│   → "class file version" → Java 版本不对（需 17/21）
 │   → "Connection timed out" → 代理问题，加 GRADLE_OPTS
 │   → 不要无脑重试同一命令
-└─ 退出码 40/41/42（APK 校验失败）
-    → 产物已损坏，清理 android/app/build/ 后重新 build
+└─ 退出码 43（APK 校验失败）
+    → 产物已损坏（ZIP 坏 / 缺关键条目 / <4MB）
+    → 清理 android/app/build/ 后重新 build
 ```
 
 ### 4.3 注意事项
 
-- **不要跳步骤**：`build_apk.py` 内部的 4 步有依赖关系，不能只跑 Gradle 不跑 `npm run build`（前端产物会过时）
-- **不要生成假 APK**：脚本会校验 APK 结构（含 `AndroidManifest.xml` / `classes.dex` / `resources.arsc` + ≥4MB），伪造产物过不了
-- **不要并行跑多个 build**：Gradle daemon 会锁文件，串行执行
-- **修改代码后必须重新打包**：`npm run build` + `cap sync` + `gradle assemble` 一个都不能少，脚本已自动串起这三步
-- **签名配置**：`android/keystore.properties` + `android/app/build.gradle` 已配好 release 签名，脚本直接出 release 包
+- **产物就在 Gradle 原生目录**：默认不再复制到 `dist_apk/`，安装脚本会直接从 `android/app/build/outputs/apk/<variant>/` 读取。需要备份时加 `--archive`。
+- **不要跳步骤**：`build_apk.py` 内部的 4 步有依赖关系，不能只跑 Gradle 不跑 `npm run build`（前端产物会过时）。除非确定前端没改，否则不要用 `--skip-frontend`。
+- **不要生成假 APK**：脚本会校验 APK 结构（含 `AndroidManifest.xml` / `classes.dex` / `resources.arsc` + ≥4MB），伪造产物过不了。
+- **不要并行跑多个 build**：Gradle daemon 会锁文件，串行执行。
+- **修改代码后必须重新打包**：`npm run build` + `cap sync` + `gradle assemble` 一个都不能少，脚本已自动串起这三步。
+- **签名配置**：`android/keystore.properties` + `android/app/build.gradle` 已配好 release 签名，脚本直接出 release 包。
+- **AI 调用时先看产物目录**：若 `android/app/build/outputs/apk/` 下已存在最近时间的 APK，可根据修改范围判断是否用 `--skip-frontend` 省时间（改了 TypeScript/CSS/HTML 时不能跳）。
 
 ---
 

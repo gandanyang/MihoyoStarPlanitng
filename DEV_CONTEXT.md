@@ -178,12 +178,21 @@ SaveSystem
 ✅ `76577fc` v0.5.4 阶段1 NPC日程错峰重构
 ✅ `3b6bc90` BUG-027 修复 + M1 farm 升级设计文档
 ✅ `837e72f` v0.6 准备阶段工作进度总结
+✅ `172aa6e` M1-1 farm 五区布局升级（森林入口/花园/农田过渡/住宅/水塘，probe 21/21）
+✅ `6db66f0` 地图资产健康检查（6 图无黑瓦片、14/14 出口正常、报告 v0.6.1）
+✅ `e9be9da` M1-2 farm 动态氛围（水塘涟漪3 + 花草摆动6 + 暖色光斑1，零资源纯代码，制作人已验收）
+✅ `ef5b63b` R1 风险消除：补 4 个 tileset 生成脚本（farm/gate/town/mine）
+✅ `60f132b` NPC2a 视觉 idle 动作（7 种 NPC Tween 动画）+ BUG-028 gate 夏雅 sprite 修复
+✅ tools 线：APK 一键打包脚本路径修正（Gradle 原生目录 android/app/build/outputs/apk/<debug|release>/）+ 安装脚本候选顺序同步 + 操作手册同步
 
-⏳ **下一步**：等待制作人确认 M1 farm 设计方案后实施
-- 编写 `tools/gen_farm_tileset.py`（同时解决 R1 风险）
-- 运行脚本生成新 `farm_tileset.png`（8→13 格）
-- 修改 `farm.json` 应用 5 区布局
-- 视觉探针 `probe-farm-visual-v0.6.mjs` 验证
+🔴 **新 P0（2026-08-03 制作人安卓试玩反馈）**：BUG-032 木屋旁仍存在早期测试睡点（BUG-001 残留）——玩家靠近木屋外侧误触睡觉跨天打断探索
+  - 接手：trae（睡觉判定属于地图/场景逻辑）
+  - 要点：MapScene.ts 搜 `trySleep/tryTutorialSleep/bed` 全部硬编码坐标 → 只保留 house 场景内床 + farm 场景屋内/床相邻格两条合法路径
+  - 必须回归探针：`probe-mobile-sleep.mjs` + `probe-mobile-tutorial.mjs`（防 BUG-001 回退）
+
+⚠️ **在途半实现**：M1-3 环境恢复试点代码骨架已写入工作区（FarmRestore.ts 新文件 + SaveSystem.restore 可选字段 + MapScene.gardenRestore 字段/调用点），但 `setupGardenRestore()` + `tryGardenRestoreInteract()` 两个方法体未完成 → 当前 tsc 报错 3 条，会挡其他 AI 编译检查。建议 M1-3 先补完方法体再做其他，或先 git stash 骨架不挡路。
+
+⏳ **下一步**：优先级 1) 先清 tsc（补 M1-3 两个方法体 or stash）；2) BUG-032 木屋误触睡觉 P0；3) M1-3 设计文档等制作人确认后实施；Q2 tileset 扩展（gid 9-13）按制作人指示**暂缓**
 
 
 ## 其他 trae 实例（forest 修复 / QA 监督线）
@@ -198,7 +207,7 @@ SaveSystem
 - 存档检查
 
 
-## opencode（Bug 修复 / 种植体验）
+## opencode（Bug 修复 / 种植体验 / 移动端 UI & 适配）
 
 ✅ `7971122` 安卓真机反馈修复 BUG-021~025
 ✅ `6b13c44` Android 物理返回键 + Release 签名打包
@@ -206,9 +215,19 @@ SaveSystem
   - 无效格红闪+低音提示
   - 播种/收获/浇水/锄地飘字
   - 音效分层
+✅ `2020c8d` BUG-026 Commit3 种子不足体验（无种子引导商店 / 多种子飘字提示 / 移除全屏选择器）
+✅ `0dc2cfd` BUG-026 阶段完成归档 + 转主线路 M1-1（trae）
+✅ `6a7920c` P0 横屏触控布局加固——容器尺寸多信号同步（补回历史重排丢失的修复；**但制作人真机复测不通过，登记为 BUG-034**）
 ⏳ `docs/reports/BUG-026种植体验专项排查报告.md`（未提交，仍在工作区）
 
-⏳ **下一步**：种植手感探针 + 真机复测操作分回升
+🔴 **新 P0 × 3 + P1 × 1 + P2 × 1（2026-08-03 制作人安卓试玩反馈.md 第 2 轮登记，详见 问题追踪.md BUG-030~034）**：
+- **BUG-034**（P0·触控）：横屏按钮位置仍错——`6a7920c` 提交了但真机仍压画面/落黑边，需加固 + resize/orientationchange 重算
+- **BUG-033**（P0·适配）：横屏画面占比太小（<60%），四周大片黑边——需允许 FIT 放大撑满短边（目标 ≥85%）
+- **BUG-031**（P1·UI）：安卓任务面板贴顶——应在左上角偏下，留出状态栏/挖孔屏安全区
+- **BUG-030**（P2·UI）：PC 端网页右侧残留颜色选择调试按钮——需在生产构建移除
+- （BUG-032·P0·睡觉误触 → 已分配 trae 地图线，不在本条）
+
+⏳ **下一步**：按优先级 BUG-034 → BUG-033 → BUG-031 → BUG-030 依次修；每个修完用 tsc + 对应探针回归（BUG-034/033 需加横屏 844×390 断言探针）
 
 
 ## 美术线（v0.6 美术第一批）
@@ -266,6 +285,45 @@ SaveSystem
 
 ---
 
+## Phaser 3.80 Texture API 注意事项（M1-2 踩坑沉淀）
+
+### ⚠️ addTilesetImage 不生成 tileset 纹理
+
+`tilemap.addTilesetImage('placeholder', 'tiles')` 只是**引用** image 纹理（'tiles' 仍为 image texture，frames=0），
+无法用 frame index 创建 sprite。需要动态花/小动物/装饰 sprite 时，必须手动切 spritesheet。
+
+### ⚠️ addSpriteSheet 的 source 传 Texture 对象 = 静默失败（关键坑）
+
+Phaser 3.80 `textures.addSpriteSheet(key, source, config)` 源码（TextureManager.js L1092）：
+
+```js
+if (source instanceof Texture) {
+    key = source.key;   // ← key 被覆盖为源纹理的 key
+    texture = source;   // ← 直接返回源纹理，不创建新纹理！
+}
+else if (this.checkKey(key)) {
+    texture = this.create(key, source);
+}
+```
+
+- 传 `textures.get('tiles')`（Texture 对象）→ **不会创建 'tiles_fs'**，且会把源纹理 'tiles' 就地切帧
+  （返回值构造函数名显示为 "Texture2"，textures.list 长度不变，exists 返回 false，无警告、无异常）
+- **正确写法**：传 HTMLImageElement 走 create 分支：
+
+```typescript
+if (!this.textures.exists('tiles_fs')) {
+  const img = this.textures.get('tiles').getSourceImage() as HTMLImageElement;
+  this.textures.addSpriteSheet('tiles_fs', img, { frameWidth: 16, frameHeight: 16 });
+}
+// 之后 this.add.sprite(x, y, 'tiles_fs', frameIdx)   // frameIdx = gid - 1（0-indexed）
+```
+
+- 复现 commit：`e9be9da`（M1-2 花精灵修正）；参考实现：[MapScene.ts](src/scenes/MapScene.ts) `setupFarmAmbience()`
+- 后续做花草 / 小动物 / 动态装饰 / NPC 动作时复用此模式
+
+
+---
+
 ## 存档
 
 新增功能：
@@ -298,31 +356,41 @@ NPC 位置：
 
 待：
 - ✅ M1 farm 升级设计文档已就绪
-- ⏳ 等待制作人确认后实施
-- ⏳ R1 风险：4 个独立 tileset 无生成脚本（待补）
+- ✅ M1-1 布局升级（`172aa6e`）
+- ✅ M1-2 动态氛围（`e9be9da`，制作人已验收）
+- ⏳ M1-3 环境恢复试点：设计文档 `M1-3环境恢复试点设计方案.md` 已出，**待制作人确认试点 A「爷爷的旧花园」**后实施
+  - 代码骨架已落工作区（`src/data/FarmRestore.ts` + SaveSystem.restore 可选字段），但 MapScene 两个方法体未完成 → 当前 tsc 报错 3 条，需要先处理
+- ✅ R1 风险消除：4 个 tileset 生成脚本（farm/gate/town/mine）已补（`ef5b63b`）
+- ⏸ Q2 tileset 扩展 gid 9-13：按制作人指令暂缓
 
 
-## 移动端
+## 移动端（2026-08-03 制作人安卓试玩反馈 第 2 轮 · 紧急 4 条）
 
 待：
 - iOS 真机测试
-- safe-area 优化
+- safe-area 优化（状态栏/挖孔屏）
 - BUG-026 真机复测操作分
+- 🔴 **BUG-034（P0 · opencode）**：横屏按钮位置仍错——`6a7920c` 提交了但真机仍压画面/落黑边，需加 resize/orientationchange 重算；验收：横屏 844×390 摇杆 x<25% 画布宽、交互按钮 x>75% 画布宽
+- 🔴 **BUG-033（P0 · opencode）**：横屏画面占比太小（<60%），四周大片黑边；验收：短边占屏 ≥85%
+- 🟠 **BUG-031（P1 · opencode）**：安卓任务面板贴顶遮挡状态栏，应在左上角偏下留出安全区
+- 🟡 **BUG-030（P2 · opencode/任意）**：PC 端网页右侧残留颜色选择调试按钮未隐藏
 
 
 ## NPC
 
 已规划：
 - ✅ 日程错峰重构（已完成 `76577fc`）
-- ⏳ 视觉生活动作（阶段 2a，方案已出待实施）
+- ✅ 视觉生活动作阶段 2a（已完成 `60f132b`，7 种 NPC idle Tween）
+- ⏳ 真机观察动画节奏（颜色 tween 是否晃眼，移动 NPC label 同步是否正常）
 
 
 ## 地图扩展
 
 待：
-- farm 升级实施
-- 海岸开发
-- 深林开发
+- farm 升级 M1-3 试点（等制作人确认）
+- 海岸开发（C1 原型，优先级在 M1 之后）
+- 深林开发（C2 原型）
+- 🔴 **BUG-032（P0 · trae）**：农场木屋门外残留早期测试睡点——玩家靠近误触跨天，BUG-001 残留未清干净；必须回归 probe-mobile-sleep + probe-mobile-tutorial
 
 
 ---
