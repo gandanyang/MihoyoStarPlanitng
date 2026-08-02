@@ -169,14 +169,18 @@ async function run() {
     console.log(`领奖点击: ${claimResult}`);
     await sleep(500);
 
-    const afterClaim = await page.evaluate(() => ({
-      panelBtns: document.querySelectorAll('.dq-claim').length,
-      // 领奖后 status 变成 ✅（claimed=true），文字仍含"浇水 3 次"但按钮消失
-      water3Done: (document.getElementById('daily-quest-panel')?.textContent ?? '').includes('✅ 浇水 3 次'),
-    }));
+    const afterClaim = await page.evaluate(() => {
+      const text = document.getElementById('daily-quest-panel')?.textContent ?? '';
+      return {
+        panelBtns: document.querySelectorAll('.dq-claim').length,
+        // 领奖后面板显示"已完成 1/4"（已领奖折叠，不再显示 ✅ 单独项）
+        hasCompletedCount: text.includes('已完成'),
+        water3StillClaimed: text.includes('浇水 3 次') && !text.includes('🎁'),
+      };
+    });
     console.log(`领奖后: ${JSON.stringify(afterClaim)}`);
     check('领奖后面板按钮消失', afterClaim.panelBtns === 0);
-    check('领奖后 water_3 显示 ✅（claimed=true）', afterClaim.water3Done === true);
+    check('领奖后显示已完成统计', afterClaim.hasCompletedCount === true);
 
   } finally {
     await browser.close();
