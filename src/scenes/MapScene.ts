@@ -50,6 +50,7 @@ import { InputManager } from '../systems/InputManager';
 import { TouchControls, setActionButtonLabel } from '../systems/TouchControls';
 import { ShopPanel } from '../ui/ShopPanel';
 import { BackpackPanel } from '../ui/BackpackPanel';
+import { QuestPanel } from '../ui/QuestPanel';
 import { StoryDialogue } from '../ui/StoryDialogue';
 import { EndingPanel } from '../ui/EndingPanel';
 import {
@@ -103,6 +104,7 @@ export class MapScene extends Phaser.Scene {
   private shopPanel!: ShopPanel;
   // 背包面板（Phase 0.25，DOM 覆盖层，B 键开启）
   private backpackPanel!: BackpackPanel;
+  private questPanel!: QuestPanel;
   // DOM HUD 元素（替代 Phaser 文本，避免 scrollFactor + zoom 渲染问题）
   private hudDom!: HTMLDivElement;
   private hudTimeDom!: HTMLDivElement;
@@ -195,6 +197,9 @@ export class MapScene extends Phaser.Scene {
   private cleanupSceneDom(): void {
     this.removeTutorialHint();
     this.closeSeedSelector();
+    // 背包/任务面板跨场景清理（防止残留打开态）
+    this.backpackPanel?.close();
+    this.questPanel?.close();
     // 对话残留跨场景传递会导致新场景按交互被对话拦截（reset 不触发 onComplete，安全）
     this.storyDialogue?.reset();
     // E1/E9 夏雅精灵清理（场景切换时销毁，防止残留）
@@ -450,7 +455,7 @@ export class MapScene extends Phaser.Scene {
     }
 
     // 触屏控件（摇杆+交互按钮，DOM 单例；移动端额外显示背包按钮）
-    this.touchControls = new TouchControls(this, this.inputManager, () => this.tryOpenBackpack());
+    this.touchControls = new TouchControls(this, this.inputManager, () => this.tryOpenBackpack(), () => this.tryOpenQuest());
     // 农场场景操作按钮语义为「使用工具」，其余场景保持「交互」（仅影响按钮文字，逻辑不变）
     setActionButtonLabel(this.mapKey === 'farm' ? '使用工具' : '交互');
     // 移动端点击种田：触屏设备在农场点击可操作的农田格子 → 直接执行操作
@@ -481,6 +486,17 @@ export class MapScene extends Phaser.Scene {
       },
       () => this.useManorKey(),
       () => this.updateHUD(),
+    );
+    // 任务面板（v0.5.3-B 任务入口化；关面板清理 J 键残留）
+    this.questPanel = new QuestPanel(
+      () => {
+        this.inputManager.clearAction();
+        this.lastFrameTime = performance.now();
+      },
+      () => {
+        this.updateHUD();
+        this.updateDailyQuestPanel();
+      },
     );
     // 农场升级通知（升级时显示气泡提示）
     setOnLevelUp((newLevel: number) => {
@@ -548,10 +564,27 @@ export class MapScene extends Phaser.Scene {
       return;
     }
 
+    // 任务面板打开：冻结时间/玩家移动/NPC/交互，只响应关闭
+    if (this.questPanel.isOpen()) {
+      this.player.setVelocity(0, 0);
+      // J 键关闭
+      if (Phaser.Input.Keyboard.JustDown(this.inputManager.keyJ)) {
+        this.questPanel.close();
+      }
+      return;
+    }
+
     // B 键打开背包（仅在未与其他面板交互时）
     if (Phaser.Input.Keyboard.JustDown(this.inputManager.keyB)) {
       this.inputManager.clearAction();
       this.backpackPanel.open();
+      return;
+    }
+
+    // J 键打开任务面板
+    if (Phaser.Input.Keyboard.JustDown(this.inputManager.keyJ)) {
+      this.inputManager.clearAction();
+      this.questPanel.open();
       return;
     }
 
@@ -1190,9 +1223,18 @@ export class MapScene extends Phaser.Scene {
   private tryOpenBackpack(): void {
     if (this.transitioning) return;
     if (this.storyDialogue && this.storyDialogue.isOpen()) return;
-    if (this.shopPanel.isOpen() || this.backpackPanel.isOpen()) return;
+    if (this.shopPanel.isOpen() || this.backpackPanel.isOpen() || this.questPanel.isOpen()) return;
     this.inputManager.clearAction();
     this.backpackPanel.open();
+  }
+
+  /** 触屏任务按钮：对话/面板/切图期间不响应（对应键盘 J） */
+  private tryOpenQuest(): void {
+    if (this.transitioning) return;
+    if (this.storyDialogue && this.storyDialogue.isOpen()) return;
+    if (this.shopPanel.isOpen() || this.backpackPanel.isOpen() || this.questPanel.isOpen()) return;
+    this.inputManager.clearAction();
+    this.questPanel.open();
   }
 
   /** 教程提示文案：移动端（无键盘）与桌面端差异 */
@@ -2259,5 +2301,6 @@ export class MapScene extends Phaser.Scene {
   /** 刷新每日任务面板 */
   private updateDailyQuestPanel(): void {
     this.createDailyQuestPanel();
+    if (this.questPanel) this.questPanel.refresh();
   }
 }

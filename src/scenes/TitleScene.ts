@@ -59,7 +59,7 @@ export class TitleScene extends Phaser.Scene {
     });
 
     // ── 版本号 ──
-    this.add.text(W - 12, H - 12, 'v0.3', {
+    this.add.text(W - 12, H - 12, 'v0.5.3', {
       fontSize: '12px',
       color: '#666',
       stroke: '#000',

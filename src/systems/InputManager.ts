@@ -34,6 +34,8 @@ export class InputManager {
   private keyD: Phaser.Input.Keyboard.Key;
   /** 背包键：B（MapScene 直接读取 JustDown） */
   keyB: Phaser.Input.Keyboard.Key;
+  /** 任务键：J（MapScene 直接读取 JustDown，对应移动端任务按钮） */
+  keyJ: Phaser.Input.Keyboard.Key;
   /** 种子切换键：R */
   keyR: Phaser.Input.Keyboard.Key;
 
@@ -52,6 +54,8 @@ export class InputManager {
 
     // 背包键：B（MapScene 直接读取，不走 action 队列）
     this.keyB = keyboard.addKey('B');
+    // 任务键：J
+    this.keyJ = keyboard.addKey('J');
     // 种子切换键：R
     this.keyR = keyboard.addKey('R');
   }

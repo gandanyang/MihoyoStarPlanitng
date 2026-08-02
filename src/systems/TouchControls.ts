@@ -36,6 +36,9 @@ let joystickThumb: HTMLDivElement | null = null;
 /** 背包按钮（移动端显示，对应键盘 B） */
 let backpackBtn: HTMLDivElement | null = null;
 let backpackHandler: (() => void) | null = null;
+/** 任务按钮（移动端显示，对应键盘 J） */
+let questBtn: HTMLDivElement | null = null;
+let questHandler: (() => void) | null = null;
 /** DOM 是否已创建（防止重复创建） */
 let domCreated = false;
 
@@ -148,6 +151,26 @@ function createDom(): void {
   updateBackpackVisibility();
   window.addEventListener('resize', updateBackpackVisibility);
 
+  // 任务按钮（仅移动端显示；桌面端用键盘 J）
+  questBtn = document.createElement('div');
+  questBtn.id = 'quest-btn';
+  questBtn.style.cssText =
+    'position:absolute;right:28px;bottom:172px;width:52px;height:52px;border-radius:50%;background:rgba(120,90,180,0.4);border:2px solid rgba(255,255,255,0.5);pointer-events:auto;display:none;align-items:center;justify-content:center;color:#fff;font:bold 13px Arial;touch-action:none;cursor:pointer;';
+  questBtn.textContent = '任务';
+  let lastQuestTime = 0;
+  const questPress = (e: Event) => {
+    e.preventDefault();
+    const now = Date.now();
+    if (now - lastQuestTime < BP_DEBOUNCE_MS) return;
+    lastQuestTime = now;
+    if (questHandler) questHandler();
+  };
+  questBtn.addEventListener('touchstart', questPress);
+  questBtn.addEventListener('mousedown', questPress);
+  container.appendChild(questBtn);
+  updateQuestVisibility();
+  window.addEventListener('resize', updateQuestVisibility);
+
   container.appendChild(joy);
   container.appendChild(btn);
   document.body.appendChild(container);
@@ -165,6 +188,12 @@ export function setActionButtonLabel(label: string): void {
 function updateBackpackVisibility(): void {
   if (!backpackBtn) return;
   backpackBtn.style.display = isTouchDevice() ? 'flex' : 'none';
+}
+
+/** 任务按钮仅触屏设备显示 */
+function updateQuestVisibility(): void {
+  if (!questBtn) return;
+  questBtn.style.display = isTouchDevice() ? 'flex' : 'none';
 }
 
 /** 开始拖动摇杆 */
@@ -218,15 +247,17 @@ function applyDirection(): void {
 }
 
 export class TouchControls {
-  constructor(_scene: Phaser.Scene, input: InputManager, onBackpack?: () => void) {
+  constructor(_scene: Phaser.Scene, input: InputManager, onBackpack?: () => void, onQuest?: () => void) {
     // 更新当前活跃 InputManager（场景切换时由新场景更新）
     currentInput = input;
     backpackHandler = onBackpack ?? null;
+    questHandler = onQuest ?? null;
     // DOM 只创建一次，后续场景切换只更新 currentInput
     if (!domCreated) {
       createDom();
     } else {
       updateBackpackVisibility();
+      updateQuestVisibility();
     }
   }
 
