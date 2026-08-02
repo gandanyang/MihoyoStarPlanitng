@@ -1,0 +1,73 @@
+# 背包与经济系统 Skill
+
+## Inventory 背包系统
+
+### 数据结构
+
+interface Item 定义物品：
+* id:string; 物品 ID
+* name: string; 物品名称
+* type: "seed" / "tool" / "ore" / "crop" / "wood" / "key" 等
+* icon: string; 图标 key
+* count: 数量
+* price?: 售价
+
+### 背包持久化
+
+进入 SaveSystem，不得直接 localStorage。
+
+### 操作接口
+
+* addItem(id, count) — 加物品
+* removeItem(id, count) — 减
+* hasItem(id, count?) — 判断
+* getCount(id) — 查数量
+
+### 接入规则
+
+不要重复造新系统。已有 Inventory 就不要建新 NewInventory 等。
+
+---
+
+## Economy 经济系统
+
+### 当前数据
+
+* playerGold: 玩家金币
+* prices: 商店价格表
+
+### 操作
+
+* addGold(amount)
+* spendGold(amount) — 返回是否成功
+* getSellPrice(itemId) — 售价查售价
+
+### 价格来源收敛
+
+⚠️ 价格数据三源未收敛（CROP_DEFS / Economy / ShopPanel 硬编码）
+⚠️ 禁止新增第四源，修改请三源同步改。
+
+---
+
+## 商店系统
+
+### 卖
+
+卖种子 / 买种子
+
+买：
+* 种子售价 = seedPrice（Economy）
+
+出售作物售价一致。
+
+### 买
+
+背包 → 收钱 → 扣金币 → 加物品。
+卖：
+出售价格在 items 卖 → 加金币 → 扣物品
+
+---
+
+## 平衡
+
+* 经济数据持久化进入 SaveSystem。
