@@ -573,7 +573,8 @@ export class StationScene extends Phaser.Scene {
 
     const title = document.createElement('div');
     Object.assign(title.style, { color: '#4a9eff', fontSize: '12px', marginBottom: '8px' });
-    title.textContent = '系统通知';
+    // P1-2：世界内表达——这是公司人事发来的通知，不是"系统"通知
+    title.textContent = '人事通知';
 
     const msg = document.createElement('div');
     Object.assign(msg.style, { color: '#7eb8ff', fontSize: '15px', lineHeight: '1.6' });
@@ -588,13 +589,17 @@ export class StationScene extends Phaser.Scene {
     this.phoneOverlay.appendChild(hint);
     document.body.appendChild(this.phoneOverlay);
 
-    requestAnimationFrame(() => { this.phoneOverlay!.style.opacity = '1'; });
+    requestAnimationFrame(() => { if (this.phoneOverlay) this.phoneOverlay.style.opacity = '1'; });
 
     this.phoneOverlay.addEventListener('click', () => {
-      this.phoneOverlay!.style.opacity = '0';
+      if (!this.phoneOverlay) return;
+      this.phoneOverlay.style.opacity = '0';
       setTimeout(() => {
-        this.phoneOverlay!.remove();
-        this.phoneOverlay = null as any;
+        // 竞态保护：若期间已被 skipIntro 移除并置 null，跳过重复移除
+        if (this.phoneOverlay) {
+          this.phoneOverlay.remove();
+          this.phoneOverlay = null as any;
+        }
         onClose();
       }, 400);
     });

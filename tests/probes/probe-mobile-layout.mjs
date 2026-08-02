@@ -76,7 +76,7 @@ async function run() {
       await waitFor(page, () => page.evaluate(() => !!document.getElementById('intro-skip-btn')), 15000);
       const phoneClicked = await waitFor(page, () =>
         page.evaluate(() => {
-          const o = [...document.querySelectorAll('div')].find(d => d.style.zIndex === '600' && d.textContent.includes('系统通知'));
+          const o = [...document.querySelectorAll('div')].find(d => d.style.zIndex === '600' && d.textContent.includes('人事通知'));
           if (o) { o.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })); return true; }
           return false;
         }), 15000);
@@ -136,7 +136,7 @@ async function run() {
       await waitFor(page, () => page.evaluate(() => !!document.getElementById('intro-skip-btn')), 15000);
       await waitFor(page, () =>
         page.evaluate(() => {
-          const o = [...document.querySelectorAll('div')].find(d => d.style.zIndex === '600' && d.textContent.includes('系统通知'));
+          const o = [...document.querySelectorAll('div')].find(d => d.style.zIndex === '600' && d.textContent.includes('人事通知'));
           if (o) { o.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })); return true; }
           return false;
         }), 15000);
@@ -186,7 +186,7 @@ async function run() {
       await waitFor(page, () => page.evaluate(() => !!document.getElementById('intro-skip-btn')), 15000);
       await waitFor(page, () =>
         page.evaluate(() => {
-          const o = [...document.querySelectorAll('div')].find(d => d.style.zIndex === '600' && d.textContent.includes('系统通知'));
+          const o = [...document.querySelectorAll('div')].find(d => d.style.zIndex === '600' && d.textContent.includes('人事通知'));
           if (o) { o.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })); return true; }
           return false;
         }), 15000);

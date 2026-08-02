@@ -65,10 +65,10 @@ async function run() {
     await page.keyboard.press('Enter');
     console.log('  等待开场动画（列车声→淡入→手机通知）…');
 
-    // 3. 等待手机通知（zIndex 600 含"系统通知"）并点击
+    // 3. 等待手机通知（zIndex 600 含"人事通知"）并点击
     const phoneClicked = await waitFor(async () => {
       return await page.evaluate(() => {
-        const overlay = [...document.querySelectorAll('div')].find(d => d.style.zIndex === '600' && d.textContent.includes('系统通知'));
+        const overlay = [...document.querySelectorAll('div')].find(d => d.style.zIndex === '600' && d.textContent.includes('人事通知'));
         if (overlay) { overlay.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })); return true; }
         return false;
       });

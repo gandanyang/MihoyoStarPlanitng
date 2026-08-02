@@ -196,6 +196,9 @@ export class MapScene extends Phaser.Scene {
   private firstHarvestShown = false;
   // 教程提示 DOM
   private tutorialHint: HTMLDivElement | null = null;
+  // P1-1 桌面端快捷键提示（J 任务 / B 背包）：首次进入提示，使用一次后本局不再显示
+  private shortcutHint: HTMLDivElement | null = null;
+  private shortcutHintDone = false;
   // 教程进度计数（锄地/播种/浇水各需3次）
   private tutorialProgress = 0;
   private readonly TUTORIAL_TARGET = 3;
@@ -226,6 +229,7 @@ export class MapScene extends Phaser.Scene {
   /** 场景停止/切换时清理挂载在 document.body 上的 DOM 残留（提示条/种子选择器等） */
   private cleanupSceneDom(): void {
     this.removeTutorialHint();
+    this.removeShortcutHint();
     this.closeSeedSelector();
     this.closeCropPicker();
     // 背包/任务面板跨场景清理（防止残留打开态）
@@ -584,6 +588,9 @@ export class MapScene extends Phaser.Scene {
     refreshDailyQuests();
     this.createDailyQuestPanel();
 
+    // P1-1 桌面端快捷键提示（J 任务 / B 背包）：首次进入地图显示，使用后本局关闭
+    this.setupShortcutHint();
+
     // 离开页面前自动存档（beforeunload + pagehide；pagehide 兜底移动端，只注册一次）
     if (MapScene._beforeUnload) {
       window.removeEventListener('beforeunload', MapScene._beforeUnload);
@@ -653,6 +660,7 @@ export class MapScene extends Phaser.Scene {
     // B 键打开背包（仅在未与其他面板交互时）
     if (Phaser.Input.Keyboard.JustDown(this.inputManager.keyB)) {
       this.inputManager.clearAction();
+      this.hideShortcutHint(); // P1-1：快捷键使用后关闭首次提示
       this.backpackPanel.open();
       return;
     }
@@ -660,6 +668,7 @@ export class MapScene extends Phaser.Scene {
     // J 键打开任务面板
     if (Phaser.Input.Keyboard.JustDown(this.inputManager.keyJ)) {
       this.inputManager.clearAction();
+      this.hideShortcutHint(); // P1-1：快捷键使用后关闭首次提示
       this.questPanel.open();
       return;
     }
@@ -1235,6 +1244,32 @@ export class MapScene extends Phaser.Scene {
 
   private removeTutorialHint(): void {
     if (this.tutorialHint) { this.tutorialHint.remove(); this.tutorialHint = null; }
+  }
+
+  /** P1-1 桌面端快捷键提示：非触屏设备首次进入显示「J 任务 · B 背包」，使用一次后本局关闭 */
+  private setupShortcutHint(): void {
+    if (this.shortcutHintDone || isTouchDevice()) return;
+    this.removeShortcutHint();
+    this.shortcutHint = document.createElement('div');
+    Object.assign(this.shortcutHint.style, {
+      position: 'fixed', bottom: '120px', left: '50%',
+      transform: 'translateX(-50%)', color: '#ffe082', fontSize: '13px',
+      fontFamily: 'monospace', background: 'rgba(0,0,0,0.65)',
+      padding: '6px 16px', borderRadius: '8px', zIndex: '400',
+      pointerEvents: 'none', border: '1px solid rgba(255,224,130,0.25)',
+      textShadow: '0 0 4px rgba(0,0,0,0.8)',
+    });
+    this.shortcutHint.textContent = '按 J 打开任务 · 按 B 打开背包';
+    document.body.appendChild(this.shortcutHint);
+  }
+
+  private removeShortcutHint(): void {
+    if (this.shortcutHint) { this.shortcutHint.remove(); this.shortcutHint = null; }
+  }
+
+  private hideShortcutHint(): void {
+    this.shortcutHintDone = true;
+    this.removeShortcutHint();
   }
 
   /** 与夏雅交互 */
@@ -1837,6 +1872,14 @@ export class MapScene extends Phaser.Scene {
         });
         if (readyCrops.length > 0) {
           setTimeout(() => this.showDialogueText(`🌱 有 ${readyCrops.length} 块作物成熟了，快去收获吧！`), 1200);
+        }
+        // P2-1 认知补强：已播种未浇水（planted）→ 提醒玩家缺水，区分"时间未到"与"缺浇水"
+        const dryCrops = getAllCropEntries().filter(([key]) => {
+          const [c, r] = key.split(',').map(Number);
+          return getTileState(c, r) === 'planted';
+        });
+        if (dryCrops.length > 0) {
+          setTimeout(() => this.showDialogueText(`💧 有 ${dryCrops.length} 块作物土壤发干，记得浇水！`), 1400);
         }
       }
     } finally {
@@ -2590,7 +2633,7 @@ export class MapScene extends Phaser.Scene {
     if (!this.isTileActionable(col, row)) {
       this.flashTileError(col, row);
       const state = getTileState(col, row);
-      const msg = state === 'watered' ? '还没成熟' : '没有种子';
+      const msg = state === 'watered' ? '还需要一点时间' : '没有种子';
       this.showFloatText(col * TILE_SIZE + TILE_SIZE / 2, row * TILE_SIZE + TILE_SIZE / 2, msg, '#ff8a80');
       return;
     }
@@ -2688,7 +2731,7 @@ export class MapScene extends Phaser.Scene {
     } else {
       // watered 已浇水未成熟，暂不处理 → 给无效反馈
       this.flashTileError(col, row);
-      this.showFloatText(tileCenterX, tileCenterY, '还没成熟', '#ff8a80');
+      this.showFloatText(tileCenterX, tileCenterY, '还需要一点时间', '#ff8a80');
       return;
     }
 

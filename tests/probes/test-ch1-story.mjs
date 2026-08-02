@@ -154,7 +154,7 @@ async function run() {
     for (let i = 0; i < 80 && (!stationOpen || !phoneChecked); i++) {
       const st = await page.evaluate(() => {
         const phone = [...document.querySelectorAll('div')].find(d =>
-          d.textContent?.includes('系统通知') && d.textContent?.includes('岗位职责'));
+          d.textContent?.includes('人事通知') && d.textContent?.includes('岗位职责'));
         if (!phone) return { text: '', clicked: false };
         const text = phone.textContent ?? '';
         if (phone.style.opacity !== '0') {

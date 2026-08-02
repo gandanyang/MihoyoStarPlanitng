@@ -50,7 +50,7 @@ async function run() {
     for (let i = 0; i < 80 && !opened; i++) {
       await page.evaluate(() => {
         const phone = [...document.querySelectorAll('div')].find(d =>
-          d.textContent?.includes('系统通知') && d.textContent?.includes('岗位职责'));
+          d.textContent?.includes('人事通知') && d.textContent?.includes('岗位职责'));
         if (phone && phone.style.opacity !== '0') phone.click();
       });
       opened = await page.evaluate(() => {
