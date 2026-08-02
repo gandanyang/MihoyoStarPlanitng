@@ -6,6 +6,44 @@
 
 ## [未发布]
 
+### v0.5.3 剧情密度增强（E1-E6 六事件 + 引导剧情 + 四要素规范）
+
+> 设计稿：《任务-剧情密度增强设计稿-v0.5.3.md》| 任务书：《任务-剧情密度增强规划-v0.5.3.md》
+> 目标：让玩家感觉「我不是在完成任务，我是在这里生活」
+> 约束：纯数据追加 + 最小钩子，零新增存档字段，不改主线
+
+**六事件实现**：
+
+| 事件 | 方向 | 触发 | 涉及文件 | 探针 |
+|------|------|------|---------|------|
+| E1 夏雅清晨偶遇 | 夏雅日常 | 06:00-08:00 进农场 + `isTutorialDone()` | `StorySystem.ts` / `MapScene.ts` | `probe-density-v053` E1a-d |
+| E2 第一次收获反馈 | 夏雅日常 | 首次收获作物（内存 flag 防重复） | `MapScene.ts` | `probe-density-v053-batch2` E2a-d |
+| E3 林澈"以前工作的时候" | 林澈个人线 | 矿洞首次对话（追加到 `MINER_DIALOGUES`） | `StorySystem.ts` | `probe-density-v053` E3a |
+| E4 NPC 每日随机一句 | 小镇生活 | 每天首次对话（seed=day+NPC hash，同天固定） | `NPCSystem.ts` / `MapScene.ts` | `probe-density-v053` E4a-d |
+| E5 爷爷笔记 | 星星线索 | 庄园可读物件，按天轮换（seed=day） | `MapScene.ts` / `StorySystem.ts` | `probe-density-v053-batch2` E5a-b |
+| E6 少女追加一句 | 星星线索 | `isObservatoryComplete()` 后追加 | `StorySystem.ts` | `probe-density-v053-batch2` E6a-d |
+
+**引导剧情增强**（制作人移动端试玩反馈后）：
+- 砍树/挖矿引导从 3 句扩为夏雅参与的 7 句剧情对话（`b259bc2` + `659030e`）
+- 爷爷笔记位置 (1,3) → (1,6)，交互基准改椭圆实际坐标 `grandpaNotePos`（修复笔记抢占砍树引导）
+- 挖矿引导改为矿脉旁 24px 才触发（修复任意位置弹引导）
+- 探针：`probe-guide-dialogue`（6/6）+ `probe-note-vs-woodcut`（2/2）
+
+**四要素规范落地**（`ff9907e`）：
+- 《剧情开发规划.md》"剧情生成规则"新增**工程化四要素**：触发条件 / 场景生命周期 / 是否影响存档 / 是否影响测试节点
+- "四要素未答清前，不得进入实现"——适用于所有后续剧情内容设计
+- 《设计稿》§0 同步四要素汇总
+
+**BUG-019 修复**：移动端体验不到砍树/挖矿引导剧情（P1，笔记位置+交互基准+矿脉旁触发）
+
+**BUG-020 修复**：对话残留跨场景传递导致新场景交互被拦截（P1，`a6d61ae`）
+- 根因：Phaser 场景 `start` 复用实例，`storyDialogue.display:block` 未清理
+- 修复：`StoryDialogue.ts` 新增公开 `reset()`（静默关闭不触发回调），`MapScene.cleanupSceneDom`（SHUTDOWN）调用
+
+**夏雅标签升级**（`ad285fc`）：清晨/农场夏雅标签字号 10→13px、背景色 `rgba(0,0,0,0.45)` + padding（移动端可读性提升）
+
+**验证**：`tsc --noEmit` 通过；`probe-density-v053`（9/9）、`probe-density-v053-batch2`（10/10）、`probe-density-experience-v053`（慢速体验）、`probe-guide-dialogue`（6/6）、`probe-note-vs-woodcut`（2/2）、`test-woodcutting`（18/18）全绿；回归 `test-tutorial` / `test-ch1-story` 无功能破坏
+
 ### v0.5.2 移动端点击种田（触控重构，`55e93b8`）
 - **背景**：种田在移动端操作不顺畅——需要摇杆靠近 + 点「使用工具」对准面前格，精准度要求高
 - **点击种田**（`MapScene.ts`）：触屏设备在农场点击可操作农田格 → 直接执行对应操作（锄地/播种/浇水/收获）
