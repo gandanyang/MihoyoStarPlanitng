@@ -12,7 +12,7 @@ type SfxName = 'hoe' | 'plant' | 'water' | 'harvest' | 'buy' | 'sell' | 'levelup
 let ctx: AudioContext | null = null;
 
 /** 懒初始化 AudioContext（浏览器要求用户交互后才能创建） */
-function getCtx(): AudioContext {
+export function getCtx(): AudioContext {
   if (!ctx) {
     const AC = window.AudioContext || (window as any).webkitAudioContext;
     if (!AC) throw new Error('AudioContext not supported');
@@ -26,7 +26,7 @@ function getCtx(): AudioContext {
 }
 
 /** 播放一个简单的音调（频率 + 持续时间 + 波形） */
-function tone(
+export function tone(
   freq: number,
   duration: number,
   type: OscillatorType = 'sine',
@@ -47,7 +47,7 @@ function tone(
 }
 
 /** 播放白噪声（用于浇水等） */
-function noise(duration: number, volume = 0.08, delay = 0): void {
+export function noise(duration: number, volume = 0.08, delay = 0): void {
   const c = getCtx();
   const bufferSize = c.sampleRate * duration;
   const buffer = c.createBuffer(1, bufferSize, c.sampleRate);
