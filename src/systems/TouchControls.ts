@@ -60,14 +60,17 @@ function createDom(): void {
 
   // 摇杆容器（左下角）
   const joy = document.createElement('div');
+  joy.className = 'tc-joystick';
   joy.style.cssText =
-    'position:absolute;left:30px;bottom:calc(30px + env(safe-area-inset-bottom, 0px));width:130px;height:130px;pointer-events:auto;touch-action:none';
+    'position:absolute;left:30px;bottom:30px;width:130px;height:130px;';
   joystickBase = document.createElement('div');
+  joystickBase.className = 'tc-joystick-base';
   joystickBase.style.cssText =
-    'position:absolute;top:0;right:0;bottom:0;left:0;border-radius:50%;background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.4)';
+    'position:absolute;inset:0;';
   joystickThumb = document.createElement('div');
+  joystickThumb.className = 'tc-joystick-thumb';
   joystickThumb.style.cssText =
-    'position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px;border-radius:50%;background:rgba(255,255,255,0.6)';
+    'position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px;';
   joy.appendChild(joystickBase);
   joy.appendChild(joystickThumb);
 
@@ -104,16 +107,20 @@ function createDom(): void {
   //   touchstart  — 旧触屏兜底
   //   mousedown   — 旧鼠标兜底
   //   click       — 终极兜底（所有浏览器都支持）
-  // 防抖：同一手势 500ms 内只触发一次（touchstart→mousedown 跨帧双击发防护）
+  // 防抖：同一手势 150ms 内只触发一次（touchstart→mousedown 跨帧双击发防护）
   const btn = document.createElement('div');
+  btn.className = 'tc-btn tc-btn-main';
   btn.style.cssText =
-    'position:absolute;right:24px;bottom:calc(24px + env(safe-area-inset-bottom, 0px));width:72px;height:72px;border-radius:50%;' +
-    'background:rgba(76,175,80,0.45);border:2px solid rgba(255,255,255,0.5);pointer-events:auto;' +
-    'display:flex;align-items:center;justify-content:center;color:#fff;font:bold 15px Arial;' +
-    'touch-action:none;cursor:pointer;user-select:none;-webkit-user-select:none';
+    'position:absolute;right:24px;bottom:24px;width:74px;height:74px;' +
+    'touch-action:none;';
   // 稳定标识：探针/测试按 data-action 查找按钮，不依赖文字（文字会随场景变化）
   btn.dataset.action = 'interact';
-  btn.textContent = '交互';
+  btn.innerHTML =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M20 12.5v-7a1.5 1.5 0 0 0-3 0v6"/><path d="M17 11.5V6.5a1.5 1.5 0 0 0-3 0"/><path d="M14 11.5v-8a1.5 1.5 0 0 0-3 0v10"/>' +
+    '<path d="M11 13.5V11a1.5 1.5 0 0 0-3 0v4.5"/><path d="M8 15.5V14a1.5 1.5 0 0 0-3 0v5.5c0 1.8 1.2 3 3.5 3.5l3.5.6c1.6.2 3.1-.4 4.2-1.6l2.7-3.1c.7-.8.6-2-.2-2.7-.8-.7-2-.6-2.7.2l-2.5 2.5"/>' +
+    '</svg>' +
+    '<span class="tc-btn-label" style="display:none;">使用工具</span>';
   let lastActionTime = 0;
   // 防抖：同一手势 150ms 内只触发一次（touchstart→mousedown 跨帧双击发防护）
   // 注：500ms 过慢会拖累连锄/连种手感，150ms 既防双击又保持流畅
@@ -134,9 +141,16 @@ function createDom(): void {
 
   // 背包按钮（仅移动端显示；桌面端用键盘 B）
   backpackBtn = document.createElement('div');
+  backpackBtn.className = 'tc-btn tc-btn-backpack';
   backpackBtn.style.cssText =
-    'position:absolute;right:28px;bottom:calc(108px + env(safe-area-inset-bottom, 0px));width:52px;height:52px;border-radius:50%;background:rgba(33,150,243,0.4);border:2px solid rgba(255,255,255,0.5);pointer-events:auto;display:none;align-items:center;justify-content:center;color:#fff;font:bold 13px Arial;touch-action:none;cursor:pointer';
-  backpackBtn.textContent = '背包';
+    'position:absolute;right:30px;bottom:110px;width:58px;height:58px;' +
+    'touch-action:none;display:none;';
+  backpackBtn.innerHTML =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z"/>' +
+    '<path d="M8 6V5a3 3 0 0 1 6 0v1"/><path d="M4 13h16"/>' +
+    '</svg>' +
+    '<span class="tc-btn-label" style="display:none;">背包</span>';
   let lastBackpackTime = 0;
   const BP_DEBOUNCE_MS = 300;
   const pressBackpack = (e: Event) => {
@@ -155,16 +169,21 @@ function createDom(): void {
   // 任务按钮（仅移动端显示；桌面端用键盘 J）
   questBtn = document.createElement('div');
   questBtn.id = 'quest-btn';
+  questBtn.className = 'tc-btn tc-btn-quest';
   questBtn.style.cssText =
-    'position:absolute;right:28px;bottom:calc(172px + env(safe-area-inset-bottom, 0px));width:52px;height:52px;border-radius:50%;background:rgba(120,90,180,0.4);border:2px solid rgba(255,255,255,0.5);pointer-events:auto;display:none;align-items:center;justify-content:center;color:#fff;font:bold 13px Arial;touch-action:none;cursor:pointer;';
-  questBtn.textContent = '任务';
+    'position:absolute;right:30px;bottom:176px;width:58px;height:58px;' +
+    'touch-action:none;display:none;';
+  questBtn.innerHTML =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8"/><path d="M8 12h8"/><path d="M8 16h5"/>' +
+    '</svg>' +
+    '<span class="tc-btn-label" style="display:none;">任务</span>';
   // 红点提示（可领奖时显示）
   questRedDot = document.createElement('div');
   questRedDot.style.cssText =
     'position:absolute;top:-4px;right:-4px;width:12px;height:12px;border-radius:50%;' +
     'background:#ff4444;border:2px solid rgba(0,0,0,0.5);display:none;';
   questBtn.appendChild(questRedDot);
-  questBtn.style.position = 'relative';
   let lastQuestTime = 0;
   const questPress = (e: Event) => {
     e.preventDefault();
@@ -186,10 +205,11 @@ function createDom(): void {
 
 /** 是否触屏设备（统一入口在 config.ts，用触屏能力判断，而非窗口宽度——手机横屏宽度可能 ≥800） */
 
-/** 设置交互/使用工具按钮文字（农场场景为"使用工具"，其余为"交互"） */
+/** 设置交互/使用工具按钮语义标签（场景切换时更新隐藏 label；SVG 图标语义化文字） */
 export function setActionButtonLabel(label: string): void {
   const btn = document.querySelector<HTMLElement>('#touch-controls [data-action="interact"]');
-  if (btn) btn.textContent = label;
+  const labelEl = btn?.querySelector<HTMLElement>('.tc-btn-label');
+  if (labelEl) labelEl.textContent = label;
 }
 
 /** 背包按钮仅触屏设备显示（竖屏/横屏/平板都显示；桌面无触屏时用键盘 B） */

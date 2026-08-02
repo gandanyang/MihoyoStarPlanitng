@@ -1,0 +1,84 @@
+/* ===== 归星物语 · 触控操作区视觉（v0.5.4 按钮升级） =====
+ * 作用域限定 #touch-controls，避免与既有内联样式/面板冲突。
+ * 设计原则（制作人）：UI 干净 > 信息堆叠；角色色 > 白色 > 背景，不抢戏。
+ */
+
+/* ---- 操作按钮（交互 / 背包 / 任务） ---- */
+#touch-controls .tc-btn {
+  pointer-events: auto;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: #fff;
+  font-family: Arial, sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+  border-radius: 14px;
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.02));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.28),
+    0 3px 10px rgba(0, 0, 0, 0.45);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  transition: transform 0.08s ease, filter 0.08s ease;
+}
+/* 按下反馈：轻微缩放 + 变亮 */
+#touch-controls .tc-btn:active {
+  transform: scale(0.94);
+  filter: brightness(1.2);
+}
+/* 按钮图标 */
+#touch-controls .tc-btn svg {
+  width: 26px;
+  height: 26px;
+  display: block;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
+}
+/* 按钮文字（主按钮不显示，图标即语义） */
+#touch-controls .tc-btn .tc-btn-label {
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+/* ---- 主按钮：交互/使用工具（绿色系） ---- */
+#touch-controls .tc-btn-main {
+  background: linear-gradient(180deg, rgba(76, 175, 80, 0.62), rgba(38, 105, 55, 0.78));
+  border-color: rgba(186, 255, 190, 0.55);
+}
+#touch-controls .tc-btn-main svg {
+  width: 30px;
+  height: 30px;
+}
+
+/* ---- 次按钮：背包（蓝色系） / 任务（紫色系） ---- */
+#touch-controls .tc-btn-backpack {
+  background: linear-gradient(180deg, rgba(66, 133, 244, 0.6), rgba(25, 82, 168, 0.78));
+  border-color: rgba(150, 200, 255, 0.55);
+}
+#touch-controls .tc-btn-quest {
+  background: linear-gradient(180deg, rgba(126, 87, 194, 0.6), rgba(74, 44, 128, 0.78));
+  border-color: rgba(200, 170, 255, 0.55);
+}
+
+/* ---- 摇杆 ---- */
+#touch-controls .tc-joystick {
+  pointer-events: auto;
+  touch-action: none;
+}
+#touch-controls .tc-joystick-base {
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.06));
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+#touch-controls .tc-joystick-thumb {
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.45));
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45), inset 0 -1px 2px rgba(0, 0, 0, 0.15);
+}

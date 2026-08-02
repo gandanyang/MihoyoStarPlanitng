@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import './ui/ui-theme.css';
 import { GAME_CONFIG, GAME_TITLE } from './config';
 import { TitleScene } from './scenes/TitleScene';
 import { MapScene } from './scenes/MapScene';
