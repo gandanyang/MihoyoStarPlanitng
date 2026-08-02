@@ -107,6 +107,21 @@ export const XIYA_DAWN_DIALOGUE: DialogueLine[] = [
   { speaker: '林澈', color: COLORS.linche, text: '……我以前，都是被闹钟叫醒的。' },
 ];
 
+/** v0.5.3 剧情密度 E5：爷爷的笔记（庄园角落可读物件，多条轮换、不解释） */
+export const GRANDPA_NOTES: DialogueLine[] = [
+  { speaker: '爷爷的笔记', color: COLORS.letter, text: '今天又捡到一片。星星……是不是也想回家？' },
+  { speaker: '爷爷的笔记', color: COLORS.letter, text: '我数了数，还差一些。等它们都回来了，也许就能问清楚了。' },
+  { speaker: '爷爷的笔记', color: COLORS.letter, text: '那些发光的碎片，醒来时像在看我。是我多心了吧。' },
+];
+
+/** v0.5.3 剧情密度 E2：第一次收获反馈（一次性，夏雅口头肯定，非系统弹窗） */
+export const FIRST_HARVEST_DIALOGUE: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（夏雅不知什么时候走了过来，看着你手里的收获。）' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '这就是你种出来的东西。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '比屏幕里的，要实在一点吧。' },
+  { speaker: '林澈', color: COLORS.linche, text: '（低头看了看手里的萝卜）……确实。' },
+];
+
 /** 清理完成 → 播种 */
 export const SOW_SEEDS_DIALOGUE: DialogueLine[] = [
   { speaker: '', color: COLORS.system, text: '（土地整理完成，阳光洒在新翻开的土地上。）' },
@@ -278,6 +293,11 @@ export function isObservatoryComplete(): boolean {
 /** 标记观星夜收尾完成（进入终态；isTutorialDone 兼容此终态） */
 export function markObservatoryComplete(): void {
   currentStep = 'observatory_complete';
+}
+
+/** v0.5.3 剧情密度 E5：按天取爷爷笔记一条（seed = day，无状态轮换） */
+export function getGrandpaNote(day: number): DialogueLine {
+  return GRANDPA_NOTES[day % GRANDPA_NOTES.length];
 }
 
 /** 观星夜选择类型（第三章多结局预留，仅内存暂存） */
