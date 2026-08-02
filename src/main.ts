@@ -71,16 +71,34 @@ initAndroidBackHandler(game);
  * 原因：FIT 模式下画布居中于屏幕（横屏两侧黑边），若容器占满全屏，
  * 相对容器定位的 DOM UI（摇杆/按钮/HUD）会偏到黑边区。容器贴合画布后，
  * 所有 DOM UI 与画布对齐（黑边在容器外，由 body 背景填充）。
+ *
+ * 加固（P0 横屏触控布局修复）：
+ * - 读取尺寸前先刷新 game.scale 的父尺寸，避免旋转/地址栏变化后取到旧 displaySize
+ * - 多信号触发：Phaser resize + orientationchange + window resize（安卓 WebView 旋转时
+ *   Phaser resize 偶发不触发，需 window resize 兜底）
  */
 function syncGameContainer(): void {
   const c = document.getElementById('game-container');
   if (!c) return;
+  try {
+    game.scale.refresh();
+  } catch { /* 忽略刷新异常，继续用当前 displaySize */ }
   const size = game.scale.displaySize;
   c.style.width = `${size.width}px`;
   c.style.height = `${size.height}px`;
 }
 game.scale.on('resize', syncGameContainer);
-window.addEventListener('orientationchange', () => setTimeout(syncGameContainer, 300));
+window.addEventListener('orientationchange', () => {
+  // 旋转瞬间 displaySize 可能仍是旧方向（安卓 WebView 时序不稳定），双延迟覆盖过渡态
+  setTimeout(syncGameContainer, 300);
+  setTimeout(syncGameContainer, 700);
+});
+window.addEventListener('resize', syncGameContainer);
+// visualViewport 变化（安卓地址栏收起/展开影响视口高度）也触发同步
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', syncGameContainer);
+  window.visualViewport.addEventListener('scroll', syncGameContainer);
+}
 syncGameContainer();
 
 // Debug API（Phase 4 仍保留，供测试用）
