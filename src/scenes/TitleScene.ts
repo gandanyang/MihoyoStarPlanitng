@@ -13,6 +13,10 @@ import { hasSave, deleteSave } from '../systems/SaveSystem';
 import { play } from '../systems/AudioSystem';
 import { isMobileLayout } from '../config';
 
+// BUG-027 修复：移除标题画面主角头像（linchen_avatar.png）
+// 封面图 title_bg.jpg 本身已有主角形象，右侧小头像冗余且位置突兀
+// 头像保留在 public/assets/portraits/ 下，待未来其他场景复用
+
 export class TitleScene extends Phaser.Scene {
   private startPrompt!: Phaser.GameObjects.Text;
   private canStart = false;
@@ -24,8 +28,6 @@ export class TitleScene extends Phaser.Scene {
   preload(): void {
     // 加载标题背景图
     this.load.image('title_bg', 'assets/images/title_bg.jpg');
-    // 主角头像（林澈 512×512 半身）
-    this.load.image('linchen_avatar', 'assets/portraits/linchen_avatar.png');
   }
 
   create(): void {
@@ -59,24 +61,6 @@ export class TitleScene extends Phaser.Scene {
       delay: 600,
       ease: 'Power2',
     });
-
-    // ── 主角头像（林澈半身，§8.5 头像框尺寸：桌面 128 / 移动端 96）──
-    const avatarSize = isMobileLayout() ? 96 : 128;
-    const avatarX = W - 130;
-    const avatarY = H / 2 - 30;
-    const avatar = this.add.image(avatarX, avatarY, 'linchen_avatar');
-    avatar.setDisplaySize(avatarSize, avatarSize);
-    avatar.setDepth(2);
-    // 圆角遮罩：与 StoryDialogue 立绘卡片一致的圆角卡片风格（几何遮罩需与图像同坐标）
-    const maskShape = this.make.graphics();
-    maskShape.fillStyle(0xffffff);
-    maskShape.fillRoundedRect(avatarX - avatarSize / 2, avatarY - avatarSize / 2, avatarSize, avatarSize, 8);
-    const avatarMask = maskShape.createGeometryMask();
-    avatar.setMask(avatarMask);
-    // 头像描边卡片
-    const frame = this.add.rectangle(avatarX, avatarY, avatarSize + 4, avatarSize + 4, 0x000000, 0);
-    frame.setStrokeStyle(2, 0x8a6a45, 1);
-    frame.setDepth(1);
 
     // ── 版本号 ──
     this.add.text(W - 12, H - 12, 'v0.5.3', {

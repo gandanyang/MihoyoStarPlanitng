@@ -1,7 +1,7 @@
 /**
- * 3.2 林澈头像接线验证探针
+ * BUG-027 回归探针：标题画面主角头像已移除
  *
- * 验证：title 场景 preload `linchen_avatar` 成功、头像 image 已创建、遮罩无异常、无 404。
+ * 验证：title 场景不再加载/显示 linchen_avatar。
  * 前置：dev server 在 localhost:5173；node probe-title-avatar.mjs
  */
 import puppeteer from 'puppeteer-core';
@@ -58,18 +58,13 @@ async function run() {
         game: true,
         textureLoaded: tex,
         avatarExists: !!avatarImg,
-        avatarHasMask: !!(avatarImg && avatarImg.mask),
-        avatarSize: avatarImg && avatarImg.displayWidth ? `${avatarImg.displayWidth}x${avatarImg.displayHeight}` : null,
         avatarKey: avatarImg ? avatarImg.texture.key : null,
       };
     });
 
     check('game 实例存在', result.game);
-    check('linchen_avatar 纹理加载成功', result.textureLoaded);
-    check('标题界面头像 image 已创建', result.avatarExists);
-    check('头像 texture 为 linchen_avatar', result.avatarKey === 'linchen_avatar');
-    check('头像已应用遮罩', result.avatarHasMask);
-    check('头像尺寸正常（96 移动端）', result.avatarSize === '96x96');
+    check('linchen_avatar 纹理已移除', !result.textureLoaded);
+    check('标题界面头像 image 已移除', !result.avatarExists);
 
     const assetFailed = failedRequests.filter(u => u.includes('linchen_avatar'));
     check('无 linchen_avatar 加载失败（404/请求失败）', assetFailed.length === 0);
