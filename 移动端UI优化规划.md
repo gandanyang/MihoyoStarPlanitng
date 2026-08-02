@@ -18,9 +18,13 @@
 - 引入锄/水/斧/镐工具模式会改动核心手感 + 教程/砍树/采矿联动，风险高
 - 待单独设计轮：如何在不破坏现有自动判断的前提下收缩按钮区
 
-**⏸ 按钮视觉升级（P2）**
-- 现按钮为内联 cssText 透明半圆 + 纯文字，无图标/质感/按下反馈
-- 方向已定：SVG 图标 + 渐变圆角矩形 + 按下反馈，`data-action` 标识保留不破测试
+**✅ 按钮视觉升级（P2 已完成，`35ddc8b`）**
+- 新增 `src/ui/ui-theme.css`：操作按钮统一视觉类，作用域限定 `#touch-controls`
+- 交互/背包/任务按钮：SVG 图标 + 渐变圆角矩形 + 内阴影 + 细描边 + `:active` 按下反馈（缩放+变亮）
+- 摇杆同步质感升级（径向渐变底 + 阴影拇指）
+- 兼容性：`data-action="interact"` / `#quest-btn` 稳定标识保留；背包按钮隐藏 label span 保持 `textContent` 含"背包"（现有探针不破）
+- 顺手修复：任务按钮 `position:relative` 覆盖 absolute 导致位置偏移的隐患
+- 验证：按钮视觉探针 16/16 PASS + farm-tap/guide-dialogue 回归 PASS
 
 ---
 
