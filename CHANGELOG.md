@@ -24,6 +24,11 @@
 - `.gitignore` 覆盖 android 构建产物 + 临时探针；`local.properties` 不入库
 - 遗留：物理返回键拦截 / Release 签名 / 真机冒烟（见方案 §8.5）
 
+**APK 遗留补齐**（`6b13c44`，v0.6 前置 D5）：
+- 物理返回键层级：@capacitor/app `backButton` → 关对话（skip 推进剧情）→ 关种子选择器 → 关面板 → 回退场景（子区域回农场，mine 回 forest）→ 退出 App；新增 `src/systems/AndroidBackHandler.ts` + `MapScene.handleBackButton()`
+- Release 签名：keystore（`C:\Users\Gdy\.android\guixing-release.keystore`，不入库）+ `android/keystore.properties`（gitignore）+ build.gradle 条件签名；产出 `app-release.apk` 19.29MB，apksigner 验证通过
+- 注意：该 commit 的 MapScene.ts 含并行 AI 在途 HUD 像素图标改动（同文件混改，自洽可编译）
+
 **回归**：tsc ✅；`probe-bug012`（13/13）、`probe-density-v053`（9/9）、`test-tutorial`（18/18）全绿
 
 ---

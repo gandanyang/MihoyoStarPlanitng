@@ -179,10 +179,11 @@ cd android; .\gradlew.bat assembleDebug --no-daemon
 
 ### 8.5 真机验证（待执行）
 
-- [ ] 安装 `app-debug.apk` → 新游戏 → 教程 → 睡觉跨天 → 存档刷新恢复（对应 `test-tutorial.mjs` 18 项）
+- [x] Release 签名打包（keystore `guixing-release.keystore` + `assembleRelease` → `app-release.apk` 19.29MB，apksigner 验证通过，`6b13c44`）
+- [x] 物理返回键层级（@capacitor/app backButton：关对话→关面板→回退场景→退出，`6b13c44`）
+- [ ] 安装 `app-release.apk` → 新游戏 → 教程 → 睡觉跨天 → 存档刷新恢复（对应 `test-tutorial.mjs` 18 项）
 - [ ] 触屏专项：摇杆 / 交互按钮 / 背包 / 任务 / 每日任务领奖
-- [ ] 物理返回键（当前默认退出 App，后续需拦截为"关面板→退场景"）
-- [ ] Release 签名打包（keystore + `assembleRelease`）
+- [ ] 物理返回键真机实测（面板关闭 / 场景回退 / 农场退出）
 
 ### 8.6 环境变量备注（本机）
 
