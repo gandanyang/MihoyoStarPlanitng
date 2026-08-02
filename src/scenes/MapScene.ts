@@ -1622,7 +1622,10 @@ export class MapScene extends Phaser.Scene {
       const pc = Math.floor(this.player.x / TILE_SIZE);
       const pr = Math.floor(this.player.y / TILE_SIZE);
       const onBed = this.bedTiles.has(`${pc},${pr}`);
-      const nearBed = this.isNearBedTile(pc, pr);
+      // BUG-032 修复：farm 木屋地板整体即睡觉区（6×5=30 格，触屏精度足够），必须站在地板上（onBed）
+      // 才能睡；"相邻 1 格"放宽仅保留给 house 真实床铺（2×2 小区域，且 house 为封闭场景无外扩风险），
+      // 避免判定外扩到石墙外——玩家站在木屋旁（row 18 屋外 / 门口外侧）误触睡觉跨天。
+      const nearBed = this.mapKey === 'house' && this.isNearBedTile(pc, pr);
       if (onBed || nearBed) {
         console.log(`[MapScene] 床交互触发 player=(${this.player.x},${this.player.y}) tile=(${pc},${pr}) onBed=${onBed} nearBed=${nearBed} step=${getStoryStep()} sleeping=${this.sleeping}`);
         // 防重复睡觉（移动端触屏双击发防护）
