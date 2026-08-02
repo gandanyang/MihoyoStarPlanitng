@@ -190,3 +190,15 @@ cd android; .\gradlew.bat assembleDebug --no-daemon
 - `JAVA_HOME` → 指向 JDK 21（Capacitor 构建需要），JDK 17 保留用于其他场景
 - `ANDROID_HOME` → `%LOCALAPPDATA%\Android\Sdk`
 - Gradle 代理通过 `GRADLE_OPTS` 每次构建时传递（未写死到 gradle.properties，避免入库泄露代理配置）
+
+---
+
+## 9. 一键打包脚本（2026-08-03 已落地）
+
+> **打包操作请直接参考 [APK一键打包操作手册.md](../APK一键打包操作手册.md)**
+>
+> 已封装为两个 Python 脚本，无需手动执行多步命令：
+> - `python tools/build_apk.py` — 一键打包（环境探测 → build → cap sync → gradle assemble → APK 结构校验 → dist_apk/）
+> - `python tools/install_apk.py` — 一键安装到手机 + 冷启动 + 前台判活
+>
+> 脚本自动探测 JDK / SDK（含 Android Studio JBR / scoop / .jdks 常见目录），失败时按退出码定位原因，AI Agent 可直接调用。
