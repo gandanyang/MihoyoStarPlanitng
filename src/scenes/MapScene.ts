@@ -48,7 +48,7 @@ import {
   injectGuideQuests,
 } from '../systems/DailyQuestSystem';
 import { InputManager } from '../systems/InputManager';
-import { TouchControls, setActionButtonLabel, setQuestRedDot } from '../systems/TouchControls';
+import { TouchControls, setActionButtonLabel } from '../systems/TouchControls';
 import { ShopPanel } from '../ui/ShopPanel';
 import { BackpackPanel } from '../ui/BackpackPanel';
 import { QuestPanel } from '../ui/QuestPanel';
@@ -1248,14 +1248,13 @@ export class MapScene extends Phaser.Scene {
     this.backpackPanel.open();
   }
 
-  /** 触屏任务按钮：对话/面板/切图期间不响应（对应键盘 J） */
+  /** 触屏任务按钮：对话/面板/切图期间不响应（对应键盘 J，打开任务面板 QuestPanel） */
   private tryOpenQuest(): void {
     if (this.transitioning) return;
     if (this.storyDialogue && this.storyDialogue.isOpen()) return;
     if (this.shopPanel.isOpen() || this.backpackPanel.isOpen()) return;
     this.inputManager.clearAction();
-    // 切换每日任务面板（收起/展开）
-    this.toggleDailyQuestPanel();
+    this.questPanel.open();
   }
 
   /** 教程提示文案：移动端（无键盘）与桌面端差异 */
@@ -2401,20 +2400,5 @@ export class MapScene extends Phaser.Scene {
   private updateDailyQuestPanel(): void {
     this.createDailyQuestPanel();
     if (this.questPanel) this.questPanel.refresh();
-    // 更新任务按钮红点
-    setQuestRedDot(this.hasClaimableDailyQuest());
-  }
-
-  /** 切换每日任务面板显示/隐藏 */
-  private toggleDailyQuestPanel(): void {
-    const el = document.getElementById('daily-quest-panel');
-    if (!el) return;
-    el.style.display = el.style.display === 'none' ? '' : 'none';
-  }
-
-  /** 是否有可领奖的每日任务（用于红点提示） */
-  private hasClaimableDailyQuest(): boolean {
-    const quests = getDailyQuests();
-    return quests.some(q => q.completed && !q.claimed);
   }
 }
