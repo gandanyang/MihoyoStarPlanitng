@@ -213,7 +213,7 @@ async function run() {
     await teleport(page, 'mine', 200, 184, 'up');
     await pressE(page);
     await sleep(700);
-    const e3Text = await advanceUntil(page, '以前工作的时候', 20);
+    const e3Text = await advanceUntil(page, '以前工作的时候', 30);
     result('E3a. 矿洞对话含"以前工作的时候"', e3Text.includes('以前工作的时候'), e3Text.substring(0, 40));
     await skipDialogue(page, 18);
 

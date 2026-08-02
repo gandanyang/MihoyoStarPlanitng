@@ -393,6 +393,15 @@ export class StoryDialogue {
     }
   }
 
+  /** 场景切换时静默重置（不触发 onComplete/onChoice）：关闭对话框并清空状态，防止残留对话状态跨场景传递 */
+  reset(): void {
+    this.close();
+    this.lines = [];
+    this.index = 0;
+    this.onComplete = null;
+    this.onChoice = null;
+  }
+
   private close(): void {
     this.clearOptions();
     this.container.style.display = 'none';

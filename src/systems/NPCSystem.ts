@@ -242,12 +242,12 @@ export function getDailyNpcLine(npcId: string, day: number): DialogueLine[] | nu
 
 /** 六个 NPC（贴图已独立，不再复用） */
 const npcs: NPC[] = [
-  new NPC('elder', '村长', 'npc_elder', ELDER_DIALOGUES, buildSchedule('elder')),
-  new NPC('shopkeeper', '商店老板', 'npc_merchant', SHOPKEEPER_DIALOGUES, buildSchedule('shopkeeper')),
-  new NPC('mystery', '神秘少女', 'npc_girl', MYSTERY_DIALOGUES, buildSchedule('mystery')),
-  new NPC('miner', '矿工老张', 'npc_miner', MINER_DIALOGUES, buildSchedule('miner')),
-  new NPC('gardener', '花匠小梅', 'npc_gardener', GARDENER_DIALOGUES, buildSchedule('gardener')),
-  new NPC('adventurer', '冒险家阿风', 'npc_adventurer', ADVENTURER_DIALOGUES, buildSchedule('adventurer')),
+  new NPC('elder', '村长', '#d9c8a0', 'npc_elder', ELDER_DIALOGUES, buildSchedule('elder')),
+  new NPC('shopkeeper', '商店老板', '#e0b060', 'npc_merchant', SHOPKEEPER_DIALOGUES, buildSchedule('shopkeeper')),
+  new NPC('mystery', '神秘少女', '#c8a0e8', 'npc_girl', MYSTERY_DIALOGUES, buildSchedule('mystery')),
+  new NPC('miner', '矿工老张', '#d8a050', 'npc_miner', MINER_DIALOGUES, buildSchedule('miner')),
+  new NPC('gardener', '花匠小梅', '#a0d888', 'npc_gardener', GARDENER_DIALOGUES, buildSchedule('gardener')),
+  new NPC('adventurer', '冒险家阿风', '#88b8e8', 'npc_adventurer', ADVENTURER_DIALOGUES, buildSchedule('adventurer')),
 ];
 
 /** 读取全部 NPC（只读列表） */

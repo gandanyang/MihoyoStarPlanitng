@@ -29,6 +29,8 @@ export interface ScheduleEntry {
 export class NPC {
   readonly id: string;
   readonly name: string;
+  /** 名字标签主题色（用于头顶名牌，区分角色） */
+  readonly nameColor: string;
   /** 贴图 key（preload 加载的图片 key） */
   readonly textureKey: string;
   /** 固定日程（按 time 升序排列） */
@@ -52,12 +54,14 @@ export class NPC {
   constructor(
     id: string,
     name: string,
+    nameColor: string,
     textureKey: string,
     dialogues: DialogueLine[],
     schedule: ScheduleEntry[]
   ) {
     this.id = id;
     this.name = name;
+    this.nameColor = nameColor;
     this.textureKey = textureKey;
     this.dialogues = dialogues;
     this.schedule = schedule;
@@ -81,8 +85,8 @@ export class NPC {
     this.sprite.y += dy * factor;
     if (this.label) {
       this.label.x = this.sprite.x;
-      // 32x32 NPC 缩放 0.5 后，标签在头顶上方 10 像素
-      this.label.y = this.sprite.y - 10;
+      // 32x32 NPC 缩放 0.5 后，标签在头顶上方 14 像素
+      this.label.y = this.sprite.y - 14;
     }
   }
 
@@ -96,8 +100,8 @@ export class NPC {
     this.sprite.y = this.targetY;
     if (this.label) {
       this.label.x = this.sprite.x;
-      // 32x32 NPC 缩放 0.5 后，标签在头顶上方 10 像素
-      this.label.y = this.sprite.y - 10;
+      // 33x32 NPC 缩放 0.5 后，标签在头顶上方 14 像素
+      this.label.y = this.sprite.y - 14;
     }
   }
 }

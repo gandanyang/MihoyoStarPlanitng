@@ -190,6 +190,8 @@ export class MapScene extends Phaser.Scene {
   private cleanupSceneDom(): void {
     this.removeTutorialHint();
     this.closeSeedSelector();
+    // 对话残留跨场景传递会导致新场景按交互被对话拦截（reset 不触发 onComplete，安全）
+    this.storyDialogue?.reset();
   }
 
   preload(): void {
@@ -674,14 +676,16 @@ export class MapScene extends Phaser.Scene {
       sprite.setScale(0.5);
       sprite.setDepth(5);
       npc.sprite = sprite;
-      // 名字标签（32x32 缩放 0.5 后，标签上移 10 像素贴头顶）
-      // 白色 + 黑色描边 + 阴影：保证草地/浅色背景上清晰可读
-      const label = this.add.text(npc.targetX, npc.targetY - 10, npc.name, {
+      // 名字标签（32x32 缩放 0.5 后，标签上移 14 像素贴头顶）
+      // 角色主题色 + 黑描边 + 阴影 + 半透明黑底：深/浅背景都清晰，且能区分角色
+      const label = this.add.text(npc.targetX, npc.targetY - 14, npc.name, {
         fontFamily: 'Arial',
-        fontSize: '11px',
-        color: '#ffffff',
+        fontSize: '13px',
+        color: npc.nameColor,
         stroke: '#000000',
         strokeThickness: 3,
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        padding: { x: 3, y: 2 },
       });
       label.setShadow(0, 1, '#000000', 2);
       label.setOrigin(0.5).setDepth(6).setScrollFactor(1);
