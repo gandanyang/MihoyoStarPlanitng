@@ -51,6 +51,13 @@ export class NPC {
   /** 对话剧本（靠近按 E 显示，StoryDialogue 全屏播放） */
   readonly dialogues: DialogueLine[];
 
+  /** v0.6 阶段 2a：NPC 视觉生活动作 tween（单帧 Image，用 Tween 模拟动作）
+   *  非 null 表示存在活动 tween，update 内位置插值暂停（避免踱步等位置类动画冲突） */
+  idleTween: Phaser.Tweens.Tween | null = null;
+  /** 踱步类 tween 基准 x（startIdleAnimation 时记录 sprite.x），用于重建相对运动 */
+  private idleBaseX: number = 0;
+  private idleBaseY: number = 0;
+
   constructor(
     id: string,
     name: string,
@@ -77,12 +84,16 @@ export class NPC {
    */
   update(dtMs: number): void {
     if (!this.sprite) return;
-    const speed = 0.003; // 插值系数/毫秒，约 333ms 走完一段距离
-    const factor = Math.min(1, dtMs * speed);
-    const dx = this.targetX - this.sprite.x;
-    const dy = this.targetY - this.sprite.y;
-    this.sprite.x += dx * factor;
-    this.sprite.y += dy * factor;
+    // v0.6 阶段 2a 守卫：有活动 idleTween（如村长踱步）时跳过位置插值，避免 tween 冲突
+    if (!this.idleTween) {
+      const speed = 0.003; // 插值系数/毫秒，约 333ms 走完一段距离
+      const factor = Math.min(1, dtMs * speed);
+      const dx = this.targetX - this.sprite.x;
+      const dy = this.targetY - this.sprite.y;
+      this.sprite.x += dx * factor;
+      this.sprite.y += dy * factor;
+    }
+    // 标签始终跟随 sprite（无论是否存在 tween，确保踱步/蹲起时视觉不脱节）
     if (this.label) {
       this.label.x = this.sprite.x;
       // 32x32 NPC 缩放 0.5 后，标签在头顶上方 14 像素
@@ -102,6 +113,126 @@ export class NPC {
       this.label.x = this.sprite.x;
       // 32x32 NPC 缩放 0.5 后，标签在头顶上方 14 像素
       this.label.y = this.sprite.y - 14;
+    }
+  }
+
+  // =========================================================================
+  // v0.6 阶段 2a：NPC 视觉生活动作（Tween 模拟，不依赖动画帧）
+  // =========================================================================
+
+  /**
+   * 根据 NPC id 启动对应的视觉动作 tween
+   * 由 MapScene.setupNPCs 在创建 sprite + snapToTarget 后调用
+   */
+  startIdleAnimation(scene: Phaser.Scene): void {
+    if (!this.sprite) return;
+    this.stopIdleAnimation();
+    this.idleBaseX = this.sprite.x;
+    this.idleBaseY = this.sprite.y;
+    const s = this.sprite;
+
+    switch (this.id) {
+      case 'miner': {
+        // 矿工老张：挥镐 —— 身体前后摆动（模拟抡镐弧线）
+        this.idleTween = scene.tweens.add({
+          targets: s,
+          angle: { from: 0, to: -25 },
+          duration: 400,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Cubic.InOut',
+        });
+        break;
+      }
+      case 'gardener': {
+        // 花匠小梅：浇花 —— 身体微蹲（y 方向缩放+位置）
+        this.idleTween = scene.tweens.add({
+          targets: s,
+          scaleY: { from: 0.5, to: 0.46 },
+          y: { from: this.idleBaseY, to: this.idleBaseY + 2 },
+          duration: 700,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.InOut',
+        });
+        break;
+      }
+      case 'adventurer': {
+        // 冒险家阿风：张望 —— 左右翻转（视线交替）
+        this.idleTween = scene.tweens.add({
+          targets: s,
+          scaleX: { from: 0.5, to: -0.5 },
+          duration: 1800,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Quad.InOut',
+        });
+        break;
+      }
+      case 'elder': {
+        // 村长：踱步 —— 小幅度左右移动（影响位置，故需 update 守卫）
+        this.idleTween = scene.tweens.add({
+          targets: s,
+          x: { from: this.idleBaseX - 7, to: this.idleBaseX + 7 },
+          duration: 2000,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.InOut',
+        });
+        break;
+      }
+      case 'shopkeeper': {
+        // 商店老板：整理货物 —— 微弯+伸手
+        this.idleTween = scene.tweens.add({
+          targets: s,
+          scaleY: { from: 0.5, to: 0.47 },
+          scaleX: { from: 0.5, to: 0.515 },
+          duration: 600,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Cubic.InOut',
+        });
+        break;
+      }
+      case 'mystery': {
+        // 神秘少女：静立呼吸 —— 透明度+轻微漂浮
+        this.idleTween = scene.tweens.add({
+          targets: s,
+          alpha: { from: 0.85, to: 1 },
+          y: { from: this.idleBaseY - 1.5, to: this.idleBaseY + 1.5 },
+          duration: 2000,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.InOut',
+        });
+        break;
+      }
+      default:
+        // 未知 NPC：轻微呼吸（安全兜底）
+        this.idleTween = scene.tweens.add({
+          targets: s,
+          scaleY: { from: 0.5, to: 0.49 },
+          duration: 1500,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.InOut',
+        });
+    }
+  }
+
+  /** 停止并销毁 idle tween，重置 sprite 视觉状态（调用方在 sprite destroy 前运行） */
+  stopIdleAnimation(): void {
+    if (this.idleTween) {
+      try { this.idleTween.stop(); } catch (_) { /* 已停止忽略 */ }
+      try { this.idleTween.remove(); } catch (_) { /* 已移除忽略 */ }
+      this.idleTween = null;
+    }
+    if (this.sprite) {
+      this.sprite.angle = 0;
+      this.sprite.alpha = 1;
+      // scaleX/scaleY 恢复到 0.5（NPC 贴图统一展示尺寸）；注意 setScale(0.5) 在 setupNPCs 中已调用
+      this.sprite.scaleX = 0.5;
+      this.sprite.scaleY = 0.5;
     }
   }
 }

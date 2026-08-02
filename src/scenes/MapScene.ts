@@ -754,6 +754,8 @@ export class MapScene extends Phaser.Scene {
       npc.label = label;
       // 立即吸附到目标位置（避免从原点滑过来）
       npc.snapToTarget();
+      // v0.6 阶段 2a：启动视觉生活动作（单帧 Tween 模拟）
+      npc.startIdleAnimation(this);
     }
   }
 
@@ -1053,7 +1055,7 @@ export class MapScene extends Phaser.Scene {
       const xiyaX = 15 * TILE_SIZE + TILE_SIZE / 2;
       const xiyaY = 11 * TILE_SIZE + TILE_SIZE / 2;
       this.xiyaSprite = this.add.sprite(xiyaX, xiyaY, 'npc_xiya');
-      this.xiyaSprite.setDepth(5);
+      this.xiyaSprite.setScale(0.5).setDepth(5);
       this.add.text(xiyaX, xiyaY - 14, '夏雅', {
         fontSize: '13px', color: '#f0a050',
         stroke: '#000000', strokeThickness: 3,
@@ -1860,6 +1862,8 @@ export class MapScene extends Phaser.Scene {
    */
   rebuildNPCs(): void {
     for (const npc of this.npcList) {
+      // v0.6 阶段 2a：销毁前先停止 idle tween（防止 sprite 引用失效后崩溃）
+      npc.stopIdleAnimation();
       if (npc.sprite) {
         npc.sprite.destroy();
         npc.sprite = null;
