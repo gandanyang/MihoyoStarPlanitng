@@ -1414,31 +1414,31 @@ export class MapScene extends Phaser.Scene {
   private updateHUD(): void {
     const name = MAP_NAMES[this.mapKey] ?? this.mapKey;
     const day = `第${getTime().day}天`;
-    const coins = `金币:${getCoins()}`;
-    const diamonds = `💠${getItemCount('diamond')}`;
-    const stamina = `⚡${getStamina()}/${MAX_STAMINA}`;
+    const coins = `${itemIconHtml('coin', 13)}${getCoins()}`;
+    const diamonds = `${itemIconHtml('diamond', 13)}${getItemCount('diamond')}`;
+    const stamina = `${itemIconHtml('stamina', 13)}${getStamina()}/${MAX_STAMINA}`;
     const lv = `Lv.${getLevel()}`;
     const seedDef = CROP_DEFS[this.selectedCropType];
     const seedItem = seedDef.seedItem as any;
-    const seedInfo = `${seedDef.icon}${seedDef.name}:${getItemCount(seedItem)}`;
+    const seedInfo = `${itemIconHtml(seedItem, 13)}${seedDef.name}:${getItemCount(seedItem)}`;
     // 农场触屏：种子切换按钮显示当前种子 + 库存（仅触屏设备）
     if (this.seedSwitchBtn) {
       const show = isTouchDevice() && this.mapKey === 'farm';
       this.seedSwitchBtn.style.display = show ? 'block' : 'none';
-      if (show) this.seedSwitchBtn.textContent = `${seedDef.icon} ${seedDef.name} ×${getItemCount(seedItem)} ▾`;
+      if (show) this.seedSwitchBtn.innerHTML = `${itemIconHtml(seedItem, 14)} ${seedDef.name} ×${getItemCount(seedItem)} ▾`;
     }
     if (isMobileLayout()) {
       if (this.mapKey === 'farm') {
-        this.hudAreaDom.textContent = `${name} ${day} ${lv} | ${seedInfo} ${coins} ${diamonds}`;
+        this.hudAreaDom.innerHTML = `${name} ${day} ${lv} | ${seedInfo} ${coins} ${diamonds}`;
       } else {
-        this.hudAreaDom.textContent = `${name} ${day} ${lv} | ${stamina} ${coins} ${diamonds}`;
+        this.hudAreaDom.innerHTML = `${name} ${day} ${lv} | ${stamina} ${coins} ${diamonds}`;
       }
     } else {
       if (this.mapKey === 'farm') {
-        this.hudAreaDom.textContent =
+        this.hudAreaDom.innerHTML =
           `${name} | ${day} | ${lv} | WASD/E交互 | R切换:${seedInfo} | ${coins} | ${diamonds} | 出口切换`;
       } else {
-        this.hudAreaDom.textContent = `${name} | ${day} | ${lv} | ${stamina} | WASD 移动 | ${coins} | ${diamonds} | 出口切换`;
+        this.hudAreaDom.innerHTML = `${name} | ${day} | ${lv} | ${stamina} | WASD 移动 | ${coins} | ${diamonds} | 出口切换`;
       }
     }
   }
@@ -2270,6 +2270,27 @@ export class MapScene extends Phaser.Scene {
   private closeSeedSelector(): void {
     this.seedSelectorEl?.remove();
     this.seedSelectorEl = null;
+  }
+
+  /**
+   * Android 物理返回键处理：按"最上层 UI"优先级逐个关闭。
+   * @returns true=已消费返回键（关闭了某个 UI）；false=无 UI 可关（应退场景或退出 App）
+   */
+  public handleBackButton(): boolean {
+    if (this.storyDialogue && this.storyDialogue.isOpen()) {
+      // 跳过整段对话并触发 onComplete（剧情状态正常推进，与 Skip 按钮一致）
+      this.storyDialogue.skip();
+      return true;
+    }
+    if (this.seedSelectorEl) {
+      this.closeSeedSelector();
+      return true;
+    }
+    if (this.endingPanel?.isOpen()) { this.endingPanel.close(); return true; }
+    if (this.shopPanel?.isOpen()) { this.shopPanel.close(); return true; }
+    if (this.questPanel?.isOpen()) { this.questPanel.close(); return true; }
+    if (this.backpackPanel?.isOpen()) { this.backpackPanel.close(); return true; }
+    return false;
   }
 
   /** 农场触屏：作物选择器（预选播种作物，仅切换 selectedCropType，不播种） */

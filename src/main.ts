@@ -12,6 +12,7 @@ import { resetStamina } from './data/Stamina';
 import { resetOres } from './data/MineState';
 import { save } from './systems/SaveSystem';
 import { advanceStory, getStoryStep, setStoryStep } from './systems/StorySystem';
+import { initAndroidBackHandler } from './systems/AndroidBackHandler';
 
 // 临时调试入口：URL 带 ?reset=1 时启动前强制清除本地存档（用于移动端真机测试清档）
 // 仅前端操作 localStorage，不进存档逻辑、不属于正式功能
@@ -61,6 +62,9 @@ const game = new Phaser.Game({
 
 // 开发阶段把 game 实例挂到 window，便于浏览器控制台调试与自动化测试
 (window as unknown as { __game: Phaser.Game }).__game = game;
+
+// Android 物理返回键层级处理（仅 Capacitor 原生环境生效；浏览器内无副作用）
+initAndroidBackHandler(game);
 
 // Debug API（Phase 4 仍保留，供测试用）
 // 用法：
