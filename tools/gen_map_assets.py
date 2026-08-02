@@ -326,16 +326,39 @@ def gen_gate():
 
 
 def gen_farm():
-    """农场：草地 + 大块农田 + 左下木屋。出口：顶→森林，右→小镇"""
+    """农场：草地 + 大块农田 + 左下木屋。出口：顶→森林，右→小镇
+
+    M1-1 v0.1：5 区视觉升级（森林入口/花园/农田过渡/住宅/水塘）。
+    仅瓦片装饰：不动 gid 语义、碰撞规则、出口位置、FARM_AREA/FARM_TREE_POSITIONS。
+    """
     ground = new_farm_layer(G_GRASS)
     # 大块农田：cols 12-28, rows 8-16（面积 17x9 = 153 格，约为原来的 4 倍）
     fill_farm_rect(ground, 12, 8, 28, 16, G_SOIL)
     fill_farm_rect(ground, FARM_W - 2, 9, FARM_W - 1, 10, G_PATH)   # 右出口小路
-    fill_farm_rect(ground, 14, 1, 15, 4, G_PATH)                    # 顶出口小路
+    fill_farm_rect(ground, 13, 1, 16, 4, G_PATH)                    # 顶出口小路（M1-1 加宽至 cols 13-16）
+    # ---- M1-1 森林入口区：路径两侧泥土落叶过渡（cols 12/17 rows 1-4） ----
+    fill_farm_rect(ground, 12, 1, 12, 4, G_DIRT)
+    fill_farm_rect(ground, 17, 1, 17, 4, G_DIRT)
+    # ---- M1-1 花园区：泥土小径（col 5 rows 5-6） ----
+    fill_farm_rect(ground, 5, 5, 5, 6, G_DIRT)
+    # ---- M1-1 农田区：两侧泥土过渡带（col 11 / col 29 rows 8-16，FARM_AREA 内部不动） ----
+    fill_farm_rect(ground, 11, 8, 11, 16, G_DIRT)
+    fill_farm_rect(ground, 29, 8, 29, 16, G_DIRT)
+    # ---- M1-1 住宅区：门前小路（cols 6-7 row 18） ----
+    fill_farm_rect(ground, 6, 18, 7, 18, G_PATH)
+    # ---- M1-1 水塘区：泥土岸 + 塘底过渡（避开全部 FARM_TREE_POSITIONS） ----
+    fill_farm_rect(ground, 30, 18, 30, 22, G_DIRT)   # 西岸（(30,20) 树在岸上，自然）
+    fill_farm_rect(ground, 34, 19, 34, 22, G_DIRT)   # 东岸（避开 (34,18) 树）
+    fill_farm_rect(ground, 31, 18, 33, 18, G_DIRT)   # 塘上泥土（花丛打底）
+    fill_farm_rect(ground, 31, 23, 33, 23, G_DIRT)   # 塘底泥土过渡
 
     walls = make_farm_border([("top", 14, 2), ("right", 9, 2)])
-    # 左上装饰花
+    # 左上装饰花（花园区）：保留原花丛 + M1-1 新增第二组（cols 6-8 rows 3-4）
     fill_farm_rect(walls, 3, 3, 5, 4, G_FLOWER)
+    fill_farm_rect(walls, 6, 3, 8, 4, G_FLOWER)
+    # ---- M1-1 森林入口区：路径两侧花丛（cols 12/17 rows 2-3） ----
+    fill_farm_rect(walls, 12, 2, 12, 3, G_FLOWER)
+    fill_farm_rect(walls, 17, 2, 17, 3, G_FLOWER)
     # 左下木屋：cols 3-8 rows 19-23 木地板，四周石墙
     fill_farm_rect(walls, 3, 19, 8, 23, G_WOOD)
     for c in range(3, 9):
@@ -347,6 +370,11 @@ def gen_farm():
     for r in range(19, 24):
         set_farm_cell(walls, 2, r, G_STONE)         # 左墙
         set_farm_cell(walls, 9, r, G_STONE)         # 右墙
+    # ---- M1-1 住宅区：木屋右侧花丛（col 10 rows 21-23，避开石墙 col 9 与 (10,20) 树） ----
+    fill_farm_rect(walls, 10, 21, 10, 23, G_FLOWER)
+    # ---- M1-1 水塘区：水塘 cols 31-33 rows 19-22（gid 4 碰撞）+ 塘上花丛（cols 31-33 row 18） ----
+    fill_farm_rect(walls, 31, 19, 33, 22, G_WATER)
+    fill_farm_rect(walls, 31, 18, 33, 18, G_FLOWER)
     write_map("farm", ground, walls, FARM_W, FARM_H)
 
 
