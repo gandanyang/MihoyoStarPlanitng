@@ -2210,14 +2210,22 @@ export class MapScene extends Phaser.Scene {
           if (count > 0) availableSeeds.push({ cropType: ct, count });
         }
         if (availableSeeds.length === 0) {
+          // Commit 3：无任何种子 → 明确引导（不弹选择器，不打断节奏）
           this.flashTileError(col, row);
-          this.showFloatText(tileCenterX, tileCenterY, '没有种子', '#ff8a80');
+          this.showFloatText(tileCenterX, tileCenterY, '没有种子，去商店看看吧', '#ff8a80');
+          this.showDialogueText('没有种子了……去商店买一些吧！');
           return;
         }
         if (availableSeeds.length === 1) {
+          // 只有一种可用种子 → 直接种（不打断）
           this.doPlant(col, row, availableSeeds[0].cropType);
         } else {
-          this.showSeedSelector(col, row, availableSeeds);
+          // 多种可用种子 → 不弹全屏选择器，飘字提示可用种子 + 引导切换
+          const names = availableSeeds.map(s => CROP_DEFS[s.cropType].name).join('、');
+          this.flashTileError(col, row);
+          this.showFloatText(tileCenterX, tileCenterY, `可用种子：${names}`, '#ffe082');
+          this.showDialogueText(this.hintText(`按 [R] 切换种子后播种（可用：${names}）`, `点左上角「种子」按钮切换后播种（可用：${names}）`));
+          return;
         }
       }
     } else if (state === 'planted') {
@@ -2279,60 +2287,6 @@ export class MapScene extends Phaser.Scene {
     const visual = this.tileRects.get(`${col},${row}`);
     if (visual) this.updateTileVisual(col, row, visual);
     this.updateHUD();
-  }
-
-  /** 种子选择器（多种种子可选时弹出） */
-  private showSeedSelector(
-    col: number,
-    row: number,
-    seeds: { cropType: CropType; count: number }[],
-  ): void {
-    this.closeSeedSelector();
-
-    const el = document.createElement('div');
-    el.style.cssText =
-      'position:fixed;top:0;right:0;bottom:0;left:0;display:flex;align-items:center;justify-content:center;' +
-      'background:rgba(0,0,0,0.5);z-index:220;user-select:none;';
-
-    const cardStyle =
-      'width:min(300px,85vw);background:#3d3226;border:3px solid #8a6a45;border-radius:10px;' +
-      'padding:16px;color:#fff;font-family:Arial;box-shadow:0 4px 20px rgba(0,0,0,0.6);';
-
-    const btnStyle = 'font-size:14px;padding:6px 14px;border:none;border-radius:6px;cursor:pointer;color:#fff;background:#c79a5b;';
-
-    let itemsHtml = '';
-    for (const s of seeds) {
-      const def = CROP_DEFS[s.cropType];
-      itemsHtml += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <span style="font-size:15px;">${itemIconHtml(s.cropType, 18)} ${def.name} ×${s.count}</span>
-        <button class="seed-opt" data-crop="${s.cropType}" style="${btnStyle}">播种</button>
-      </div>`;
-    }
-
-    el.innerHTML = `<div style="${cardStyle}">
-      <div style="text-align:center;font-size:16px;font-weight:bold;margin-bottom:10px;">选择种子</div>
-      ${itemsHtml}
-      <div style="text-align:center;margin-top:10px;">
-        <button id="seed-sel-close" style="font-size:13px;padding:5px 20px;background:#8a6a45;border:none;border-radius:4px;color:#fff;cursor:pointer;">取消 (Esc)</button>
-      </div>
-    </div>`;
-    document.body.appendChild(el);
-    this.seedSelectorEl = el;
-
-    el.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement;
-      if (target.id === 'seed-sel-close') { this.closeSeedSelector(); return; }
-      if (target.classList.contains('seed-opt')) {
-        const ct = target.dataset.crop as CropType;
-        this.closeSeedSelector();
-        this.doPlant(col, row, ct);
-      }
-    });
-
-    const escHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); this.closeSeedSelector(); window.removeEventListener('keydown', escHandler); }
-    };
-    window.addEventListener('keydown', escHandler);
   }
 
   /** 关闭种子选择器 */
