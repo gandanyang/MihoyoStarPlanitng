@@ -40,9 +40,18 @@
 - 根因：Phaser 场景 `start` 复用实例，`storyDialogue.display:block` 未清理
 - 修复：`StoryDialogue.ts` 新增公开 `reset()`（静默关闭不触发回调），`MapScene.cleanupSceneDom`（SHUTDOWN）调用
 
-**夏雅标签升级**（`ad285fc`）：清晨/农场夏雅标签字号 10→13px、背景色 `rgba(0,0,0,0.45)` + padding（移动端可读性提升）
+**NPC 名字标签美化**（6 个普通 NPC + 三处夏雅统一，`a6d61ae` + `ad285fc`）：
+- 6 个 NPC 各配主题色名字（老村长米黄 / 商店老板金 / 神秘少女紫 / 老张橙 / 小梅绿 / 老风蓝），与对话角色色一致
+- 头顶名牌样式统一：13px 主题色 + 3px 黑描边 + 阴影 + 半透明黑底托（`rgba(0,0,0,0.45)` + padding），深/浅背景都可读
+- NPC 实体新增 `nameColor` 字段（构造第 3 参），标签上移 -10 → -14 像素
+- 普通 NPC / 教程夏雅 / 清晨夏雅三处样式对齐
 
-**验证**：`tsc --noEmit` 通过；`probe-density-v053`（9/9）、`probe-density-v053-batch2`（10/10）、`probe-density-experience-v053`（慢速体验）、`probe-guide-dialogue`（6/6）、`probe-note-vs-woodcut`（2/2）、`test-woodcutting`（18/18）全绿；回归 `test-tutorial` / `test-ch1-story` 无功能破坏
+**夏雅模型升级需求登记**（`a6d61ae`）：
+- 制作人反馈：现 `npc_xiya` 形象不符人设，需重绘升级
+- 覆盖 gate 开门关 + farm 教程 + E1 清晨偶遇三处形象，升级时保持一致、沿用 `tools/gen_style_unify.py` 管线
+- 已登记：需求文档 §13.2 规划中 + 维护说明 P2 项（排期待制作人确认）
+
+**验证**：`tsc --noEmit` 通过；`probe-density-v053`（9/9）、`probe-density-v053-batch2`（10/10）、`probe-density-experience-v053`（慢速体验）、`probe-guide-dialogue`（6/6）、`probe-note-vs-woodcut`（2/2）、`test-woodcutting`（18/18）、标签样式探针（6/6）全绿；回归 `test-tutorial` / `test-ch1-story` 无功能破坏
 
 ### v0.5.2 移动端点击种田（触控重构，`55e93b8`）
 - **背景**：种田在移动端操作不顺畅——需要摇杆靠近 + 点「使用工具」对准面前格，精准度要求高
