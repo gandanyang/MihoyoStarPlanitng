@@ -156,8 +156,8 @@ async function run() {
     console.log('\n--- W1d: 首次砍树引导 ---');
     await pressEAt(page, 40, 76); // 触发砍树引导对话
     await sleep(400);
-    // 用 advance() 跳过引导对话（3 行），不触发键盘 E 事件
-    await skipStoryDialogue(page, 3);
+    // 用 advance() 跳过引导对话（7 行），不触发键盘 E 事件
+    await skipStoryDialogue(page, 7);
     // 确认引导已消费（dialogueText 应为 null，树未砍）
     tree = await farmTreeInfo(page);
     result('W1d. 砍树引导已触发', tree.dialogue === null, `对话="${tree.dialogue}"`);

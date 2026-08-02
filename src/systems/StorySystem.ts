@@ -211,17 +211,25 @@ export const FOREST_SHARD_DIALOGUE: DialogueLine[] = [
 
 // ============ 引导对话：砍树 + 挖矿 ============
 
-/** 砍树引导（教程完成后第一次砍树触发） */
+/** 砍树引导（教程完成后第一次砍树触发；夏雅引导版） */
 export const WOODCUT_TIP_DIALOGUE: DialogueLine[] = [
-  { speaker: '', color: COLORS.system, text: '（林澈看向庄园里的树木。）' },
-  { speaker: '林澈', color: COLORS.linche, inner: true, text: '这些树……也许能用来修房子。' },
+  { speaker: '', color: COLORS.system, text: '（林澈握着旧斧头，站在庄园的老树下。）' },
+  { speaker: '林澈', color: COLORS.linche, text: '……爷爷留下的庄园，要修的地方还不少。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '这些树正好用得上。砍下来的木材，能卖钱，也能修房子。' },
+  { speaker: '林澈', color: COLORS.linche, text: '你倒是把什么都想好了。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '（笑）在岛上住久了，自然就懂这些了。' },
+  { speaker: '林澈', color: COLORS.linche, inner: true, text: '以前只会删代码，现在倒要学着砍树了。' },
   { speaker: '', color: COLORS.system, text: hint('靠近树，按 [E] 键用斧头砍伐。木材可以卖钱或修建设施。', '靠近树，点「交互」用斧头砍伐。木材可以卖钱或修建设施。') },
 ];
 
-/** 挖矿引导（第一次进入矿洞触发） */
+/** 挖矿引导（第一次进入矿洞触发；夏雅引导版） */
 export const MINE_TIP_DIALOGUE: DialogueLine[] = [
   { speaker: '', color: COLORS.system, text: '（矿洞深处，岩壁上隐约有光芒闪烁。）' },
-  { speaker: '林澈', color: COLORS.linche, inner: true, text: '那些发光的矿石……如果能挖出来，也许能换不少钱。' },
+  { speaker: '林澈', color: COLORS.linche, text: '那些发光的矿石……' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '老张说，矿洞里的石头、铜矿、铁矿，都能卖钱。' },
+  { speaker: '林澈', color: COLORS.linche, text: '（点点头）那我挖一点回去试试。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '小心点。挖矿很费体力，累了就回去歇着。' },
+  { speaker: '林澈', color: COLORS.linche, inner: true, text: '以前加班熬到半夜，也没人跟我说"累了就歇着"。' },
   { speaker: '', color: COLORS.system, text: hint('靠近发光的矿脉，按 [E] 键开采。矿石可以卖给商店老板。', '靠近发光的矿脉，点「交互」开采。矿石可以卖给商店老板。') },
 ];
 
