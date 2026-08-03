@@ -104,8 +104,27 @@ async function run() {
 
     // ============ 15 min: 种第一批植物 ============
     console.log('\n--- 15 min: 种第一批植物 ---');
-    check('农田系统可用（锄地/播种/浇水）', true, 'farm tile system ready');
-    check('作物系统可用', true, 'crop definitions loaded');
+    // 真实断言：走一遍农田状态机（empty→tilled→planted）后恢复原状
+    const farmCycle = await page.evaluate(async () => {
+      const fs = await import('/src/data/FarmState.ts');
+      const before = fs.getTileState(15, 10);
+      fs.setTileState(15, 10, 'tilled');
+      const tilled = fs.getTileState(15, 10);
+      fs.setTileState(15, 10, 'planted');
+      fs.setCrop(15, 10, { cropType: 'radish', plantDay: 1, watered: true });
+      const planted = fs.getTileState(15, 10);
+      fs.setTileState(15, 10, before);
+      fs.setCrop(15, 10, undefined);
+      return { tilled, planted, before };
+    });
+    check('农田系统可用（锄地→播种状态机）', farmCycle.tilled === 'tilled' && farmCycle.planted === 'planted',
+      `tile(15,10) 原状态=${farmCycle.before}`);
+    const cropDefs = await page.evaluate(async () => {
+      const fs = await import('/src/data/FarmState.ts');
+      return { count: Object.keys(fs.CROP_DEFS ?? {}).length, radishName: fs.CROP_DEFS?.radish?.name ?? '' };
+    });
+    check('作物系统可用（4 种作物定义）', cropDefs.count === 4 && cropDefs.radishName === '萝卜',
+      `CROP_DEFS=${cropDefs.count}, 萝卜=${cropDefs.radishName}`);
 
     // ============ 30 min: 遇到 NPC ============
     console.log('\n--- 30 min: 遇到 NPC ---');
@@ -130,8 +149,28 @@ async function run() {
 
     // ============ 45 min: 修复花园 ============
     console.log('\n--- 45 min: 修复花园 ---');
-    check('花园系统存在', true, 'FarmRestore module loaded');
-    check('夏雅在庄园有存在感', true, '通过剧情对话 + 清晨浇水触发');
+    const gardenState = await page.evaluate(() => {
+      const s = window.__game.scene.getScene('farm');
+      const g = s?.gardenRestore;
+      return { exists: !!g, stage: g?.stage ?? -1, debris: g?.debris?.length ?? -1 };
+    });
+    check('花园系统存在（三阶段恢复状态机）', gardenState.exists && gardenState.stage >= 0 && gardenState.stage <= 3,
+      `stage=${gardenState.stage}`);
+    // 夏雅存在感：清晨时段重进农场 → 夏雅在花园浇水（v0.5.3 E1 事件）
+    await page.evaluate(() => window.debug?.setTime?.(7, 0));
+    await page.evaluate(() => {
+      const g = window.__game;
+      const s = g.scene.getScenes(true)[0];
+      if (s) g.scene.stop(s.scene.key);
+      g.scene.start('farm');
+    });
+    await sleep(1800);
+    const xiyaPresence = await page.evaluate(() => {
+      const s = window.__game.scene.getScene('farm');
+      return { exists: !!s?.dawnXiya, visible: !!(s?.dawnXiya?.visible) };
+    });
+    check('夏雅在庄园有存在感（清晨花园浇水 E1）', xiyaPresence.exists && xiyaPresence.visible,
+      `dawnXiya=${xiyaPresence.exists}`);
 
     // ============ 60 min: 综合检查 ============
     console.log('\n--- 60 min: 综合体验 ---');
@@ -144,7 +183,13 @@ async function run() {
     check('NPC 在生活（有日常动作）', npcLiving > 0,
       `${npcLiving} 个 NPC 有日常行为（farm 场景 10:00）`);
 
-    check('花园有恢复进展', true, 'FarmRestore state tracked');
+    const gardenProgress = await page.evaluate(() => {
+      const s = window.__game.scene.getScene('farm');
+      const g = s?.gardenRestore;
+      return { stage: g?.stage ?? -1, debris: g?.debris?.length ?? -1 };
+    });
+    check('花园有恢复进展（三阶段状态跟踪）', gardenProgress.stage >= 0 && gardenProgress.stage <= 3,
+      `stage=${gardenProgress.stage}, debris=${gardenProgress.debris}`);
 
     const ambienceActive = await page.evaluate(() => {
       return window.__ambience?.getActiveMap?.() ?? 'unknown';

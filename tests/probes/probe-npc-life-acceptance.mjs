@@ -94,7 +94,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
         dawnXiya: !!x,
         xiyaPos: x ? { x: Math.round(x.x), y: Math.round(x.y) } : null,
         gardenRestored: !!(s.gardenRestore && s.gardenRestore.stage === 3),
-        gardenFlowers: (() => { const w = s.wallsLayer.tilemap.getLayer('Walls'); return w ? w.data[18][1].index : -1; })(),
+        // 用公开 API 取 (col1,row18) 瓦片（花丛 gid 8），避免依赖 layer.data 内部结构
+        gardenFlowers: (() => { const t = s.wallsLayer?.getTileAt?.(1, 18); return t ? t.index : -1; })(),
       };
     });
     check('上午 夏雅在花园旁', morning.dawnXiya === true, `实际=${morning.dawnXiya}`);

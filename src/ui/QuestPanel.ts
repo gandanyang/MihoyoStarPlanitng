@@ -16,6 +16,7 @@
 import { getQuestState, getQuestObjective } from '../systems/QuestSystem';
 import { getDailyQuests, claimReward, getTalkNpcHomeHint, type DailyQuestInstance } from '../systems/DailyQuestSystem';
 import { play } from '../systems/AudioSystem';
+import { triggerTag } from '../systems/GuiXingRecordSystem';
 
 type OnClose = () => void;
 type OnClaim = () => void;
@@ -168,6 +169,11 @@ function createDom(): void {
     if (claim) {
       if (claimReward(claim)) {
         play('levelup');
+        // 小结算：帮助居民时触发事件标签
+        const quest = getDailyQuests().find((q) => q.id === claim);
+        if (quest && quest.objective.type === 'talk_npc') {
+          triggerTag('help_resident');
+        }
         refresh('daily');
         onClaim?.();
       }

@@ -196,7 +196,7 @@ async function run() {
     await sleep(700);
     const elderText = await dialogueText(page);
     ok('4. 镇长委托对话（接受任务）', elderText.includes('你就是林澈吧'), elderText.substring(0, 40));
-    await skipDialogue(page, 12); // ELDER_QUEST_DIALOGUE 已扩展为 12 行
+    await skipDialogue(page, 11); // ELDER_QUEST_DIALOGUE 11 行（多按自动忽略）
 
     // ==================== 第一章：森林采集 ====================
     await gotoScene(page, 'forest', { x: 328, y: 200 });
@@ -292,7 +292,7 @@ async function run() {
     }
     ok('11. 夏雅立绘头像显示', portraitSrc.includes('xiya.png'), portraitSrc || '<无立绘>');
 
-    await skipDialogue(page, 12); // 推进到选项行（DEMO_ENDING_DIALOGUE 选项行前 14 行，已推进 1 行）
+    await skipDialogue(page, 13); // 推进到选项行（DEMO_ENDING 15 行，选项行前 14 行需 28 次 advance；已推进 1 行，还需 27 次=skipDialogue(13)）
 
     const options = await page.evaluate(() =>
       [...document.querySelectorAll('button')].map(b => b.textContent?.trim()).filter(t => /^\d\./.test(t ?? ''))

@@ -35,6 +35,11 @@ async function run() {
     args: ['--no-sandbox'],
   });
   const page = await browser.newPage();
+  let pass = 0, fail = 0;
+  const check = (name, ok, detail = '') => {
+    console.log(`${ok ? '✅' : '❌'} ${name}${detail ? ' - ' + detail : ''}`);
+    ok ? pass++ : fail++;
+  };
 
   try {
     await page.goto(GAME_URL, { waitUntil: 'networkidle2' });
@@ -60,8 +65,9 @@ async function run() {
       if (!opened) await sleep(250);
     }
     console.log(`P2a. 车站对白打开: ${opened ? '✅' : '❌'}`);
+    check('P2a. 车站对白打开', opened);
     const skipVisibleWhileOpen = await page.evaluate(() => !!document.getElementById('intro-skip-btn'));
-    console.log(`P2b. 对白期间跳过按钮存在: ${skipVisibleWhileOpen ? '✅（预期存在）' : '⚠️'}`);
+    check('P2b. 对白期间跳过按钮存在（预期存在）', skipVisibleWhileOpen);
     // 推进全部 12 行 → 对白结束
     for (let i = 0; i < 25; i++) {
       await page.evaluate(() => {
@@ -76,7 +82,7 @@ async function run() {
       const s = window.__game.scene.getScenes(true)[0];
       return !(s?.storyDialogue?.isOpen?.());
     });
-    console.log(`P2c. 对白结束后跳过按钮已隐藏: ${skipGone && dlgClosed ? '✅' : '❌'}`);
+    check('P2c. 对白结束后跳过按钮已隐藏', skipGone && dlgClosed);
 
     // ===== P0：移动端背包按钮 =====
     await page.evaluate(() => {
@@ -89,7 +95,7 @@ async function run() {
       const b = btns.find(x => x.textContent?.trim() === '背包');
       return b ? { exists: true, display: b.style.display } : { exists: false, display: '' };
     });
-    console.log(`P0a. 移动端背包按钮存在且可见: ${bpBtn.exists && bpBtn.display === 'flex' ? '✅' : '❌'} ${JSON.stringify(bpBtn)}`);
+    check('P0a. 移动端背包按钮存在且可见', bpBtn.exists && bpBtn.display === 'flex', JSON.stringify(bpBtn));
 
     await page.evaluate(() => {
       const btns = [...document.querySelectorAll('#touch-controls div')];
@@ -110,7 +116,7 @@ async function run() {
       const el = document.getElementById('backpack-panel');
       return el?.style.display ?? '';
     });
-    console.log(`P0c. 关闭背包: ${bpClosed === 'none' ? '✅' : '❌'} display=${bpClosed}`);
+    check('P0c. 关闭背包', bpClosed === 'none', `display=${bpClosed}`);
 
     // ===== 提示文案移动端适配 =====
     await page.evaluate(() => window.debug.setStoryStep('get_key'));
@@ -120,7 +126,7 @@ async function run() {
       const h = els.find(x => x.textContent?.includes('「背包」按钮'));
       return h?.textContent ?? '';
     });
-    console.log(`P1h. 移动端提示含「背包」按钮指引: ${hint.includes('「背包」按钮') ? '✅' : '❌'} ${hint.substring(0, 40)}`);
+    check('P1h. 移动端提示含「背包」按钮指引', hint.includes('「背包」按钮'), hint.substring(0, 40));
 
     // 桌面端对比：背包按钮应隐藏
     await page.setViewport({ width: 1024, height: 768 });
@@ -130,7 +136,7 @@ async function run() {
       const b = btns.find(x => x.textContent?.trim() === '背包');
       return b ? b.style.display : 'none';
     });
-    console.log(`P1d. 桌面端背包按钮隐藏: ${bpDesktop === 'none' ? '✅' : '❌'} display=${bpDesktop}`);
+    check('P1d. 桌面端背包按钮隐藏', bpDesktop === 'none', `display=${bpDesktop}`);
 
     // 横屏手机（宽度 ≥800）：背包按钮应仍可见（本次 bug 场景）
     // 用启动即横屏触屏视口的新实例（等价真机加载，避免运行时触屏模拟时序问题）
@@ -170,11 +176,14 @@ async function run() {
       return b ? b.style.display : 'none';
     });
     console.log(`P0e-debug touch: ${JSON.stringify(touchInfo)}`);
-    console.log(`P0e. 横屏(844×390)背包按钮可见: ${bpLandscape === 'flex' ? '✅' : '❌'} display=${bpLandscape}`);
+    check('P0e. 横屏(844×390)背包按钮可见', bpLandscape === 'flex', `display=${bpLandscape}`);
     await bLand.close();
   } finally {
     await browser.close();
   }
+
+  console.log(`\n结果: ${pass} 通过 / ${fail} 失败`);
+  if (fail > 0) process.exit(1);
 }
 
 run().catch(err => { console.error('探针异常:', err); process.exit(1); });

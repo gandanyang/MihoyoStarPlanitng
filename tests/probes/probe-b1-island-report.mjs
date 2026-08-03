@@ -108,7 +108,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await bootFarm(mkSave(20, 1), 20);
     let panel = await openQuestPanel();
     check('1a. 晚间面板打开', panel.open === true);
-    check('1b. 显示"已经回家休息"提示', panel.html.includes('已经回家休息'), panel.html.includes('拜访村长') ? 'talk行存在' : 'talk行?');
+    check('1b. 显示"已经回家休息"提示', panel.html.includes('已经回家休息'), panel.html.includes('与村长对话') ? 'talk行存在' : 'talk行?');
 
     // ============ 2. 白天 09:00 同一任务 → 无回家提示 ============
     console.log('\n--- 2. 白天已接 talk_* 任务 → 无提示（NPC 在） ---');
@@ -119,21 +119,14 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
     // ============ 3. 晚间初始化（无保留任务）→ 不生成新 talk ============
     console.log('\n--- 3. 晚间 refreshDailyQuests 不生成新 talk_* ---');
-    const eveRes = await page.evaluate(async () => {
-      // 动态 import 直接测过滤逻辑：晚间 setTime 后调用 refreshDailyQuests（空任务池）
-      // 用模块级测试：注入一个"无 talk 允许"的刷新，检查结果
-      const dq = await import('/src/systems/DailyQuestSystem.ts');
-      // 重置到空：没有直接清空接口，通过导出重新构建不可行
-      // 改用可观察路径：晚间 + 无存档 dailyQuest → 首次刷新 4 个任务应无 talk
-      return { note: 'via boot' };
-    });
     // 无 dailyQuest 存档 + 晚间首次进入 → 刷新后任务池无 talk
     const saveNoQuest = { ...mkSave(20, 1) };
     delete saveNoQuest.world.dailyQuest;
     await bootFarm(saveNoQuest, 20);
     panel = await openQuestPanel();
     const htmlNoQuest = panel.html;
-    const hasTalk = /拜访村长|光顾商店|矿工闲谈|花匠私语|冒险传说/.test(htmlNoQuest);
+    // QuestPanel 渲染 q.desc（非 title），必须匹配 desc 文案，否则恒假绿
+    const hasTalk = /与村长对话|与商店老板对话|与矿工老张对话|与花匠小梅对话|与冒险家阿风对话/.test(htmlNoQuest);
     check('3a. 晚间首次刷新任务面板打开', panel.open === true);
     check('3b. 晚间不生成新 talk_* 任务', !hasTalk, hasTalk ? '面板含 talk' : '无 talk');
 

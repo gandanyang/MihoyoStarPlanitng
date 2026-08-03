@@ -50,6 +50,7 @@ import {
 } from '../systems/DailyQuestSystem';
 import { InputManager } from '../systems/InputManager';
 import * as AmbienceSystem from '../systems/AmbienceSystem';
+import { triggerTag, getTriggeredTags } from '../systems/GuiXingRecordSystem';
 import { TouchControls, setActionButtonLabel } from '../systems/TouchControls';
 import { ShopPanel } from '../ui/ShopPanel';
 import { BackpackPanel } from '../ui/BackpackPanel';
@@ -1340,6 +1341,7 @@ export class MapScene extends Phaser.Scene {
       setStoryStep('xiya_talk');
       this.storyDialogue!.play(XIYA_DIALOGUE, () => {
         addItem('manor_key', 1);
+        triggerTag('obtain_manor_key');
         advanceStory(); // → get_key
         this.showTutorialHint(this.hintText('→ 按 [B] 键打开背包，选择钥匙使用', '→ 点按右下角「背包」按钮，选择钥匙使用'));
         this.updateHUD();
@@ -2018,6 +2020,7 @@ export class MapScene extends Phaser.Scene {
     if (dx * dx + dy * dy > 48 * 48) return false;
     if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
     markObservatoryComplete();
+    triggerTag('stargaze_night');
     this.storyDialogue.play(
       DEMO_ENDING_DIALOGUE,
       () => this.finishStargaze(),
@@ -2386,13 +2389,14 @@ export class MapScene extends Phaser.Scene {
     if (next === 3) {
       this.buildGardenRestored();
       markRestored('garden');
+      triggerTag('restore_garden');
       // 里程碑入档：恢复完成后立即保存（刷新/重进保持恢复态）
       save({
         x: this.player.x, y: this.player.y,
         scene: this.mapKey, facing: this.player.facing,
         dailyQuest: getDailyQuestSaveData(),
       } as any);
-      setTimeout(() => this.showDialogueText('爷爷的花园又活过来了！🌼'), 1400);
+      setTimeout(() => this.showDialogueText('爷爷曾经走过的路，今天又有人继续走下去了。'), 1400);
       // M1-3 夏雅见证：恢复完成的瞬间，夏雅走到花园旁（无需等待特定时段）
       this.spawnGardenXiya();
     }
@@ -2588,6 +2592,7 @@ export class MapScene extends Phaser.Scene {
       return false;
     }
     addItem('auto_farmer_robot', -1);
+    triggerTag('has_robot');
     const robot = addRobot(pc, pr, DEFAULT_ROBOT_RANGE);
     this.createRobotVisual(robot, true);
     play('levelup');
@@ -2964,6 +2969,8 @@ export class MapScene extends Phaser.Scene {
       // v0.5.3 剧情密度 E2：第一次收获反馈（一次性，夏雅口头肯定，不影响收获本身）
       if (!this.firstHarvestShown) {
         this.firstHarvestShown = true;
+        triggerTag('first_harvest');
+        this.showFloatText(tileCenterX, tileCenterY - 20, '原来等待，并不是没有意义。', '#ffe082');
         if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
         this.storyDialogue.play(FIRST_HARVEST_DIALOGUE, () => {
           this.updateHUD();
@@ -2991,6 +2998,9 @@ export class MapScene extends Phaser.Scene {
     addXp(3, 'plant');
     play('plant');
     this.showFloatText(col * TILE_SIZE + TILE_SIZE / 2, row * TILE_SIZE + TILE_SIZE / 2, `${CROP_DEFS[cropType].icon} ${CROP_DEFS[cropType].name} · 🌱种子-1`, '#ffe082');
+    if (!getTriggeredTags().has('first_plant')) {
+      triggerTag('first_plant');
+    }
     onDQPlant();
     this.updateDailyQuestPanel();
     this.checkTutorialProgress('sow');

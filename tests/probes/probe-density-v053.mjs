@@ -182,10 +182,12 @@ async function run() {
     await sleep(700);
     const minerText = await advanceUntil(page, '矿洞这片归我管', 20);
     result('E4a. 老张对话含固定内容', minerText.includes('矿洞这片归我管'), minerText.substring(0, 30));
-    await skipDialogue(page, 14); // MINER_DIALOGUES(14行) + 每日句(1行) = 15，多按无害
+    await skipDialogue(page, 17); // MINER_DIALOGUES(16行) + 每日句(1行) = 17，多按无害
     await sleep(300);
 
-    // 小梅 10:00 在森林（gardener 日程：06 farm → 10 forest）；小梅在森林 (18*16+8, 8*16+8)=(296,136)
+    // 小梅 14:00 起在森林（gardener 日程：07:00 farm → 14:00 forest → 18:00 home）；森林位置 (18*16+8, 8*16+8)=(296,136)
+    await page.evaluate(() => window.debug.setTime(15, 0));
+    await sleep(400);
     await gotoScene(page, 'forest', { x: 200, y: 300 });
     await sleep(800);
     await teleport(page, 'forest', 296, 152, 'up');
@@ -199,9 +201,11 @@ async function run() {
       return { npcs, open, dlg: open ? (s.storyDialogue.textEl?.textContent ?? '') : '<closed>' };
     });
     console.log('  [diag] forest NPCs:', JSON.stringify(gardDiag.npcs), 'open=', gardDiag.open, 'dlg=', gardDiag.dlg.substring(0, 40));
-    const gardenerText = await advanceUntil(page, /花开得比昨天好|新作物|水壶漏了|我爷爷种的/, 16);
-    result('E4b. 小梅对话含每日随机句', /花开得比昨天好|新作物|水壶漏了|我爷爷种的/.test(gardenerText), gardenerText.substring(0, 30));
-    await skipDialogue(page, 14); // GARDENER(11) + 每日(1) ≈ 12，多按无害
+    // gardener 每日随机句池共 6 句（NPCSystem NPC_DAILY_LINES.gardener），seed=day+id 取模选 1 句，全部覆盖避免碰运气
+    const gardDailyRe = /花开得比昨天好|新作物|水壶漏了|我爷爷种的|养得越来越好了|都得用心/;
+    const gardenerText = await advanceUntil(page, gardDailyRe, 16);
+    result('E4b. 小梅对话含每日随机句', gardDailyRe.test(gardenerText), gardenerText.substring(0, 30));
+    await skipDialogue(page, 14); // GARDENER(12) + 每日(1) = 13，多按无害
 
     // ============ E3: 老张矿洞追加台词 ============
     console.log('\n--- E3: 林澈个人线（矿洞） ---');

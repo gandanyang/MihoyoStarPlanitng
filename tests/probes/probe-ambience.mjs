@@ -108,15 +108,10 @@ async function run() {
     const hist = await page.evaluate(() => window.__ambienceHistory || []);
     console.log(`切到 farm 后 ambience.start 调用历史: ${JSON.stringify(hist)}`);
     // 集成校验：MapScene 通过模块命名空间调用 start → 探针包装的 start 不会被触发，
-    // 改用 getActiveMap() === 'farm' 校验环境音系统确实被 MapScene 激活
-    const activeMap = await page.evaluate(() => window.__ambience.getActiveMap());
-    console.log(`切到 farm 后 activeMap = ${activeMap}`);
-    const integrated = activeMap === 'farm';
-    if (integrated) {
-      check('进入 farm 场景触发 AmbienceSystem.start（集成）', true);
-    } else {
-      check('进入 farm 场景触发 AmbienceSystem.start（待 MapScene 接入后验证）', true, true);
-    }
+    // 用 waitFor 轮询 getActiveMap() === 'farm'，校验 MapScene.create 确实激活了环境音系统
+    const integrated = await waitFor(page, () => page.evaluate(() => window.__ambience?.getActiveMap?.() === 'farm'), 6000);
+    check('进入 farm 场景触发 AmbienceSystem.start（集成）', integrated === true, integrated !== true);
+    console.log(`  集成校验 activeMap='${await page.evaluate(() => window.__ambience?.getActiveMap?.() ?? 'none')}'`);
 
     // 段C：切图后旧环境音停止（SHUTDOWN stop 生效）
     await page.evaluate(() => {
