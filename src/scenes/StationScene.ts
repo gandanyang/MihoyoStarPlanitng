@@ -326,7 +326,7 @@ export class StationScene extends Phaser.Scene {
     sign.fillRoundedRect(sx, sy + 8, 40, 22, 3);
     sign.lineStyle(2, 0x1a3a1a, 1);
     sign.strokeRoundedRect(sx, sy + 8, 40, 22, 3);
-    this.add.text(sx + 20, sy + 19, '星火镇', {
+    this.add.text(sx + 20, sy + 19, '青禾镇', {
       fontSize: '10px',
       color: '#d0c8b0',
     }).setOrigin(0.5);

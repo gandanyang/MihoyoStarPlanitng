@@ -174,11 +174,11 @@ async function run() {
     ok('3b. 车站对白已打开', stationOpen);
     await advanceN(page, 1);
     let stationText = '';
-    for (let i = 0; i < 15 && !stationText.includes('岗位职责将进行重新分配'); i++) {
+    for (let i = 0; i < 15 && !stationText.includes('智能生态部门'); i++) {
       stationText = await dialogueText(page);
-      if (!stationText.includes('岗位职责将进行重新分配')) await sleep(200);
+      if (!stationText.includes('智能生态部门')) await sleep(200);
     }
-    ok('3c. 辞退邮件对白出现', stationText.includes('岗位职责将进行重新分配'), stationText.substring(0, 40));
+    ok('3c. 辞退邮件对白出现', stationText.includes('智能生态部门'), stationText.substring(0, 40));
     await skipDialogue(page, 8); // 跳过剩余车站对白（9 行 - 已推进 1 行）
 
     // 教程完整路径由 test-tutorial.mjs 覆盖，此处直接置为 done
@@ -196,7 +196,7 @@ async function run() {
     await sleep(700);
     const elderText = await dialogueText(page);
     ok('4. 镇长委托对话（接受任务）', elderText.includes('你就是林澈吧'), elderText.substring(0, 40));
-    await skipDialogue(page, 11); // ELDER_QUEST_DIALOGUE 11 行（多按自动忽略）
+    await skipDialogue(page, 11); // ELDER_QUEST_DIALOGUE 10 行（多按自动忽略）
 
     // ==================== 第一章：森林采集 ====================
     await gotoScene(page, 'forest', { x: 328, y: 200 });

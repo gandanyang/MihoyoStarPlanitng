@@ -158,7 +158,7 @@ function buildSchedule(npcId: NpcId): ScheduleEntry[] {
 
 /** 村长：主线对话由 QuestSystem 驱动，此处为兜底台词 */
 const ELDER_DIALOGUES: DialogueLine[] = [
-  { speaker: '村长', color: COLORS.elder, text: '星火镇是个好地方。多和镇上的人聊聊吧。' },
+  { speaker: '村长', color: COLORS.elder, text: '青禾镇是个好地方。多和镇上的人聊聊吧。' },
 ];
 
 /** 商店老板：欢迎 + 买卖引导 */

@@ -148,9 +148,9 @@ async function run() {
     await teleport(page, 'farm', 13 * 16 + 8, 9 * 16 + 8, 'up');
     await pressE(page);
     await sleep(700);
-    // 收获 → FIRST_HARVEST_DIALOGUE："这就是你种出来的东西"
-    const e2Text = await advanceUntil(page, '这就是你种出来的东西', 8);
-    result('E2b. 第一次收获 → 夏雅反馈', e2Text.includes('这就是你种出来的东西'), e2Text.substring(0, 40));
+    // 收获 → FIRST_HARVEST_DIALOGUE："第一次自己种出来？"
+    const e2Text = await advanceUntil(page, '第一次自己种出来', 8);
+    result('E2b. 第一次收获 → 夏雅反馈', e2Text.includes('第一次自己种出来'), e2Text.substring(0, 40));
     await screenshot(page, 'v053-e2-first-harvest');
     await skipDialogue(page, 6);
 
@@ -169,8 +169,8 @@ async function run() {
     await teleport(page, 'farm', 14 * 16 + 8, 9 * 16 + 8, 'up');
     await pressE(page);
     await sleep(700);
-    const e2second = await advanceUntil(page, '这就是你种出来的东西', 4);
-    result('E2d. 第二次收获 → 不重复反馈', !e2second.includes('这就是你种出来的东西'), e2second.substring(0, 30) || '<无该句>');
+    const e2second = await advanceUntil(page, '第一次自己种出来', 4);
+    result('E2d. 第二次收获 → 不重复反馈', !e2second.includes('第一次自己种出来'), e2second.substring(0, 30) || '<无该句>');
     // 对话未打开则关闭可能残留的对话
     await page.evaluate(() => {
       const s = window.__game.scene.getScenes(true)[0];

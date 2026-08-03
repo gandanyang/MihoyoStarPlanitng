@@ -64,7 +64,7 @@ export const MAP_EXITS: Record<string, ExitZone[]> = {
 /** 场景 key → 中文名称（HUD 显示用） */
 export const MAP_NAMES: Record<string, string> = {
   farm: '农场',
-  town: '小镇',
+  town: '青禾镇',
   forest: '森林',
   mine: '矿洞',
   house: '家中',
