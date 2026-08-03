@@ -35,18 +35,21 @@ async function run() {
     await page.keyboard.press('Enter');
     await sleep(1500);
 
-    // 轮询等待手机通知出现 → 点击 → 对话开始
-    let notifClicked = false;
+    // 轮询等待手机通知出现 → 点击直到关闭（v0.7 两页：第 1 击翻页、第 2 击关闭）→ 对话开始
+    let sawNotif = false;
+    let notifClosed = false;
     for (let i = 0; i < 40; i++) {
-      notifClicked = await page.evaluate(() => {
-        const s = window.__game.scene.getScene('station');
-        if (s?.phoneOverlay) { s.phoneOverlay.click(); return true; }
-        return false;
-      });
-      if (notifClicked) break;
-      await sleep(250);
+      const has = await page.evaluate(() => !!window.__game.scene.getScene('station')?.phoneOverlay);
+      if (has) {
+        sawNotif = true;
+        await page.evaluate(() => window.__game.scene.getScene('station')?.phoneOverlay?.click());
+      } else if (sawNotif) {
+        notifClosed = true;
+        break;
+      }
+      await sleep(300);
     }
-    check('手机通知出现并被点击', notifClicked);
+    check('手机通知出现并已关闭（两页）', notifClosed);
 
     // 等对话打开
     let opened = false;

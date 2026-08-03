@@ -223,7 +223,7 @@ async function run() {
       [...document.querySelectorAll('button')].map(b => b.textContent?.trim()).filter(t => /^\d\./.test(t ?? ''))
     );
     result('三选项渲染', options.length === 3, JSON.stringify(options));
-    result('选项 A 为「我会留下的」', options[0]?.includes('我会留下的') === true, options[0] ?? '');
+    result('选项 A 为「至少现在，我想留下来看看」', options[0]?.includes('至少现在') === true, options[0] ?? '');
     await screenshot(page, 'stargaze-options');
 
     // 选择 B：我想先弄清楚爷爷到底在这里经历了什么

@@ -96,7 +96,8 @@ async function run() {
       const body = document.body.textContent ?? '';
       return {
         hintInHouse: window.__game.scene.getScene('house')?.tutorialHint ?? null,
-        bodyHasSleepHint: body.includes('睡觉，结束第一天'),
+        // 用提示条独有前缀判定（E-05 HUD 目标「回屋睡觉，结束第一天」也含该子串，需避开）
+        bodyHasSleepHint: body.includes('回到屋内床前'),
       };
     });
     console.log(`  进屋后: house.tutorialHint=${domHintAfter.hintInHouse ? '存在' : 'null'} body残留=${domHintAfter.bodyHasSleepHint}`);
