@@ -12,9 +12,10 @@
  * 不实现：拖拽、丢弃、排序（MVP 范围）
  */
 
-import { getCoins, addCoins, RADISH_PRICE, TOMATO_PRICE, CORN_PRICE, STRAWBERRY_PRICE, STONE_PRICE, COPPER_PRICE, IRON_PRICE, WOOD_PRICE } from '../data/Economy';
+import { getCoins, addCoins, SELLABLE_ITEMS, hasSellableItems, sellAllSellable } from '../data/Economy';
 import { getNonEmptyItems, itemIconHtml, addItem, ItemType } from '../data/Inventory';
 import { play } from '../systems/AudioSystem';
+import { showConfirmDialog } from './ConfirmDialog';
 
 /** 关店回调 */
 type OnClose = () => void;
@@ -24,18 +25,6 @@ type OnUseKey = () => boolean;
 type OnUseRobot = () => boolean;
 /** 数据变更回调（出售物品后更新 HUD） */
 type OnDataChange = () => void;
-
-/** 可出售物品 → 收购价（仅背包出售的物品；种子/工具/钥匙/碎片/钻石不出售） */
-const SELL_PRICE: Partial<Record<ItemType, number>> = {
-  radish: RADISH_PRICE,
-  tomato: TOMATO_PRICE,
-  corn: CORN_PRICE,
-  strawberry: STRAWBERRY_PRICE,
-  stone: STONE_PRICE,
-  copper: COPPER_PRICE,
-  iron: IRON_PRICE,
-  wood: WOOD_PRICE,
-};
 
 // ===== 模块级单例 =====
 let panelEl: HTMLDivElement | null = null;
@@ -70,14 +59,16 @@ function createDom(): void {
     'background:rgba(0,0,0,0.55);z-index:210;user-select:none;-webkit-user-select:none';
 
   panelEl.innerHTML = `
-    <div style="width:min(400px,90vw);background:#3d3226;border:3px solid #8a6a45;border-radius:10px;padding:18px;color:#fff;font-family:Arial;box-shadow:0 4px 20px rgba(0,0,0,0.6)">
+    <div style="position:relative;width:min(400px,90vw);background:#3d3226;border:3px solid #8a6a45;border-radius:10px;padding:18px;color:#fff;font-family:Arial;box-shadow:0 4px 20px rgba(0,0,0,0.6)">
+      <div id="bp-toast" style="position:absolute;left:50%;top:-2px;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#7ef0a0;font-size:13px;padding:4px 14px;border-radius:6px;display:none;pointer-events:none;white-space:normal;line-height:1.5;text-align:center;z-index:2;"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <span style="font-size:18px;font-weight:bold;color:#ffd700;letter-spacing:1px;">背包</span>
         <span id="bp-coins" style="font-size:14px;color:#ffe082;"></span>
       </div>
       <div id="bp-grid" style="display:flex;flex-wrap:wrap;gap:10px;min-height:80px;margin-bottom:12px;"></div>
       <div style="text-align:center;">
-        <button data-action="close" style="font-size:14px;padding:6px 24px;background:#8a6a45;border:none;border-radius:4px;color:#fff;cursor:pointer;">关闭 (B/Esc)</button>
+        <button data-action="sell-all" style="font-size:14px;padding:6px 20px;background:#c49a2a;border:none;border-radius:4px;color:#fff;cursor:pointer;">全部出售</button>
+        <button data-action="close" style="font-size:14px;padding:6px 24px;background:#8a6a45;border:none;border-radius:4px;color:#fff;cursor:pointer;margin-left:8px;">关闭 (B/Esc)</button>
         <button data-action="return-title" style="font-size:12px;padding:4px 14px;background:#5a4030;border:1px solid #6a5040;border-radius:4px;color:#ccc;cursor:pointer;margin-left:8px;">返回标题</button>
       </div>
     </div>
@@ -107,14 +98,29 @@ function createDom(): void {
     } else if (target.dataset?.action === 'sell') {
       // 背包出售：卖 1 个
       const itemId = target.dataset?.item as ItemType | undefined;
-      if (itemId && SELL_PRICE[itemId] !== undefined) {
-        const price = SELL_PRICE[itemId]!;
+      if (itemId && SELLABLE_ITEMS[itemId] !== undefined) {
+        const price = SELLABLE_ITEMS[itemId]!;
         addItem(itemId, -1);
         addCoins(price);
         play('sell');
         refresh();
         onDataChange?.();
       }
+    } else if (target.dataset?.action === 'sell-all') {
+      // 一键出售：二次确认后卖出全部可售物品
+      if (!hasSellableItems()) {
+        showToast('背包里没有可出售的物品');
+        play('invalid');
+        return;
+      }
+      showConfirmDialog('确认卖出全部可售物品？', () => {
+        const result = sellAllSellable();
+        play('sell');
+        refresh();
+        onDataChange?.();
+        const detail = result.sold.map(s => `${s.name}×${s.count}`).join('、');
+        showToast(`卖出全部，获得 ${result.totalCoins}G<br>${detail}`);
+      });
     }
   });
 
@@ -127,6 +133,18 @@ function createDom(): void {
   });
 }
 
+/** 出售/提示 toast（面板内短暂提示） */
+let toastTimer: ReturnType<typeof setTimeout> | null = null;
+function showToast(msg: string): void {
+  if (!panelEl) return;
+  const t = panelEl.querySelector('#bp-toast') as HTMLElement | null;
+  if (!t) return;
+  t.innerHTML = msg;
+  t.style.display = 'block';
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.style.display = 'none'; }, 1600);
+}
+
 /** 刷新面板内容 */
 function refresh(): void {
   if (!panelEl) return;
@@ -137,6 +155,14 @@ function refresh(): void {
   const coinsEl = panelEl.querySelector('#bp-coins');
   if (coinsEl) {
     coinsEl.innerHTML = `${itemIconHtml('coin', 16)} ${coins}G`;
+  }
+
+  // 一键出售按钮：无可售物品时置灰
+  const sellAllBtn = panelEl.querySelector('[data-action="sell-all"]') as HTMLElement | null;
+  if (sellAllBtn) {
+    const can = hasSellableItems();
+    sellAllBtn.style.opacity = can ? '1' : '0.45';
+    sellAllBtn.style.cursor = can ? 'pointer' : 'not-allowed';
   }
 
   // 物品网格
@@ -161,7 +187,7 @@ function refresh(): void {
     const useBtn = isKey || isRobot
       ? `<button data-action="${isRobot ? 'use-robot' : 'use-key'}" style="margin-top:6px;font-size:12px;padding:4px 12px;background:#6a8a45;border:none;border-radius:4px;color:#fff;cursor:pointer;">${isRobot ? '部署' : '使用'}</button>`
       : '';
-    const sellPrice = SELL_PRICE[item];
+    const sellPrice = SELLABLE_ITEMS[item];
     const sellBtn = sellPrice !== undefined
       ? `<button data-action="sell" data-item="${item}" style="margin-top:6px;font-size:12px;padding:4px 10px;background:#c49a2a;border:none;border-radius:4px;color:#fff;cursor:pointer;">卖 ${sellPrice}G</button>`
       : '';

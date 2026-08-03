@@ -26,9 +26,12 @@ import {
   IRON_PRICE,
   WOOD_PRICE,
   spendCoins,
+  hasSellableItems,
+  sellAllSellable,
 } from '../data/Economy';
 import { addItem, getItemCount, itemIconHtml } from '../data/Inventory';
 import { play } from '../systems/AudioSystem';
+import { showConfirmDialog } from './ConfirmDialog';
 
 /** 商店商品配置 */
 interface ShopItem {
@@ -174,6 +177,9 @@ function createDom(): void {
         <div style="flex:1;background:#4a3626;border-radius:6px;padding:10px;">
           <div style="text-align:center;font-weight:bold;margin-bottom:8px;color:#ffab91;">出售</div>
           <div id="shop-sell" style="font-size:13px;"></div>
+          <div style="text-align:center;margin-top:8px;">
+            <button data-action="sell-all" style="font-size:12px;padding:4px 14px;background:#c49a2a;border:none;border-radius:4px;color:#fff;cursor:pointer;">全部出售</button>
+          </div>
         </div>
         <div style="flex:1;background:#4a3626;border-radius:6px;padding:10px;">
           <div style="text-align:center;font-weight:bold;margin-bottom:8px;color:#a5d6a7;">购买</div>
@@ -193,6 +199,25 @@ function createDom(): void {
     const action = target.dataset?.action;
     if (action === 'close') {
       closePanel();
+      return;
+    }
+    if (action === 'sell-all') {
+      // 一键出售：二次确认后卖出全部可售物品
+      if (!hasSellableItems()) {
+        showToast('背包里没有可出售的物品');
+        play('invalid');
+        return;
+      }
+      showConfirmDialog('确认卖出全部可售物品？', () => {
+        const result = sellAllSellable();
+        play('sell');
+        // 通知每日任务卖出 n 件
+        const total = result.sold.reduce((sum, s) => sum + s.count, 0);
+        onSellCallback?.(total);
+        refresh();
+        const detail = result.sold.map(s => `${s.name}×${s.count}`).join('、');
+        showToast(`卖出全部，获得 ${result.totalCoins}G<br>${detail}`);
+      });
       return;
     }
     const item = SHOP_ITEMS.find(i => i.action === action);
@@ -253,6 +278,14 @@ function refresh(): void {
         <button data-action="${item.action}" style="${canSell ? btnActive : btnDisabled}">卖 ${item.price}G</button>
       </div>`;
     }).join('');
+  }
+
+  // 一键出售按钮：无可售物品时置灰
+  const sellAllBtn = panelEl.querySelector('[data-action="sell-all"]') as HTMLElement | null;
+  if (sellAllBtn) {
+    const can = hasSellableItems();
+    sellAllBtn.style.opacity = can ? '1' : '0.45';
+    sellAllBtn.style.cursor = can ? 'pointer' : 'not-allowed';
   }
 
   // 购买栏

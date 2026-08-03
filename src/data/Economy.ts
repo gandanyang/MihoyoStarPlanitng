@@ -7,6 +7,8 @@
  * 全局模块级单例：金币跨场景保留，刷新页面后重置（同 FarmState 约定）。
  */
 
+import { addItem, getItemCount, getItemDef, ItemType } from './Inventory';
+
 /** 初始金币 */
 const INITIAL_COINS = 100;
 
@@ -63,3 +65,51 @@ export const COPPER_PRICE = 15;
 export const IRON_PRICE = 30;
 /** 木材收购价 */
 export const WOOD_PRICE = 8;
+
+/**
+ * 可出售物品 → 收购价（一键出售用）。
+ * 价格全部复用上方 Economy 常量，与 ShopPanel 现有出售同一价格源，不新增第四价格源。
+ * 不可售（不在表中）：种子/工具（旧锄头/旧水壶/旧斧头）/庄园钥匙/星之碎片/钻石/自动农业机器人。
+ */
+export const SELLABLE_ITEMS: Partial<Record<ItemType, number>> = {
+  radish: RADISH_PRICE,
+  tomato: TOMATO_PRICE,
+  corn: CORN_PRICE,
+  strawberry: STRAWBERRY_PRICE,
+  stone: STONE_PRICE,
+  copper: COPPER_PRICE,
+  iron: IRON_PRICE,
+  wood: WOOD_PRICE,
+};
+
+/** 一键出售结果 */
+export interface SellAllResult {
+  /** 卖出金币总额 */
+  totalCoins: number;
+  /** 已卖物品明细 */
+  sold: { item: ItemType; name: string; count: number; earned: number }[];
+}
+
+/** 是否存在可出售物品（空背包/无可售时按钮禁用或提示） */
+export function hasSellableItems(): boolean {
+  for (const id of Object.keys(SELLABLE_ITEMS) as ItemType[]) {
+    if (getItemCount(id) > 0) return true;
+  }
+  return false;
+}
+
+/** 一键出售：卖出全部可售物品（作物 + 矿石 + 木材），返回总额与明细 */
+export function sellAllSellable(): SellAllResult {
+  const sold: SellAllResult['sold'] = [];
+  let totalCoins = 0;
+  for (const id of Object.keys(SELLABLE_ITEMS) as ItemType[]) {
+    const count = getItemCount(id);
+    if (count <= 0) continue;
+    const price = SELLABLE_ITEMS[id]!;
+    addItem(id, -count);
+    addCoins(price * count);
+    totalCoins += price * count;
+    sold.push({ item: id, name: getItemDef(id).name, count, earned: price * count });
+  }
+  return { totalCoins, sold };
+}
