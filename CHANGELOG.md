@@ -6,6 +6,35 @@
 
 ## [未发布]
 
+### FEATURE-036 自动农业机器人获取（2026-08-04）
+
+> 任务卡：《任务-FEATURE036机器人解锁剧情.md》｜ 方案：《FEATURE-036机器人获取设计.md》路线 A（制作人确认）｜ **A 体验闭环完成**
+
+- **获取链路**：花园恢复（M1-3 restore.garden）→ 花园左上角出现「旧机器人」（锈色视觉 + 标签）→ 靠近按 E 播放 `OLD_ROBOT_DIALOGUE` 修复对白 → 获得 `auto_farmer_robot` 入背包 → 可部署
+- **设计约束遵守**：A/B 类生活事件（不扩世界观真相/不主动提及爷爷回忆）；不新增 StoryStep / 不改主线；不新增存档字段（`oldRobotFixed` 仅内存 flag，刷新后由背包持有态兜底防重复）
+- **修复的交互冲突**：旧机器人初置 (33,4) 与夏雅见证位 (33,6) 相距 2 格会抢交互 → 移至 (28,3)（距 5 格）；`setupOldRobot` 需在恢复完成瞬间调用（同 `spawnGardenXiya` 模式），create 时仅处理刷新重进
+- **验证**：tsc 0 错 ✅ / build ✅ / `probe-bug036-robot-acquire` 11/11 ✅ / 回归 farm-restore 25/25、automation 14/14、test-tutorial 全绿 ✅
+
+### 一键出售功能（背包 + 商店，2026-08-04）
+
+> 任务卡：《任务-一键出售功能.md》（制作人 2026-08-03 立项，P0 体验闭环）｜ 提交 `6d575f3`
+
+- **数据层**（`src/data/Economy.ts`）：新增 `SELLABLE_ITEMS`（可售判定：凡有价物品均可卖）`sellAllSellable()`（批量卖出并返回总额/清单）`hasSellableItems()`；**价格复用 ShopPanel 现有价格，不新增第四价格源**（红线：价格三源未收敛前与现售同价）
+- **不可售**：工具（锄头/水壶/斧头）、钥匙、auto_farmer_robot 机器人、钻石
+- **UI 双入口**：背包面板「全部出售」+ 商店面板「全部出售」；新增共享 `ConfirmDialog`（`src/ui/ConfirmDialog.ts`）二次确认（"确认卖出全部可售物品？"），防误触
+- **反馈**：卖出后 toast 显示获得金币总额 + 已卖物品数；无可售物品时按钮置灰+提示
+- **商店联动**：商店版卖出后调 `onSellCallback(total)` 同步每日任务（卖作物类任务可正常推进）
+- **存档**：无新字段（走既有 addGold / removeItem）
+- **验证**：tsc 0 错 ✅ / build ✅ / `probe-sell-all` 18/18 ✅ / 回归探针（bug012-dailyquest 13/13、farm-restore 25/25、water-splash 5/5、automation 14/14）全绿 ✅
+
+### D-01 农田视觉升级 — 四作物分品种精灵（2026-08-04）
+
+> 任务卡：《docs/design/BatchD-01农田视觉升级验收标准.md》｜ 提交 `79912a6`
+
+- **产出**：`public/assets/sprites/crops.png`（96×128，由 `tools/gen_crops.py` 确定性生成）——萝卜/番茄/玉米/草莓 × 发芽/生长/成熟三态
+- **接线**（`MapScene.ts` / `FarmState`）：成熟地块不再显示通用绿植，改按作物品种显示对应成熟帧；生长中显示发芽/生长帧；gid 语义不变
+- **验证**：tsc 0 错 ✅ / build ✅ / 验收探针 ✅
+
 ### BUG-026 种植体验专项完成（2026-08-03）
 
 > 来源：制作人 2026-08-02 定稿（先反馈，再精度）+ 排查报告《docs/reports/BUG-026种植体验专项排查报告.md》
