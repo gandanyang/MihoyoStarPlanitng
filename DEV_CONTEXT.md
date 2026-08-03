@@ -1013,3 +1013,14 @@ adc229d chore(gitignore): 忽略本机 APK 构建环境配置 tools/local.env.ps
 ## 18.5 当前批次计划（制作人定稿）
 
 Batch A 体验闭环（E-07/E-08 ✅ → 一键出售 ✅ → FEATURE-036 ⏳）→ Batch B Bug 清理（记忆时刻 ✅ → 返回标题 ⏳）→ Batch C 玩家测试 → Batch D 美术（作物精灵 ✅ 进行中）。
+
+## 18.6 OpenCode 派发队列（2026-08-04，公开自助领单）
+
+```
+① FEATURE-036 收尾（回归验证）
+② 返回标题逻辑修复（Batch B：显式 save + scene.start('title')）
+③ 测试轮次 01（Batch C）
+④ 测试后：Batch D 剩余美术 或 v0.7 关系记录系统 Phase 1
+```
+
+完整队列与红线见 docs/制作人控制台.md。
