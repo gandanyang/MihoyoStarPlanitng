@@ -20,7 +20,7 @@ import { isMobileLayout } from '../config';
 const PORTRAIT_MAP: Record<string, string> = {
   林澈: 'assets/portraits/linchen.png',
   夏雅: 'assets/portraits/xiya.png',
-  村长: 'assets/portraits/elder.png',
+ 村长: 'assets/portraits/elder_ai.png',
 };
 
 export class StoryDialogue {
