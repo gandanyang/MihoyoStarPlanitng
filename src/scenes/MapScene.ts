@@ -86,7 +86,7 @@ interface SceneInitData {
 
 /** 农田格子的视觉对象：土地底色 + 作物标记 */
 interface TileVisual {
-  rect: Phaser.GameObjects.Rectangle;
+  plot: Phaser.GameObjects.Image;
   crop: Phaser.GameObjects.Image;
 }
 
@@ -294,6 +294,9 @@ export class MapScene extends Phaser.Scene {
     }
     if (this.mapKey === 'farm' && !this.textures.exists('crops')) {
       this.load.spritesheet('crops', 'assets/sprites/crops.png', { frameWidth: 32, frameHeight: 32 });
+    }
+    if (this.mapKey === 'farm' && !this.textures.exists('farm_plot')) {
+      this.load.spritesheet('farm_plot', 'assets/sprites/farm_plot.png', { frameWidth: 16, frameHeight: 16 });
     }
     // 砍树贴图：树1（阔叶）/树2（松树）/树桩（农场场景）
     if (this.mapKey === 'farm') {
@@ -1652,15 +1655,15 @@ export class MapScene extends Phaser.Scene {
       for (let c = FARM_AREA.col0; c <= FARM_AREA.col1; c++) {
         const cx = c * TILE_SIZE + TILE_SIZE / 2;
         const cy = r * TILE_SIZE + TILE_SIZE / 2;
-        // 土地底色方块（覆盖在 soil 瓦片上）
-        const rect = this.add.rectangle(cx, cy, TILE_SIZE, TILE_SIZE, 0x6b4423, 0.8);
-        rect.setDepth(2);
+        // 可种植土地地块贴图（16×16 五态：耕地/播种/浇水/生长/成熟，覆盖在 soil 瓦片上）
+        const plot = this.add.image(cx, cy, 'farm_plot', 0);
+        plot.setDepth(2);
         // 作物标记（绿色小椭圆，planted/watered/grown 时显示）
         const crop = this.add.image(cx, cy, 'crops', 0);
         crop.setScale(0.5);
         crop.setDepth(3);
         crop.setVisible(false);
-        const visual: TileVisual = { rect, crop };
+        const visual: TileVisual = { plot, crop };
         // 从全局状态恢复显示（场景切换回来时保留已锄/已种地块）
         this.updateTileVisual(c, r, visual);
         this.tileRects.set(`${c},${r}`, visual);
@@ -1678,26 +1681,21 @@ export class MapScene extends Phaser.Scene {
   private updateTileVisual(col: number, row: number, visual: TileVisual): void {
     const state = getTileState(col, row);
     if (state === 'empty') {
-      visual.rect.setVisible(false);
+      visual.plot.setVisible(false);
       visual.crop.setVisible(false);
       return;
     }
-    visual.rect.setVisible(true);
-    // 浇水后土地更深更湿
-    visual.rect.setFillStyle(
-      state === 'watered' ? 0x3d2817 : 0x6b4423,
-      0.85
-    );
-    // 作物标记：planted/watered/grown 显示像素作物
-    const hasCrop = state === 'planted' || state === 'watered' || state === 'grown';
+    visual.plot.setVisible(true);
+    // 五态地块贴图帧：tilled=0 / planted=1 / watered=2 / growing=3 / grown=4
+    visual.plot.setFrame(state === 'tilled' ? 0 : state === 'planted' ? 1 : state === 'watered' ? 2 : 4);
+    // 作物标记：planted/watered 显示像素作物（grown 由成熟地块贴图表达，避免双萝卜）
+    const hasCrop = state === 'planted' || state === 'watered';
     visual.crop.setVisible(hasCrop);
     if (hasCrop) {
       const cropData = getCrop(col, row);
       const cropType = cropData?.cropType ?? 'radish';
       const cropIdx = CROP_TYPES.indexOf(cropType);
-      if (state === 'grown') {
-        visual.crop.setFrame(cropIdx * 3 + 2);
-      } else if (state === 'watered') {
+      if (state === 'watered') {
         visual.crop.setFrame(cropIdx * 3 + 1);
       } else {
         visual.crop.setFrame(cropIdx * 3 + 0);
