@@ -115,7 +115,7 @@ async function run() {
       if (btn) btn.click();
     });
     await sleep(1200);
-    await skipDialogue(page, 6); // GATE_OPENED_DIALOGUE 6 行（v0.7）
+    await skipDialogue(page, 9); // GATE_OPENED_DIALOGUE 9 行（v0.8+E-07）
     info = await sceneInfo(page);
     console.log(`5. 使用钥匙开门 → 步骤=${info.step}${info.step === 'clear_land' ? ' ✅' : ' ❌'}`);
 
@@ -140,7 +140,7 @@ async function run() {
       await teleport(page, 'farm', x, y, 'up');
       await pressInteract(page);
     }
-    await skipDialogue(page, 3); // WATER_CROPS_DIALOGUE 3 行（v0.7）
+    await skipDialogue(page, 7); // WATER_CROPS_DIALOGUE 7 行（E-08）
     info = await sceneInfo(page);
     console.log(`8. 播种×3 → 浇水教学 → 步骤=${info.step}${info.step === 'water_crops' ? ' ✅' : ' ❌'}`);
 

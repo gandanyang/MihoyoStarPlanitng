@@ -186,7 +186,7 @@ async function run() {
     });
     result('6a. 点击「使用」钥匙', keyClicked);
     await sleep(500);
-    await waitAndSkipDialogue(page, 6); // GATE_OPENED_DIALOGUE 6 行（v0.7 旧锄头）
+    await waitAndSkipDialogue(page, 9); // GATE_OPENED_DIALOGUE 9 行（v0.8+E-07 现实+情感动机）
 
     info = await sceneInfo(page);
     const afterKey = await page.evaluate(() => {
@@ -229,7 +229,7 @@ async function run() {
       await pressE(page);
       await sleep(400);
     }
-    await waitAndSkipDialogue(page, 3); // WATER_CROPS_DIALOGUE 3 行（v0.7 生活化引导）
+    await waitAndSkipDialogue(page, 7); // WATER_CROPS_DIALOGUE 7 行（E-08 金币循环意义）
 
     info = await sceneInfo(page);
     result('9. 播种完成 → 浇水教学', info.step === 'water_crops', `步骤=${info.step}`);

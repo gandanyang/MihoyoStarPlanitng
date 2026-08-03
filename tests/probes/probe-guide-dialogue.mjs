@@ -122,7 +122,7 @@ async function run() {
     await pressBackpack(page);
     await page.evaluate(() => { const b = document.querySelector('button[data-action="use-key"]'); if (b) b.click(); });
     await sleep(1200);
-    await skipDialogue(page, 7);
+    await skipDialogue(page, 9); // GATE_OPENED_DIALOGUE 9 行（E-07 叠加）
     info = await sceneInfo(page);
     console.log(`3. 开门 → 步骤=${info.step}${info.step === 'clear_land' ? ' ✅' : ' ❌'}`);
 
@@ -143,12 +143,12 @@ async function run() {
       await teleport(page, 'farm', x, y, 'up');
       await pressInteract(page);
     }
-    await skipDialogue(page, 6);
+    await skipDialogue(page, 7); // WATER_CROPS_DIALOGUE 7 行（E-08）
     for (const [x, y] of tillSpots) {
       await teleport(page, 'farm', x, y, 'up');
       await pressInteract(page);
     }
-    await skipDialogue(page, 7);
+    await skipDialogue(page, 7); // EVENING_DIALOGUE 7 行
     info = await sceneInfo(page);
     console.log(`5. 锄地播种浇水 → 步骤=${info.step}${info.step === 'evening_talk' ? ' ✅' : ' ❌'}`);
 

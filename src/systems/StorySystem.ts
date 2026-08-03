@@ -78,9 +78,12 @@ export const XIYA_DIALOGUE: DialogueLine[] = [
   { speaker: '', color: COLORS.system, text: hint('获得物品：【庄园钥匙】  按 [B] 键打开背包，使用钥匙打开大门。', '获得物品：【庄园钥匙】  点按右下角「背包」按钮，使用钥匙打开大门。') },
 ];
 
-/** 开门后 → 整理庄园（v0.7 旧锄头+祖孙情感） */
+/** 开门后 → 整理庄园（v0.7 旧锄头+祖孙情感；E-07 现实动机+情感动机叠加） */
 export const GATE_OPENED_DIALOGUE: DialogueLine[] = [
   { speaker: '林澈', color: COLORS.linche, text: '……比我以为的还要荒。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '这里以前不是这样的。' },
+  { speaker: '林澈', color: COLORS.linche, text: '爷爷一个人打理这么大的地方？' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '嗯。他说，只要还有人愿意住下来，这里就不会荒废。' },
   { speaker: '夏雅', color: COLORS.xiya, text: '旧了点，但还能用。你爷爷当年就是用这把锄头，把这片地一锄一锄开出来的。' },
   { speaker: '林澈', color: COLORS.linche, text: '他从来没跟我说过这些。' },
   { speaker: '夏雅', color: COLORS.xiya, text: '有些事，要等你自己回来了，才会知道。' },
@@ -131,9 +134,13 @@ export const SOW_SEEDS_DIALOGUE: DialogueLine[] = [
   { speaker: '', color: COLORS.system, text: hint('按 [R] 键切换到萝卜种子，然后对着锄过的土地按 [E] 播种。播种 3 块土地。', '对着锄过的土地点「交互」播种萝卜（默认种子）。播种 3 块土地。') },
 ];
 
-/** 播种完成 → 浇水（v0.7 生活化引导） */
+/** 播种完成 → 浇水（v0.7 生活化引导；E-08 金币循环意义：卖钱→修庄园） */
 export const WATER_CROPS_DIALOGUE: DialogueLine[] = [
   { speaker: '夏雅', color: COLORS.xiya, text: '种下去，就得天天来看它。你爷爷说，庄稼最怕被忘记。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '种下去了，接下来就等它长大。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '庄园还有不少地方需要修，等收成以后，可以拿去镇上的店换些钱。' },
+  { speaker: '林澈', color: COLORS.linche, text: '卖掉？' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '嗯。留下需要的，换成需要的东西，这里才能慢慢恢复起来。' },
   { speaker: '', color: COLORS.system, text: '获得物品：【旧水壶】' },
   { speaker: '', color: COLORS.system, text: hint('对已播种的土地按 [E] 键浇水。为所有作物浇水。', '对已播种的土地点「交互」浇水。为所有作物浇水。') },
 ];
