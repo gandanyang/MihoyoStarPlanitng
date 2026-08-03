@@ -31,12 +31,17 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+# 加密后的 API Key 密文（DPAPI 当前用户加密，切勿提交；离开本机账号无法解密）
+tools/.env.enc
 # 本机 APK 构建环境配置（每台机器路径不同，切勿入库）
 tools/local.env.ps1
 tools/local.env.sh
 
 # 浏览器自动化测试截图（测试产物，不入库）
 test-screenshots/
+
+# 临时生成目录（AI 生图产物等，正式入库请移入 assets/docs 对应目录）
+tmp/
 
 # Capacitor/Android 构建产物
 android/app/build/
