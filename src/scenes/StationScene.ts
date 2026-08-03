@@ -513,6 +513,9 @@ export class StationScene extends Phaser.Scene {
     this.cameras.main.fadeIn(300, 0, 0, 0);
     // 进入可玩状态
     this.canMove = true;
+    // 对话进行中跳过开场：静默关闭对话（reset 不触发 onComplete），
+    // 防止对话完成回调再 advanceStory 使 storyStep 越过 arrive_manor → 出站分流误判跳过 gate
+    if (this.storyDialogue.isOpen()) this.storyDialogue.reset();
     setStoryStep('station_move');
     this.showMoveHint();
   }

@@ -56,7 +56,19 @@ export function initAndroidBackHandler(game: Phaser.Game): void {
         return;
       }
       const exit = MAP_EXITS[scene.scene.key]?.find((e) => e.target === to);
-      game.scene.start(to, { spawn: exit?.spawn ?? FALLBACK_SPAWN });
+      const target = { spawn: exit?.spawn ?? FALLBACK_SPAWN };
+      // 回退切换先淡出再切（与正常出口切图一致），避免返回手势/左滑触发时硬切黑屏窗口
+      let started = false;
+      let timer: ReturnType<typeof setTimeout> | null = null;
+      const go = (): void => {
+        if (started) return;
+        started = true;
+        if (timer) clearTimeout(timer);
+        game.scene.start(to, target);
+      };
+      timer = setTimeout(go, 1500); // 兜底：fade 事件异常时 1.5s 后仍切换
+      scene.cameras.main.fadeOut(250, 0, 0, 0);
+      scene.cameras.main.once('camerafadeoutcomplete', go);
       return;
     }
 

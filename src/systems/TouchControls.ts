@@ -223,7 +223,7 @@ function layoutControls(): void {
   const host = document.getElementById('game-container');
   const canvasW = host?.clientWidth ?? innerWidth;
   const gapX = Math.max(0, (innerWidth - canvasW) / 2);
-  if (joystickEl) joystickEl.style.left = `${Math.max(16, gapX - 130)}px`;
+  if (joystickEl) joystickEl.style.left = `${Math.max(48, gapX - 130)}px`;
   if (questBtn) questBtn.style.left = `${Math.max(16, gapX - 58)}px`;
   if (mainBtn) mainBtn.style.right = `${Math.max(16, gapX - 74)}px`;
   if (backpackBtn) backpackBtn.style.right = `${Math.max(16, gapX - 74)}px`;
