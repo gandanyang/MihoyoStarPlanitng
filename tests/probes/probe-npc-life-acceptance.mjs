@@ -94,12 +94,12 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
         dawnXiya: !!x,
         xiyaPos: x ? { x: Math.round(x.x), y: Math.round(x.y) } : null,
         gardenRestored: !!(s.gardenRestore && s.gardenRestore.stage === 3),
-        // 用公开 API 取 (col1,row18) 瓦片（花丛 gid 8），避免依赖 layer.data 内部结构
-        gardenFlowers: (() => { const t = s.wallsLayer?.getTileAt?.(1, 18); return t ? t.index : -1; })(),
+        // 用公开 API 取 (col28,row4) 瓦片（花丛 gid 8），避免依赖 layer.data 内部结构
+        gardenFlowers: (() => { const t = s.wallsLayer?.getTileAt?.(28, 4); return t ? t.index : -1; })(),
       };
     });
     check('上午 夏雅在花园旁', morning.dawnXiya === true, `实际=${morning.dawnXiya}`);
-    check('上午 夏雅位置在花园(1,21)', morning.xiyaPos && morning.xiyaPos.x === 24, `实际=${JSON.stringify(morning.xiyaPos)}`);
+    check('上午 夏雅位置在花园(33,4)', morning.xiyaPos && morning.xiyaPos.x === 536, `实际=${JSON.stringify(morning.xiyaPos)}`);
     check('上午 花园已恢复(花丛gid8)', morning.gardenRestored === true && morning.gardenFlowers === 8, `实际=${JSON.stringify(morning)}`);
     await page.screenshot({ path: join(SHOT_DIR, 'morning-xiya-garden.png') });
     console.log('  📸 morning-xiya-garden.png');

@@ -194,7 +194,7 @@ export class MapScene extends Phaser.Scene {
   private testBot: Phaser.GameObjects.Ellipse | null = null;
   private testBotLabel: Phaser.GameObjects.Text | null = null;
   private testBotPos: { x: number; y: number } = { x: 0, y: 0 };
-  // M1-3 爷爷旧花园恢复点（farm 左下角木屋旁）：三阶段清理交互状态
+  // M1-3 爷爷旧花园恢复点（farm 农田右上方 cols 28-32 rows 4-7）：三阶段清理交互状态
   private gardenRestore: {
     /** 0=未清理 1=已清倒木 2=已清破花架 3=已恢复 */
     stage: number;
@@ -890,9 +890,9 @@ export class MapScene extends Phaser.Scene {
     if (t.hour < 6 || t.hour >= 8) return;
     if (this.dawnXiyaDay === t.day) return;
 
-    // v0.6 NPC 生活化 P0：清晨夏雅在花园浇水（位置改到花园旁 col 1, row 21，非原木屋旁）
-    const dx = 1 * TILE_SIZE + TILE_SIZE / 2;
-    const dy = 21 * TILE_SIZE + TILE_SIZE / 2;
+    // v0.6 NPC 生活化 P0：清晨夏雅在花园浇水（花园右上角外 col 33, row 4，与见证位错开）
+    const dx = 33 * TILE_SIZE + TILE_SIZE / 2;
+    const dy = 4 * TILE_SIZE + TILE_SIZE / 2;
     this.dawnXiya = this.add.sprite(dx, dy, 'npc_xiya');
     this.dawnXiya.setScale(0.5).setDepth(5);
     this.dawnXiyaLabel = this.add.text(dx, dy - 14, '夏雅', {
@@ -2269,10 +2269,9 @@ export class MapScene extends Phaser.Scene {
   // ============ M1-3 爷爷旧花园恢复点 ============
 
   /**
-   * 初始化爷爷旧花园恢复点（farm 木屋左侧 col 1 / rows 18-22）。
-   * 注意：实际地图木屋石墙（Walls gid 3 碰撞）在 col 2（rows 19-23），
-   * 花园可用空间仅 col 1 一列，交互锚点必须选在可走格、且距床铺格（gid 6）≥2 格，
-   * 否则 tryInteract 的床铺分支（优先于花园分支）会拦截按 E。
+   * 初始化爷爷旧花园恢复点（farm 农田右上方 cols 28-32 / rows 4-7）。
+   * 注意：区域全部为草地（Ground gid 1）、Walls 无碰撞，玩家可通行；
+   * 交互锚点选区域中心（col 30, row 5）可走格。
    * 恢复前：荒土瓦片（gid 2）+ 倒木/破花架/荒草（Graphics）
    * 恢复后：花丛（gid 8）+ 小路（gid 7）+ 蝴蝶
    * 状态持久化：FarmRestore.isRestored('garden')，刷新/重进保持恢复态。
@@ -2286,8 +2285,8 @@ export class MapScene extends Phaser.Scene {
       debris: [],
       butterflies: [],
       mark: null,
-      // 区域中心（col 1, row 20）作交互基准：可走格，距床格 (3,20) 两格
-      pos: { x: 1 * T + T / 2, y: 20 * T + T / 2 },
+      // 区域中心（col 30, row 5）作交互基准：可走格，距农田/出口均无碰撞依赖
+      pos: { x: 30 * T + T / 2, y: 5 * T + T / 2 },
     };
     if (restored) {
       this.buildGardenRestored();
@@ -2301,15 +2300,17 @@ export class MapScene extends Phaser.Scene {
     const g = this.gardenRestore;
     if (!g) return;
     const T = TILE_SIZE;
-    // 荒土（gid 2）：col 1, rows 18-22（col 2 是木屋石墙，不可占用）
-    for (let r = 18; r <= 22; r++) {
-      this.groundLayer.putTileAt(2, 1, r);
+    // 荒土（gid 2）：农田右上方 cols 28-32, rows 4-7（全草地可走，远离木屋/农田）
+    for (let r = 4; r <= 7; r++) {
+      for (let c = 28; c <= 32; c++) {
+        this.groundLayer.putTileAt(2, c, r);
+      }
     }
     // 组1 倒木：横躺木段 ×2
     const log = this.add.graphics();
     log.fillStyle(0x8d6e4a, 1);
     log.fillRoundedRect(-9, -3, 18, 6, 3);
-    log.setPosition(1 * T + T / 2, 18 * T + T / 2);
+    log.setPosition(29 * T + T / 2, 5 * T + T / 2);
     log.setRotation(-0.25);
     log.setDepth(3);
     // 组2 破花架：歪斜木架（两竖 + 横梁）
@@ -2318,7 +2319,7 @@ export class MapScene extends Phaser.Scene {
     frame.fillRect(-1, -7, 2, 14);
     frame.fillRect(5, -7, 2, 14);
     frame.fillRect(-1, -7, 8, 2);
-    frame.setPosition(1 * T + T / 2, 21 * T + T / 2);
+    frame.setPosition(31 * T + T / 2, 4 * T + T / 2);
     frame.setRotation(0.3);
     frame.setDepth(3);
     // 组3 荒草：绿色短线 ×5
@@ -2327,7 +2328,7 @@ export class MapScene extends Phaser.Scene {
     for (let i = 0; i < 5; i++) {
       weeds.fillRect(-12 + i * 6, 0, 1, 4 + (i % 3) * 2);
     }
-    weeds.setPosition(1 * T + T / 2, 22 * T + T / 2);
+    weeds.setPosition(30 * T + T / 2, 6 * T + T / 2);
     weeds.setDepth(3);
     g.debris = [log, frame, weeds];
     // 交互提示标记
@@ -2339,17 +2340,19 @@ export class MapScene extends Phaser.Scene {
   /** 恢复后视觉：清除荒土 → 花丛 + 小路 + 蝴蝶 */
   private buildGardenRestored(): void {
     const T = TILE_SIZE;
-    // 荒土（gid 2）→ 草地（gid 1）：col 1, rows 18-22
-    for (let r = 18; r <= 22; r++) {
-      this.groundLayer.putTileAt(1, 1, r);
+    // 荒土（gid 2）→ 草地（gid 1）：cols 28-32, rows 4-7
+    for (let r = 4; r <= 7; r++) {
+      for (let c = 28; c <= 32; c++) {
+        this.groundLayer.putTileAt(1, c, r);
+      }
     }
-    // 小路（gid 7）：col 1, rows 19-21
-    for (let r = 19; r <= 21; r++) {
-      this.groundLayer.putTileAt(7, 1, r);
+    // 小路（gid 7）：下缘一行 row 7, cols 28-32（衔接农田方向）
+    for (let c = 28; c <= 32; c++) {
+      this.groundLayer.putTileAt(7, c, 7);
     }
-    // 花丛（gid 8）：col 1 交错 3 朵（不可放 col 2，会覆盖木屋石墙 gid 3 破坏碰撞）
+    // 花丛（gid 8）：区域内交错 6 朵（全在草地空地，无碰撞）
     const flowerSpots: [number, number][] = [
-      [1, 18], [1, 20], [1, 22],
+      [28, 4], [30, 4], [32, 4], [29, 5], [31, 5], [29, 6],
     ];
     for (const [c, r] of flowerSpots) {
       this.wallsLayer.putTileAt(8, c, r);
@@ -2360,10 +2363,10 @@ export class MapScene extends Phaser.Scene {
       this.gardenRestore.mark = null;
     }
     // 蝴蝶 ×2（花丛间飞）
-    this.createButterfly(1 * T + T / 2, 18 * T + T / 2);
-    this.createButterfly(1 * T + T / 2, 22 * T + T / 2);
+    this.createButterfly(29 * T + T / 2, 4 * T + T / 2);
+    this.createButterfly(31 * T + T / 2, 6 * T + T / 2);
 
-    // 制作人反馈：花圃在左下角角落，静态瓦片花太小看不清 → 动态花精灵（摆动）+ 暖色光斑提亮
+    // 制作人反馈：静态瓦片花太小看不清 → 动态花精灵（摆动）+ 暖色光斑提亮
     if (!this.textures.exists('tiles_fs')) {
       const tilesImg = this.textures.get('tiles').getSourceImage() as HTMLImageElement;
       this.textures.addSpriteSheet('tiles_fs', tilesImg, {
@@ -2387,7 +2390,7 @@ export class MapScene extends Phaser.Scene {
     const glow = this.add.graphics();
     glow.fillStyle(0xffeec8, 0.18);
     glow.fillCircle(0, 0, 22);
-    glow.setPosition(1 * T + T / 2, 20 * T + T / 2);
+    glow.setPosition(30 * T + T / 2, 5 * T + T / 2);
     glow.setDepth(2);
     this.tweens.add({
       targets: glow,
@@ -2457,15 +2460,15 @@ export class MapScene extends Phaser.Scene {
   }
 
   /**
-   * M1-3 夏雅见证：花园恢复完成后，夏雅在花园旁出现（col 2, row 20 东侧空地），
+   * M1-3 夏雅见证：花园恢复完成后，夏雅在花园旁出现（col 33, row 6 右侧空地），
    * 玩家靠近按 E 播放 GARDEN_RESTORED_XIYA_DIALOGUE（生活记忆对白，A/B 类，无任务/存档字段）。
    * 一次性：触发后销毁，跨天/重进不重复（依赖 isRestored('garden') 已在存档）。
    */
   private spawnGardenXiya(): void {
     if (this.mapKey !== 'farm' || this.gardenXiya) return;
     const T = TILE_SIZE;
-    const dx = 2 * T + T / 2;
-    const dy = 20 * T + T / 2;
+    const dx = 33 * T + T / 2;
+    const dy = 6 * T + T / 2;
     this.gardenXiya = this.add.sprite(dx, dy, 'npc_xiya');
     this.gardenXiya.setScale(0.5).setDepth(5);
     this.gardenXiya.setFlipX(true);

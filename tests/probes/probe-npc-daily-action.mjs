@@ -7,7 +7,7 @@
  *      - 下午(14:00)：miner=sort_wood（老张整理木材）
  *      - 晚间(19:00)：elder=patrol（村长巡查）
  *   2. 渲染层：进入对应场景后 NPC sprite 的 idleTween 生效（动作在播放）
- *   3. E1 夏雅清晨在花园旁(1,21) + 浇水 tween
+ *   3. E1 夏雅清晨在花园旁(33,4) + 浇水 tween
  *   4. 无运行时错误
  *
  * 前置：dev server；node probe-npc-daily-action.mjs
@@ -167,7 +167,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     });
     check('晚间17:00 村长在 town 且 action=patrol', d.elder && d.elder.action === 'patrol', `实际=${JSON.stringify(d.elder)}`);
 
-    // ===== 3. E1 夏雅清晨在花园旁(1,21)浇水 =====
+    // ===== 3. E1 夏雅清晨在花园旁(33,4)浇水 =====
     await page.evaluate(() => window.debug.setTime(7, 0));
     await sleep(300);
     await page.evaluate(() => {
@@ -186,7 +186,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       };
     });
     check('清晨07:00 夏雅在花园旁出现', d.dawnXiya === true, `实际=${d.dawnXiya}`);
-    check('夏雅位置在花园(1,21)中心附近', d.pos && d.pos.x === 24 && d.pos.y >= 344 && d.pos.y <= 346, `实际=${JSON.stringify(d.pos)}`);
+    check('夏雅位置在花园(33,4)中心附近', d.pos && d.pos.x === 536 && d.pos.y >= 72 && d.pos.y <= 74, `实际=${JSON.stringify(d.pos)}`);
 
     // 4. 运行时错误
     const realErrors = errors.filter(e =>
