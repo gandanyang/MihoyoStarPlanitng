@@ -5,7 +5,7 @@
  */
 
 /** 物品类型 */
-export type ItemType = 'radish' | 'tomato' | 'corn' | 'strawberry' | 'radish_seed' | 'tomato_seed' | 'corn_seed' | 'strawberry_seed' | 'star_shard' | 'diamond' | 'stone' | 'copper' | 'iron' | 'manor_key' | 'old_hoe' | 'old_watering_can' | 'old_axe' | 'wood';
+export type ItemType = 'radish' | 'tomato' | 'corn' | 'strawberry' | 'radish_seed' | 'tomato_seed' | 'corn_seed' | 'strawberry_seed' | 'star_shard' | 'diamond' | 'stone' | 'copper' | 'iron' | 'manor_key' | 'old_hoe' | 'old_watering_can' | 'old_axe' | 'wood' | 'auto_farmer_robot';
 
 /** 物品定义 */
 export interface ItemDef {
@@ -37,6 +37,7 @@ export const ITEM_DEFS: Record<ItemType, ItemDef> = {
   old_watering_can: { id: 'old_watering_can', name: '旧水壶', desc: '给作物浇水用的旧水壶。', icon: '🚿' },
   old_axe: { id: 'old_axe', name: '旧斧头', desc: '一把生锈的斧头，砍几棵树应该没问题。', icon: '🪓' },
   wood: { id: 'wood', name: '木材', desc: '砍树获得的木材，可用于建筑或出售。', icon: '🪵' },
+  auto_farmer_robot: { id: 'auto_farmer_robot', name: '自动农业机器人', desc: '放置在农田附近，每天清晨自动浇水、自动收获成熟作物。', icon: '🤖' },
 };
 
 /** 库存数据：物品类型 → 数量 */
@@ -59,6 +60,7 @@ const inventory: Record<ItemType, number> = {
   old_watering_can: 0,
   old_axe: 0,
   wood: 0,
+  auto_farmer_robot: 0,
 };
 
 /** 读取某物品数量 */

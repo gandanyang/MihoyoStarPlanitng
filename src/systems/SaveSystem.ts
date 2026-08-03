@@ -33,6 +33,7 @@ import { getRestoreEntries, restoreRestoreEntries } from '../data/FarmRestore';
 import { getTime, setTimeFull } from '../data/TimeSystem';
 import { getStamina, setStamina as restoreStamina } from '../data/Stamina';
 import { getMinedOreIds, restoreMinedOres } from '../data/MineState';
+import { getAutomationSave, restoreAutomation, type RobotData } from './AutomationSystem';
 import { getStoryStep, setStoryStep, isCh1TownIntroDone, markCh1TownIntroDone, STORY_STEPS, type StoryStep } from '../systems/StorySystem';
 import { getQuestState, setQuestState, type QuestState } from '../systems/QuestSystem';
 import { getDailyQuestSaveData, restoreDailyQuests, type DailyQuestSaveData } from '../systems/DailyQuestSystem';
@@ -78,6 +79,8 @@ export interface SaveData {
     trees: [string, TreeState][];
     /** M1-3 环境恢复点状态（可选，旧档无此字段视为全部未恢复） */
     restore?: Record<string, boolean>;
+    /** 自动化设备（可选，旧档无此字段视为无机器人） */
+    automation?: { robots: RobotData[] };
   };
   /** 剧情进度 */
   story: {
@@ -137,6 +140,7 @@ export function save(player: {
       crops: getAllCropEntries(),
       trees: getAllTreeEntries(),
       restore: getRestoreEntries(),
+      automation: getAutomationSave(),
     },
     story: {
       storyStep: getStoryStep(),
@@ -249,6 +253,13 @@ function sanitize(data: SaveData): void {
       q.claimed = !!q.claimed;
     }
   }
+  // 自动化设备：robots 内非法数值降级为安全默认（不影响旧档）
+  if (data.farm.automation && Array.isArray(data.farm.automation.robots)) {
+    for (const r of data.farm.automation.robots) {
+      if (r && typeof r.col === 'number' && Number.isFinite(r.col)) r.col = Math.max(0, Math.floor(r.col));
+      if (r && typeof r.row === 'number' && Number.isFinite(r.row)) r.row = Math.max(0, Math.floor(r.row));
+    }
+  }
 }
 
 /**
@@ -278,6 +289,7 @@ export function apply(data: SaveData): void {
   restoreCropEntries(data.farm.crops as [string, CropData][]);
   restoreTreeEntries((data.farm.trees as [string, TreeState][]) ?? []);
   restoreRestoreEntries(data.farm.restore);
+  restoreAutomation(data.farm.automation);
   // 剧情
   setStoryStep(data.story.storyStep ?? 'done');
   if (data.story.ch1TownIntroDone) markCh1TownIntroDone();

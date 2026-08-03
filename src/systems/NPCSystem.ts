@@ -93,11 +93,11 @@ const VIRTUAL_HOME_POSITION = { x: 0, y: 0 };
  *   - 神秘少女保留森林出现 + 增加隐藏时段（避免全天固定遇见）
  */
 function buildSchedule(npcId: NpcId): ScheduleEntry[] {
-  // 村长：晨起在家 → 上午下午镇上办公 → 晚归
+  // 村长：晨起在家 → 上午下午镇上办公 → 晚归（18:00 后归村巡查）
   if (npcId === 'elder') {
     return [
       { time: '06:00', location: 'home', ...VIRTUAL_HOME_POSITION },
-      { time: '08:00', location: 'town', ...SPOTS.town.elder },
+      { time: '08:00', location: 'town', ...SPOTS.town.elder, action: 'patrol' },
       { time: '18:00', location: 'home', ...VIRTUAL_HOME_POSITION },
     ];
   }
@@ -105,7 +105,7 @@ function buildSchedule(npcId: NpcId): ScheduleEntry[] {
   if (npcId === 'shopkeeper') {
     return [
       { time: '06:00', location: 'home', ...VIRTUAL_HOME_POSITION },
-      { time: '08:00', location: 'town', ...SPOTS.town.shopkeeper },
+      { time: '08:00', location: 'town', ...SPOTS.town.shopkeeper, action: 'open_shop' },
       { time: '18:00', location: 'home', ...VIRTUAL_HOME_POSITION },
     ];
   }
@@ -120,20 +120,21 @@ function buildSchedule(npcId: NpcId): ScheduleEntry[] {
       { time: '20:00', location: 'home', ...VIRTUAL_HOME_POSITION },
     ];
   }
-  // 矿工老张：晨起在家 → 上午下午矿洞 → 傍晚镇上喝酒 → 晚归
+  // 矿工老张：晨起在家 → 上午矿洞 → 下午矿洞外整理木材 → 傍晚镇上 → 晚归
   if (npcId === 'miner') {
     return [
       { time: '06:00', location: 'home', ...VIRTUAL_HOME_POSITION },
-      { time: '08:00', location: 'mine', ...SPOTS.mine.miner },
+      { time: '08:00', location: 'mine', ...SPOTS.mine.miner, action: 'sort_wood' },
+      { time: '14:00', location: 'mine', ...SPOTS.mine.miner, action: 'sort_wood' },
       { time: '18:00', location: 'town', ...SPOTS.town.miner },
       { time: '20:00', location: 'home', ...VIRTUAL_HOME_POSITION },
     ];
   }
-  // 花匠小梅：晨起在家 → 白天农场照料花圃 → 下午森林采撷 → 晚归
+  // 花匠小梅：晨起在家 → 上午农场照料花圃（garden）→ 下午森林采撷 → 晚归
   if (npcId === 'gardener') {
     return [
       { time: '06:00', location: 'home', ...VIRTUAL_HOME_POSITION },
-      { time: '07:00', location: 'farm', ...SPOTS.farm.gardener },
+      { time: '07:00', location: 'farm', ...SPOTS.farm.gardener, action: 'garden' },
       { time: '14:00', location: 'forest', ...SPOTS.forest.gardener },
       { time: '18:00', location: 'home', ...VIRTUAL_HOME_POSITION },
     ];
@@ -351,6 +352,8 @@ export function refreshSchedule(): void {
     npc.currentLocation = active.location;
     npc.targetX = active.x;
     npc.targetY = active.y;
+    // v0.6 NPC 生活化 P0：写入当前时段动作（仅渲染用，不存档）
+    npc.dailyAction = active.action ?? '';
   }
 }
 
@@ -360,6 +363,15 @@ export function refreshSchedule(): void {
  */
 export function getNPCsForScene(sceneKey: string): NPC[] {
   return npcs.filter((n) => n.currentLocation === sceneKey);
+}
+
+/** 查询 NPC 当前是否可被玩家找到（B-1，制作人拍板 2026-08-03）
+ * 不可找 = 在家（home 虚拟位置，不渲染）或隐藏时段。
+ * 供 QuestPanel 对 talk 任务显示"已回家，明日再找"提示。
+ */
+export function isNpcFindable(npcId: string): boolean {
+  const npc = npcs.find((n) => n.id === npcId);
+  return !!npc && npc.currentLocation !== 'home';
 }
 
 /**

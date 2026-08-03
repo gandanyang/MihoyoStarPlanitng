@@ -120,8 +120,8 @@ async function run() {
     await sleep(800);
     await screenshot(page, 'v053-1-farm-morning');
 
-    // 走向夏雅
-    await teleport(page, 'farm', 8 * 16 + 8, 11 * 16 + 20, 'up');
+    // 走向夏雅（v0.6 NPC生活化：清晨夏雅在花园旁(1,21)浇水）
+    await teleport(page, 'farm', 1 * 16 + 8, 21 * 16 + 20, 'up');
     await sleep(300);
     await screenshot(page, 'v053-2-approach-xiya');
     console.log('\n[靠近夏雅，按 E]');

@@ -13,6 +13,8 @@ import { resetOres } from './data/MineState';
 import { save } from './systems/SaveSystem';
 import { advanceStory, getStoryStep, setStoryStep } from './systems/StorySystem';
 import { initAndroidBackHandler } from './systems/AndroidBackHandler';
+import { addItem } from './data/Inventory';
+import { getRobotCount, runDailyAutomation } from './systems/AutomationSystem';
 
 // 临时调试入口：URL 带 ?reset=1 时启动前强制清除本地存档（用于移动端真机测试清档）
 // 仅前端操作 localStorage，不进存档逻辑、不属于正式功能
@@ -108,10 +110,12 @@ syncGameContainer();
 //   window.debug.advanceStory()     推进教程剧情一步
 //   window.debug.setStoryStep(s)    设置教程剧情步骤
 //   window.debug.getStoryStep()     获取当前教程步骤
-(window as unknown as { debug: { nextDay: () => number; setTime: (h: number, m: number) => void; advanceStory: () => void; setStoryStep: (s: string) => void; getStoryStep: () => string; getQuestState: () => string } }).debug = {
+(window as unknown as { debug: { nextDay: () => number; setTime: (h: number, m: number) => void; advanceStory: () => void; setStoryStep: (s: string) => void; getStoryStep: () => string; getQuestState: () => string; giveRobot: (n?: number) => void; robotCount: () => number } }).debug = {
   nextDay: () => {
     // Phase 4 起统一走 TimeSystem.nextDay，它内调 FarmState.advanceDay
     const newDay = timeNextDay();
+    // v0.6 庄园自动化：机器人每日清晨自动浇水/收获
+    runDailyAutomation();
     // 体力恢复 + 矿脉刷新 + 每日任务刷新
     resetStamina();
     resetOres();
@@ -160,6 +164,13 @@ syncGameContainer();
   },
   getQuestState: () => {
     return getQuestState();
+  },
+  giveRobot: (n = 1) => {
+    addItem('auto_farmer_robot', n);
+    console.log(`[debug] giveRobot → +${n} auto_farmer_robot`);
+  },
+  robotCount: () => {
+    return getRobotCount();
   },
 };
 

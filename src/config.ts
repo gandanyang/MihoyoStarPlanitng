@@ -23,11 +23,22 @@ export function isMobileLayout(): boolean {
 }
 
 /**
- * 判断是否为触屏设备（用触屏能力判断，而非窗口宽度）。
+ * 判断是否为移动端触屏设备（Android/iOS）。
  * 用于"移动端专属控件"（背包按钮等）——手机横屏宽度可能 ≥800，不能用 isMobileLayout。
  * 统一入口（原 TouchControls 内部 isTouchDevice，已收敛到此处）。
+ *
+ * 用 UA 判定而非单纯 maxTouchPoints>0：
+ * 触屏笔记本（Windows/触屏屏的 Surface 等）maxTouchPoints>0 但属桌面端，
+ * 会误触发移动端控件（BUG-030：PC 网页右侧残留摇杆/按钮）。
  */
 export function isTouchDevice(): boolean {
-  return typeof navigator !== 'undefined'
-    && (navigator.maxTouchPoints > 0 || 'ontouchstart' in window);
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  // 安卓 WebView（含 Capacitor 打包）/ iOS Safari 等移动 UA 才视为移动端
+  if (/Android|iPhone|iPad|iPod|Mobile/i.test(ua)) {
+    return true;
+  }
+  // 兜底：无移动 UA 时，极窄触屏（手机尺寸）也算移动端；触屏笔记本宽屏不算
+  const touchCapable = navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
+  return touchCapable && window.innerWidth < 800;
 }

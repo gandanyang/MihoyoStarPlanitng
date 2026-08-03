@@ -45,6 +45,8 @@ interface ShopItem {
 }
 
 const SHOP_ITEMS: ShopItem[] = [
+  // 预留（v0.6 庄园自动化 MVP）：auto_farmer_robot 未来商城 100 钻石出售，
+  // 本阶段不实现钻石支付；itemId 已在 Inventory.ITEM_DEFS 注册，获取途径：暂无（待商城）。
   // 出售（作物 → 金币）
   {
     id: 'radish', label: '萝卜', price: RADISH_PRICE, action: 'sell-radish', type: 'sell',

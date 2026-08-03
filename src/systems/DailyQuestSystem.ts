@@ -9,6 +9,7 @@ import { addItem, ItemType } from '../data/Inventory';
 import { getTime } from '../data/TimeSystem';
 import { isTutorialDone } from './StorySystem';
 import { isMobileLayout } from '../config';
+import { isNpcFindable } from './NPCSystem';
 
 /** 操作提示文案：移动端（触屏）与桌面端（键盘）差异 */
 function hint(pc: string, mob: string): string {
@@ -98,8 +99,15 @@ let dailyQuests: DailyQuestInstance[] = [];
 let currentDay: number = 0;
 
 /** 随机选取 n 个不重复的任务 */
-function pickRandom(n: number): DailyQuestTemplate[] {
+function pickRandom(n: number, opts?: { allowTalk?: boolean }): DailyQuestTemplate[] {
   const pool = [...QUEST_POOL];
+  // B-1（制作人拍板 2026-08-03）：晚间 NPC 回家，不生成新的对话任务
+  // 避免"接了 talk_* 才发现 NPC 找不到"。仅在明确允许时保留 talk 任务。
+  if (opts?.allowTalk !== true) {
+    const filtered = pool.filter((t) => t.objective.type !== 'talk_npc');
+    pool.length = 0;
+    pool.push(...filtered);
+  }
   const result: DailyQuestTemplate[] = [];
   for (let i = 0; i < n && pool.length > 0; i++) {
     const idx = Math.floor(Math.random() * pool.length);
@@ -133,6 +141,9 @@ export function refreshDailyQuests(): void {
   const day = getTime().day;
   if (day === currentDay && dailyQuests.length > 0) return; // 同一天不重复刷新
   const isFirstInit = dailyQuests.length === 0; // 从未初始化（首次进入地图场景）
+  // B-1（制作人拍板 2026-08-03）：晚间 NPC 回家，不生成新 talk 任务
+  const isEvening = getTime().hour >= 18;
+  const allowTalk = !isEvening;
   // 保留未领奖的引导任务 + 已完成未领奖的任务（避免过夜丢失奖励）；领奖后消失
   const keepGuide = dailyQuests.filter((q) => (GUIDE_QUEST_IDS.has(q.id) || q.completed) && !q.claimed);
   currentDay = day;
@@ -140,10 +151,10 @@ export function refreshDailyQuests(): void {
     // 首次：教程完成后才固定投放引导任务（挖矿/砍树）；
     // 教程未完成时玩家还没有斧头/未解锁矿洞，提前投放会导致"按E无法推进任务"
     const guide = isTutorialDone() ? QUEST_POOL.filter((t) => GUIDE_QUEST_IDS.has(t.id)) : [];
-    const rest = pickRandom(4 - guide.length);
+    const rest = pickRandom(4 - guide.length, { allowTalk });
     dailyQuests = [...guide, ...rest].map(createInstance);
   } else {
-    const rest = pickRandom(4 - keepGuide.length);
+    const rest = pickRandom(4 - keepGuide.length, { allowTalk });
     dailyQuests = [...keepGuide, ...rest.map(createInstance)];
   }
 }
@@ -173,6 +184,15 @@ export function injectGuideQuests(): void {
 /** 获取每日任务天数 */
 export function getDailyQuestDay(): number {
   return currentDay;
+}
+
+/** NPC 回家时段提示（B-1，制作人拍板 2026-08-03）
+ * NPC 在家（home 虚拟位置）或隐藏时段时不渲染 → talk 任务无法完成 → 面板友好提示。
+ * 返回该 NPC 当前是否已回家 + 明早可找的提示语。
+ */
+export function getTalkNpcHomeHint(npcId: string, npcName: string): { home: boolean; hint: string } | null {
+  if (isNpcFindable(npcId)) return null;
+  return { home: true, hint: `${npcName}已经回家休息，明天再去找她吧。` };
 }
 
 // ============ 进度更新 ============

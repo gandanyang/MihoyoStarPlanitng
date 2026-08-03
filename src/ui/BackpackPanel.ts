@@ -20,6 +20,8 @@ import { play } from '../systems/AudioSystem';
 type OnClose = () => void;
 /** 使用钥匙回调 */
 type OnUseKey = () => boolean;
+/** 使用机器人回调（部署自动农业机器人，成功返回 true 关闭面板） */
+type OnUseRobot = () => boolean;
 /** 数据变更回调（出售物品后更新 HUD） */
 type OnDataChange = () => void;
 
@@ -41,6 +43,7 @@ let domCreated = false;
 let open = false;
 let onClose: OnClose | null = null;
 let onUseKey: OnUseKey | null = null;
+let onUseRobot: OnUseRobot | null = null;
 let onDataChange: OnDataChange | null = null;
 
 /** 关闭面板（模块级，B/Esc/按钮都走这里） */
@@ -96,6 +99,11 @@ function createDom(): void {
       if (onUseKey?.()) {
         closePanel();
       }
+    } else if (target.dataset?.action === 'use-robot') {
+      // 部署自动农业机器人
+      if (onUseRobot?.()) {
+        closePanel();
+      }
     } else if (target.dataset?.action === 'sell') {
       // 背包出售：卖 1 个
       const itemId = target.dataset?.item as ItemType | undefined;
@@ -148,8 +156,10 @@ function refresh(): void {
   let html = '';
 
   for (const { item, count, def } of items) {
-    const useBtn = def.id === 'manor_key'
-      ? `<button data-action="use-key" style="margin-top:6px;font-size:12px;padding:4px 12px;background:#6a8a45;border:none;border-radius:4px;color:#fff;cursor:pointer;">使用</button>`
+    const isKey = def.id === 'manor_key';
+    const isRobot = def.id === 'auto_farmer_robot';
+    const useBtn = isKey || isRobot
+      ? `<button data-action="${isRobot ? 'use-robot' : 'use-key'}" style="margin-top:6px;font-size:12px;padding:4px 12px;background:#6a8a45;border:none;border-radius:4px;color:#fff;cursor:pointer;">${isRobot ? '部署' : '使用'}</button>`
       : '';
     const sellPrice = SELL_PRICE[item];
     const sellBtn = sellPrice !== undefined
@@ -169,10 +179,11 @@ function refresh(): void {
 }
 
 export class BackpackPanel {
-  constructor(onCloseCb?: OnClose, onUseKeyCb?: OnUseKey, onDataChangeCb?: OnDataChange) {
+  constructor(onCloseCb?: OnClose, onUseKeyCb?: OnUseKey, onDataChangeCb?: OnDataChange, onUseRobotCb?: OnUseRobot) {
     if (onCloseCb) onClose = onCloseCb;
     if (onUseKeyCb) onUseKey = onUseKeyCb;
     if (onDataChangeCb) onDataChange = onDataChangeCb;
+    if (onUseRobotCb) onUseRobot = onUseRobotCb;
     if (!domCreated) createDom();
   }
 

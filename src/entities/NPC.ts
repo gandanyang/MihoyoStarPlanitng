@@ -17,12 +17,15 @@ import { type DialogueLine } from '../systems/StorySystem';
 export interface ScheduleEntry {
   /** "HH:MM" 格式，从该时刻起生效，直到下一条日程时刻 */
   time: string;
-  /** 场景 key（farm/town/forest/mine） */
+  /** 场景 key（farm/town/forest/mine/home） */
   location: string;
   /** 该场景中的目标像素 x */
   x: number;
   /** 该场景中的目标像素 y */
   y: number;
+  /** v0.6 NPC 生活化 P0：该时段正在进行的动作（如 water_flower / sort_wood / patrol）
+   *  由 MapScene 渲染层按 dailyAction 播放对应 tween；不存储，仅渲染用途 */
+  action?: string;
 }
 
 /** NPC 数据 + 运行时状态 */
@@ -42,6 +45,10 @@ export class NPC {
   targetX: number;
   /** 当前目标像素 y */
   targetY: number;
+  /** v0.6 NPC 生活化 P0：当前时段动作（由 refreshSchedule 从 schedule 写入）
+   *  仅渲染用途：MapScene 按此播放动作 tween（water_flower / sort_wood / patrol / open_shop…）
+   *  不进入存档，不影响对话/任务/好感 */
+  dailyAction: string = '';
 
   /** 渲染对象（由 MapScene 在 create 时创建并赋值，离开场景时置空） */
   sprite: Phaser.GameObjects.Image | null = null;
@@ -123,6 +130,9 @@ export class NPC {
   /**
    * 根据 NPC id 启动对应的视觉动作 tween
    * 由 MapScene.setupNPCs 在创建 sprite + snapToTarget 后调用
+   *
+   * v0.6 NPC 生活化 P0：优先按 dailyAction（时段动作，如浇水/整理/巡查），
+   * 无 dailyAction 时 fallback 到职业 id 动作（原有 idle 动画）。
    */
   startIdleAnimation(scene: Phaser.Scene): void {
     if (!this.sprite) return;
@@ -130,6 +140,81 @@ export class NPC {
     this.idleBaseX = this.sprite.x;
     this.idleBaseY = this.sprite.y;
     const s = this.sprite;
+
+    // ---- v0.6 NPC 生活化：时段动作（dailyAction 优先） ----
+    switch (this.dailyAction) {
+      case 'water_flower':
+        // 浇水：身体微蹲 + 小幅前倾（手持壶浇水姿态）
+        this.idleTween = scene.tweens.add({
+          targets: s,
+          scaleY: { from: 0.5, to: 0.46 },
+          y: { from: this.idleBaseY, to: this.idleBaseY + 2 },
+          duration: 650,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.InOut',
+        });
+        return;
+      case 'sort_wood':
+        // 整理木材：身体前后摆动（搬/码动作）
+        this.idleTween = scene.tweens.add({
+          targets: s,
+          angle: { from: 0, to: -12 },
+          scaleY: { from: 0.5, to: 0.47 },
+          duration: 500,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Cubic.InOut',
+        });
+        return;
+      case 'patrol':
+        // 巡查：小幅左右移动 + 视线交替（scaleX 翻转）
+        this.idleTween = scene.tweens.add({
+          targets: s,
+          x: { from: this.idleBaseX - 8, to: this.idleBaseX + 8 },
+          scaleX: { from: 0.5, to: -0.5 },
+          duration: 2200,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.InOut',
+        });
+        return;
+      case 'open_shop':
+        // 开店准备：弯腰整理摊位（与 shopkeeper 职业动作一致，但语义化为"开店准备"）
+        this.idleTween = scene.tweens.add({
+          targets: s,
+          scaleY: { from: 0.5, to: 0.47 },
+          scaleX: { from: 0.5, to: 0.515 },
+          duration: 600,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Cubic.InOut',
+        });
+        return;
+      case 'garden':
+        // 花园照看：微蹲 + 呼吸（与 water_flower 视觉接近但更轻，用于花园站定时）
+        this.idleTween = scene.tweens.add({
+          targets: s,
+          scaleY: { from: 0.5, to: 0.47 },
+          y: { from: this.idleBaseY, to: this.idleBaseY + 1.5 },
+          duration: 800,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.InOut',
+        });
+        return;
+      case 'idle':
+        // 显式空闲：轻微呼吸（安全兜底，等价默认）
+        this.idleTween = scene.tweens.add({
+          targets: s,
+          scaleY: { from: 0.5, to: 0.49 },
+          duration: 1500,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.InOut',
+        });
+        return;
+    }
 
     switch (this.id) {
       case 'miner': {

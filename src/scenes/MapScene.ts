@@ -49,6 +49,7 @@ import {
   injectGuideQuests,
 } from '../systems/DailyQuestSystem';
 import { InputManager } from '../systems/InputManager';
+import * as AmbienceSystem from '../systems/AmbienceSystem';
 import { TouchControls, setActionButtonLabel } from '../systems/TouchControls';
 import { ShopPanel } from '../ui/ShopPanel';
 import { BackpackPanel } from '../ui/BackpackPanel';
@@ -69,6 +70,15 @@ import {
 } from '../systems/StorySystem';
 import { hasSave, load, apply, save, getLastIncompatibleVersion, clearIncompatibleVersion, SAVE_VERSION } from '../systems/SaveSystem';
 import { play } from '../systems/AudioSystem';
+import {
+  getRobots,
+  getRobotAt,
+  getRobotCount,
+  addRobot,
+  runDailyAutomation,
+  DEFAULT_ROBOT_RANGE,
+  type RobotData,
+} from '../systems/AutomationSystem';
 
 interface SceneInitData {
   spawn?: { x: number; y: number };
@@ -88,6 +98,8 @@ interface TileVisual {
 export class MapScene extends Phaser.Scene {
   // 模块级 beforeunload 回调引用（避免重复注册）
   private static _beforeUnload: (() => void) | null = null;
+  // 页面可见性变化时环境音停/恢复（隐藏停省电，回前台按当前地图恢复）
+  private static _visibilityHandler: (() => void) | null = null;
 
   private readonly mapKey: string;
   private player!: Player;
@@ -214,6 +226,8 @@ export class MapScene extends Phaser.Scene {
     stall: Phaser.GameObjects.Graphics;
     pos: { x: number; y: number };
   } | null = null;
+  // 自动农业机器人视觉（v0.6 庄园自动化 MVP：id → 机器人容器）
+  private robotVisuals: Map<string, Phaser.GameObjects.Container> = new Map();
 
   constructor(key: string) {
     super(key);
@@ -242,6 +256,8 @@ export class MapScene extends Phaser.Scene {
     this.clearEveningXiya();
     // M1-3 夏雅见证精灵清理（场景切换时销毁，防止残留）
     this.clearGardenXiya();
+    // 自动农业机器人视觉清理
+    this.clearRobots();
   }
 
   preload(): void {
@@ -290,6 +306,8 @@ export class MapScene extends Phaser.Scene {
   create(): void {
     // 场景停止/切换时清理 DOM 残留（提示条/种子选择器等），防止跨场景泄漏
     this.events.on(Phaser.Scenes.Events.SHUTDOWN, this.cleanupSceneDom, this);
+    // 场景切换时停止环境音（防止上一场景环境音残留到下一场景——P0 防黑屏/残留）
+    this.events.on(Phaser.Scenes.Events.SHUTDOWN, () => AmbienceSystem.stop(), this);
     // 兜底：create 阶段任何未预期的异常（贴图缺失/地图数据异常等）都不允许演变成黑屏，
     // 统一捕获并显示错误遮罩 + 刷新按钮
     try {
@@ -491,6 +509,11 @@ export class MapScene extends Phaser.Scene {
       this.setupFarmShop();
     }
 
+    // 自动农业机器人（v0.6 庄园自动化 MVP：从存档恢复机器人视觉）
+    if (this.mapKey === 'farm') {
+      this.setupRobots();
+    }
+
     // 第一章：首次进入小镇触发剧情（教程完成后、且从未触发过）
     if (this.mapKey === 'town' && isTutorialDone() && !isCh1TownIntroDone()) {
       if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
@@ -566,6 +589,7 @@ export class MapScene extends Phaser.Scene {
       },
       () => this.useManorKey(),
       () => this.updateHUD(),
+      () => this.deployRobot(),
     );
     // 任务面板（v0.5.3-B 任务入口化；关面板清理 J 键残留）
     this.questPanel = new QuestPanel(
@@ -608,8 +632,24 @@ export class MapScene extends Phaser.Scene {
     window.addEventListener('beforeunload', MapScene._beforeUnload);
     window.addEventListener('pagehide', MapScene._beforeUnload);
 
+    // 页面隐藏时停环境音（省电 + 防后台爆音），回前台按当前地图恢复
+    if (MapScene._visibilityHandler) {
+      document.removeEventListener('visibilitychange', MapScene._visibilityHandler);
+    }
+    MapScene._visibilityHandler = () => {
+      if (document.hidden) {
+        AmbienceSystem.pause();
+      } else if (this.scene.isActive(this.scene.key)) {
+        AmbienceSystem.start(this.mapKey, getTime().hour);
+      }
+    };
+    document.addEventListener('visibilitychange', MapScene._visibilityHandler);
+
     // 淡入过渡（与出口切换的 fadeOut 配对，避免切图瞬间黑屏）
     this.cameras.main.fadeIn(300, 0, 0, 0);
+
+    // 环境音：进入地图按 mapKey + 当前小时启动氛围音（白天鸟叫/夜晚虫鸣等）
+    AmbienceSystem.start(this.mapKey, getTime().hour);
   }
 
   update(timeMs: number): void {
@@ -773,6 +813,9 @@ export class MapScene extends Phaser.Scene {
     const timeStr = isMobileLayout() ? formatTime() : `Day ${t}  ${formatTime()}`;
     this.hudTimeDom.textContent = timeStr;
 
+    // 环境音昼夜翻转检测（白天→夜晚或反之，仅翻转时重启音源组合，零开销）
+    AmbienceSystem.update(getTime().hour);
+
     // 经验条（仅农场场景有 DOM 元素）
     if (!this.xpBarFill) return;
     const lv = getLevel();
@@ -835,8 +878,9 @@ export class MapScene extends Phaser.Scene {
     if (t.hour < 6 || t.hour >= 8) return;
     if (this.dawnXiyaDay === t.day) return;
 
-    const dx = 8 * TILE_SIZE + TILE_SIZE / 2;
-    const dy = 11 * TILE_SIZE + TILE_SIZE / 2;
+    // v0.6 NPC 生活化 P0：清晨夏雅在花园浇水（位置改到花园旁 col 1, row 21，非原木屋旁）
+    const dx = 1 * TILE_SIZE + TILE_SIZE / 2;
+    const dy = 21 * TILE_SIZE + TILE_SIZE / 2;
     this.dawnXiya = this.add.sprite(dx, dy, 'npc_xiya');
     this.dawnXiya.setScale(0.5).setDepth(5);
     this.dawnXiyaLabel = this.add.text(dx, dy - 14, '夏雅', {
@@ -845,6 +889,16 @@ export class MapScene extends Phaser.Scene {
       backgroundColor: 'rgba(0,0,0,0.45)',
       padding: { x: 3, y: 2 },
     }).setShadow(0, 1, '#000000', 2).setOrigin(0.5).setDepth(6);
+    // 花园浇水动作（浇花 tween：微蹲 + 前倾，模拟拿壶浇水）
+    this.tweens.add({
+      targets: this.dawnXiya,
+      scaleY: { from: 0.5, to: 0.46 },
+      y: { from: dy, to: dy + 2 },
+      duration: 650,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.InOut',
+    });
   }
 
   /** 与清晨夏雅交互（靠近按 E → 播放偶遇对话） */
@@ -1874,6 +1928,8 @@ export class MapScene extends Phaser.Scene {
     this.sleeping = true;
     try {
       timeNextDay();
+      // v0.6 庄园自动化：机器人每日清晨自动浇水/收获（在成长结算后，仅农场生效）
+      this.runRobotsDaily();
       resetStamina();
       resetOres();
       let treesRefreshed = false;
@@ -1902,7 +1958,7 @@ export class MapScene extends Phaser.Scene {
         if (readyCrops.length > 0) {
           setTimeout(() => this.showDialogueText(`🌱 有 ${readyCrops.length} 块作物成熟了，快去收获吧！`), 1200);
         }
-        // P2-1 认知补强：已播种未浇水（planted）→ 提醒玩家缺水，区分"时间未到"与"缺浇水"
+        // P2-1 认知补强：已播种未浇水（planted，机器人已先执行浇水）→ 提醒玩家缺水，区分"时间未到"与"缺浇水"
         const dryCrops = getAllCropEntries().filter(([key]) => {
           const [c, r] = key.split(',').map(Number);
           return getTileState(c, r) === 'planted';
@@ -2450,6 +2506,127 @@ export class MapScene extends Phaser.Scene {
     return true;
   }
 
+  // ============ 自动农业机器人（v0.6 庄园自动化 MVP） ============
+
+  /** 从存档恢复机器人视觉（场景 create 时调用） */
+  private setupRobots(): void {
+    for (const robot of getRobots()) {
+      this.createRobotVisual(robot);
+    }
+  }
+
+  /** 创建一个机器人的视觉（Graphics 圆身 + 天线 + 眼睛，部署时播放弹入动画） */
+  private createRobotVisual(robot: RobotData, deploy = false): void {
+    const T = TILE_SIZE;
+    const x = robot.col * T + T / 2;
+    const y = robot.row * T + T / 2;
+    // 机身：金属圆身 + 天线 + 眼睛
+    const g = this.add.graphics();
+    g.fillStyle(0x9db2c8, 1);
+    g.fillCircle(0, 0, 6);                       // 机身
+    g.fillStyle(0x7d93ab, 1);
+    g.fillCircle(0, 3, 4);                       // 机身下半
+    g.fillStyle(0xd5e2f0, 1);
+    g.fillCircle(-2, -2, 1.5);                   // 眼睛高光
+    g.fillStyle(0x2e4059, 1);
+    g.fillCircle(2, -1, 1.2);                    // 眼睛
+    g.lineStyle(1, 0x5c718a, 1);
+    g.lineBetween(4, -5, 6, -9);                 // 天线杆
+    g.fillStyle(0xff5252, 1);
+    g.fillCircle(6, -9, 1.5);                    // 天线灯
+    // 底盘：两轮
+    g.fillStyle(0x4a5a6e, 1);
+    g.fillCircle(-3, 6, 2);
+    g.fillCircle(3, 6, 2);
+
+    const container = this.add.container(x, y, [g]);
+    container.setDepth(4);
+    if (deploy) {
+      container.setScale(0.1);
+      container.setAlpha(0);
+      this.tweens.add({
+        targets: container,
+        scale: 1, alpha: 1,
+        duration: 380, ease: 'Back.easeOut',
+      });
+    }
+    this.robotVisuals.set(robot.id, container);
+    // 天线灯呼吸
+    this.tweens.add({
+      targets: container,
+      alpha: { from: 1, to: 0.85 },
+      duration: 700, yoyo: true, repeat: -1,
+    });
+  }
+
+  /** 清理机器人视觉（场景 shutdown 时） */
+  private clearRobots(): void {
+    for (const [, c] of this.robotVisuals) c.destroy();
+    this.robotVisuals.clear();
+  }
+
+  /**
+   * 部署机器人：使用背包里的 auto_farmer_robot
+   * 仅农场可部署，且目标格必须在农田可耕区域附近（FARM_AREA 内）且非碰撞格
+   * @returns 是否部署成功（成功则背包面板关闭）
+   */
+  private deployRobot(): boolean {
+    if (this.mapKey !== 'farm') {
+      this.showDialogueText('只能把机器人放在农场里。');
+      return false;
+    }
+    const pc = Math.floor(this.player.x / TILE_SIZE);
+    const pr = Math.floor(this.player.y / TILE_SIZE);
+    if (!isInFarmArea(pc, pr)) {
+      this.showDialogueText('把机器人放在农田边上吧。');
+      return false;
+    }
+    if (getTileState(pc, pr) !== 'empty') {
+      this.showDialogueText('这里已经有东西了，换个位置。');
+      return false;
+    }
+    if (getRobotAt(pc, pr)) {
+      this.showDialogueText('这里已经有机器人了。');
+      return false;
+    }
+    addItem('auto_farmer_robot', -1);
+    const robot = addRobot(pc, pr, DEFAULT_ROBOT_RANGE);
+    this.createRobotVisual(robot, true);
+    play('levelup');
+    this.showDialogueText('自动农业机器人已部署 🤖');
+    // 轻提示：让玩家明确机器人何时工作（制作人验收建议，防"不知何时工作"）
+    this.time.delayedCall(800, () => {
+      this.showDialogueText('它会每天清晨自动照料农田：浇水 + 收获。');
+    });
+    save({ x: this.player.x, y: this.player.y, scene: this.mapKey, facing: this.player.facing });
+    this.updateHUD();
+    return true;
+  }
+
+  /**
+   * 每日清晨自动化：扫描机器人范围内农田 → 浇水 / 收获
+   * 由 trySleep（timeNextDay 之后）调用；仅在有机器人时生效
+   */
+  private runRobotsDaily(): void {
+    if (this.mapKey !== 'farm' || getRobotCount() === 0) return;
+    const report = runDailyAutomation();
+    const totalHarvest = report.harvested.reduce((s, h) => s + h.count, 0);
+    if (report.watered === 0 && totalHarvest === 0) return;
+    // 工作反馈：机器人闪一下 + 浮字报告
+    for (const [, c] of this.robotVisuals) {
+      this.tweens.add({ targets: c, angle: { from: -8, to: 8 }, duration: 120, yoyo: true, repeat: 1 });
+    }
+    const harvestDesc = report.harvested
+      .map(h => `${CROP_DEFS[h.cropType].name}×${h.count}`)
+      .join('、');
+    const msg = `🤖 今日农业任务完成：浇水 ${report.watered} 块，收获 ${harvestDesc || totalHarvest + ' 个作物'}。`;
+    this.showDialogueText(msg);
+    // 刷新农田视觉（浇水/收获改变了格子状态）
+    this.refreshFarmVisual();
+    // 每日任务面板同步（收获进背包不影响面板，仅刷新 HUD）
+    this.updateHUD();
+  }
+
   /**
    * 更新农田选中高亮（每帧跟随玩家面向的格子）
    * 仅农场场景生效，且仅在目标格可执行操作时显示（锄地/播种/浇水/收获）
@@ -2697,6 +2874,7 @@ export class MapScene extends Phaser.Scene {
     if (!this.isTileActionable(col, row)) {
       this.flashTileError(col, row);
       const state = getTileState(col, row);
+      // P2-1 认知区分：已浇水成长中 → "还需要一点时间"；无种子 → "没有种子"
       const msg = state === 'watered' ? '还需要一点时间' : '没有种子';
       this.showFloatText(col * TILE_SIZE + TILE_SIZE / 2, row * TILE_SIZE + TILE_SIZE / 2, msg, '#ff8a80');
       return;
@@ -2794,7 +2972,7 @@ export class MapScene extends Phaser.Scene {
         });
       }
     } else {
-      // watered 已浇水未成熟，暂不处理 → 给无效反馈
+      // watered 已浇水成长中 → 点格反馈"还需要一点时间"（P2-1：区分"时间未到"与"缺浇水/坏档"）
       this.flashTileError(col, row);
       this.showFloatText(tileCenterX, tileCenterY, '还需要一点时间', '#ff8a80');
       return;

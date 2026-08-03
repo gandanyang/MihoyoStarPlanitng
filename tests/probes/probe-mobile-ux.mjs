@@ -141,6 +141,14 @@ async function run() {
       args: ['--no-sandbox'],
     });
     const pLand = await bLand.newPage();
+    // 真机 Android 横屏：覆盖 UA 为移动端（isTouchDevice 按 UA 判定，见 config.ts）
+    await pLand.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, 'userAgent', {
+        get: () => 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36',
+        configurable: true,
+      });
+      Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 5, configurable: true });
+    });
     await pLand.goto(GAME_URL, { waitUntil: 'networkidle2' });
     await sleep(2500);
     // 进入农场场景（TouchControls 在 MapScene create 时创建）

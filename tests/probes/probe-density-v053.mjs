@@ -146,8 +146,8 @@ async function run() {
     result('E1a. 清晨(06:00)进农场 → 夏雅出现', dawn1.dawnXiya, `dawnXiya=${dawn1.dawnXiya}`);
     await screenshot(page, 'v053-e1-dawn-xiya');
 
-    // 靠近按 E → 播放偶遇对话（逐行推进找"这么早"）
-    await teleport(page, 'farm', 8 * 16 + 8, 11 * 16 + 20, 'up');
+    // 靠近按 E → 播放偶遇对话（逐行推进找"这么早"）——v0.6 NPC生活化：夏雅清晨在花园旁(1,21)
+    await teleport(page, 'farm', 1 * 16 + 8, 21 * 16 + 20, 'up');
     await pressE(page);
     await sleep(700);
     const dawnText = await advanceUntil(page, '这么早', 6);

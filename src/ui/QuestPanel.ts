@@ -14,7 +14,7 @@
  */
 
 import { getQuestState, getQuestObjective } from '../systems/QuestSystem';
-import { getDailyQuests, claimReward, type DailyQuestInstance } from '../systems/DailyQuestSystem';
+import { getDailyQuests, claimReward, getTalkNpcHomeHint, type DailyQuestInstance } from '../systems/DailyQuestSystem';
 import { play } from '../systems/AudioSystem';
 
 type OnClose = () => void;
@@ -65,6 +65,16 @@ function dailyRowHtml(q: DailyQuestInstance): string {
       <span>🎁 ${q.desc}${progress}</span>
       <button data-claim="${q.id}" style="font-size:11px;padding:3px 10px;background:#ffd700;color:#000;border:none;border-radius:4px;cursor:pointer;font-weight:bold;">领奖</button>
     </div>`;
+  }
+  // B-1（制作人拍板 2026-08-03）：NPC 已回家（不渲染）时，对未完成对话任务追加友好提示
+  if (!q.claimed && !q.completed && q.objective.type === 'talk_npc') {
+    const home = getTalkNpcHomeHint(q.objective.npcId, q.objective.npcName);
+    if (home) {
+      return `<div style="display:flex;align-items:center;padding:4px 10px;margin-bottom:4px;color:#d8d2c8;background:rgba(255,255,255,0.04);border-radius:6px;">
+        <span>⬜ ${q.desc}${progress}</span>
+      </div>
+      <div style="padding:2px 10px 6px 10px;margin-top:-4px;color:#8a7a62;font-size:12px;">🌙 ${home.hint}</div>`;
+    }
   }
   return `<div style="display:flex;align-items:center;padding:4px 10px;margin-bottom:4px;color:#d8d2c8;background:rgba(255,255,255,0.04);border-radius:6px;">
     <span>⬜ ${q.desc}${progress}</span>

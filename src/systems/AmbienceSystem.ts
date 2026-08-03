@@ -43,10 +43,14 @@ const MAX_VOL = 0.05;
 // ===== 模块级状态（跨场景单例） =====
 let activeMap: string | null = null;
 let stopped = true;
+/** 当前昼夜状态（用于 update 检测翻转） */
+let currentNight = false;
 /** 当前正在播放的循环音源节点 */
 const playing: Array<{ node: AudioNode; stop: () => void }> = [];
 /** 定时器（随机事件音：鸟叫啁啾等） */
 let eventTimer: ReturnType<typeof setInterval> | null = null;
+/** 链式 setTimeout 调度用的 token（stop 时失效，防止停止后继续调度） */
+let scheduleToken = 0;
 let liveCount = 0;
 
 /** 是否夜晚（18:00 - 6:00） */
@@ -60,7 +64,7 @@ function isNight(hour: number): boolean {
  */
 function loopSource(
   type: 'osc' | 'noise',
-  opts: { freq?: number; freq2?: number; filterFreq?: number; volume?: number },
+  opts: { freq?: number; freq2?: number; filterFreq?: number; volume?: number; vibrato?: number; lfoHz?: number; lfoDepth?: number },
 ): { node: AudioNode; stop: () => void } {
   const c = getCtx();
   const gain = c.createGain();
@@ -69,12 +73,13 @@ function loopSource(
 
   let source: OscillatorNode | AudioBufferSourceNode;
   let filter: BiquadFilterNode | null = null;
+  /** 需要随 stop() 一起停止的所有振荡器/源（osc 分支有双频叠加，必须全部停） */
+  const oscs: OscillatorNode[] = [];
 
   if (type === 'osc') {
     const osc = c.createOscillator();
     osc.type = 'sine';
     osc.frequency.value = opts.freq ?? 200;
-    // 双频叠加（低频低鸣质感）
     const osc2 = c.createOscillator();
     osc2.type = 'sine';
     osc2.frequency.value = opts.freq2 ?? (opts.freq ?? 200) * 0.5;
@@ -82,6 +87,19 @@ function loopSource(
     g2.gain.value = 0.5;
     osc2.connect(g2);
     g2.connect(gain);
+    oscs.push(osc, osc2);
+    // 颤音（vibrato）：低频 LFO 调制主频，模拟虫鸣/生命感的自然波动
+    if (opts.vibrato) {
+      const lfo = c.createOscillator();
+      lfo.type = 'sine';
+      lfo.frequency.value = opts.vibrato;
+      const lfoGain = c.createGain();
+      lfoGain.gain.value = (opts.freq ?? 200) * 0.04;
+      lfo.connect(lfoGain);
+      lfoGain.connect(osc.frequency);
+      lfo.start(t);
+      oscs.push(lfo);
+    }
     osc.start(t);
     osc2.start(t);
     osc.stop(t + 1e8);
@@ -110,12 +128,31 @@ function loopSource(
   const out = source as OscillatorNode;
   out.connect(filter ?? gain);
   if (filter) filter.connect(gain);
-  gain.connect(c.destination);
+
+  // 缓慢增益起伏（自然感）：masterGain 承接低频正弦 LFO，模拟风/树叶的天然波动。
+  // 独立于淡入淡出的 gain，避免调度冲突。
+  let master: GainNode = gain;
+  if (opts.lfoHz && opts.lfoHz > 0) {
+    master = c.createGain();
+    const depth = opts.lfoDepth ?? 0.35; // 起伏深度（相对基础音量）
+    master.gain.setValueAtTime(vol * (1 - depth), t);
+    const lfo = c.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = opts.lfoHz;
+    const lfoGain = c.createGain();
+    lfoGain.gain.value = vol * depth;
+    lfo.connect(lfoGain);
+    lfoGain.connect(master.gain);
+    lfo.start(t);
+    oscs.push(lfo);
+    gain.connect(master);
+  }
+  master.connect(c.destination);
   liveCount++;
 
   let faded = false;
   return {
-    node: gain,
+    node: master,
     stop: () => {
       if (faded) return;
       faded = true;
@@ -126,19 +163,33 @@ function loopSource(
         gain.gain.setValueAtTime(Math.max(gain.gain.value, 0.0001), now);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
       } catch { /* 忽略 */ }
-      setTimeout(() => { try { out.stop(); } catch { /* 已停 */ } }, 500);
+      setTimeout(() => {
+        try {
+          out.stop();
+          for (const o of oscs) o.stop();
+        } catch { /* 已停 */ }
+      }, 500);
     },
   };
 }
 
 /** 鸟叫：随机间隔的高频短促啁啾（事件音，非循环） */
 function scheduleBird(): void {
-  if (stopped || activeMap !== 'farm' && activeMap !== 'forest') return;
+  // 用 token 判断当前调度链是否仍有效（stop/切图后失效）
+  const myToken = scheduleToken;
+  const next = () => setTimeout(() => {
+    if (stopped || scheduleToken !== myToken) return;
+    scheduleBird();
+  }, 4000 + Math.random() * 5000);
+
+  if (stopped || activeMap !== 'farm' && activeMap !== 'forest') { return; }
   const base = 1800 + Math.random() * 800;
   const count = 2 + Math.floor(Math.random() * 3);
   for (let i = 0; i < count; i++) {
-    tone(base + Math.random() * 600, 0.05 + Math.random() * 0.05, 'sine', 0.02, i * 0.12);
+    // 音量更低（0.015 而非 0.02）+ 音高带轻微滑移，减少"电子啁啾"感
+    tone(base + Math.random() * 600, 0.05 + Math.random() * 0.05, 'sine', 0.015, i * 0.12);
   }
+  next();
 }
 
 /** 启动环境音（进入地图时调用） */
@@ -146,6 +197,7 @@ export function start(mapKey: string, hour: number): void {
   stop();
   activeMap = mapKey;
   stopped = false;
+  currentNight = isNight(hour);
 
   const combo = MAP_AMBIENT[mapKey];
   if (!combo) return;
@@ -155,22 +207,27 @@ export function start(mapKey: string, hour: number): void {
     if (playing.length >= MAX_SOURCES - 2) break;
     switch (name) {
       case 'wind':
-        playing.push(loopSource('noise', { filterFreq: 400, volume: 0.025 }));
+        // 风声：低通噪声 + 缓慢起伏（0.15Hz 大起伏模拟阵风）
+        playing.push(loopSource('noise', { filterFreq: 400, volume: 0.025, lfoHz: 0.15, lfoDepth: 0.5 }));
         break;
       case 'leaves':
-        playing.push(loopSource('noise', { filterFreq: 1200, volume: 0.02 }));
+        // 树叶沙沙：中频噪声 + 轻微起伏
+        playing.push(loopSource('noise', { filterFreq: 1200, volume: 0.02, lfoHz: 0.4, lfoDepth: 0.4 }));
         break;
       case 'voices':
-        playing.push(loopSource('noise', { filterFreq: 1000, volume: 0.012 }));
+        // 小镇人声底噪：极低音量 + 缓慢起伏（人声群的"潮汐感"）
+        playing.push(loopSource('noise', { filterFreq: 1000, volume: 0.012, lfoHz: 0.12, lfoDepth: 0.45 }));
         break;
       case 'warmth':
-        playing.push(loopSource('noise', { filterFreq: 250, volume: 0.015 }));
+        // 屋内暖声：极低频暖噪声 + 很慢的起伏（稳定安全感）
+        playing.push(loopSource('noise', { filterFreq: 250, volume: 0.015, lfoHz: 0.08, lfoDepth: 0.3 }));
         break;
       case 'mine':
-        playing.push(loopSource('osc', { freq: 70, freq2: 45, volume: 0.035 }));
+        playing.push(loopSource('osc', { freq: 70, freq2: 45, volume: 0.035, vibrato: 0.2, lfoHz: 0.2, lfoDepth: 0.3 }));
         break;
       case 'crickets':
-        playing.push(loopSource('osc', { freq: 4200, volume: 0.012 }));
+        // 蝉鸣感：高频正弦 + 慢颤音（5-8Hz 更接近自然，非 24Hz 电路感）+ 轻微起伏
+        playing.push(loopSource('osc', { freq: 4200, volume: 0.012, vibrato: 6, lfoHz: 0.3, lfoDepth: 0.3 }));
         break;
       case 'birds':
         // 鸟叫用事件音，不进循环列表；由定时器调度
@@ -178,17 +235,31 @@ export function start(mapKey: string, hour: number): void {
     }
   }
 
-  // 鸟叫定时器（仅 farm/forest 白天）
+  // 鸟叫调度（仅 farm/forest 白天）：链式 setTimeout，4-9s 随机间隔，避免机械节拍
   if (list.includes('birds')) {
-    eventTimer = setInterval(() => scheduleBird(), 2500 + Math.random() * 2000);
+    scheduleToken++;
     scheduleBird();
   }
+}
+
+/**
+ * 昼夜翻转检测（每帧或低频调用）。
+ * 时间从白天跨到夜晚（或反之）时，重新加载当前地图的环境音组合
+ * （白天鸟叫 → 夜晚虫鸣）。未翻转时零开销返回。
+ */
+export function update(hour: number): void {
+  if (stopped || !activeMap) return;
+  const night = isNight(hour);
+  if (night === currentNight) return;
+  // 翻转：用当前小时重起环境音（start 内部先 stop 再按新时段加载）
+  start(activeMap, hour);
 }
 
 /** 停止所有环境音（场景切换时调用，必须可靠） */
 export function stop(): void {
   stopped = true;
   activeMap = null;
+  scheduleToken++; // 使当前鸟叫调度链失效，防止停止后继续触发
   for (const p of playing) p.stop();
   playing.length = 0;
   if (eventTimer) {
