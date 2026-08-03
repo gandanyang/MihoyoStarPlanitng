@@ -29,7 +29,7 @@ async function run() {
     console.log(`${ok ? '✅' : '❌'} ${name}${extra ? ' — ' + extra : ''}`);
     ok ? pass++ : fail++;
   };
-  const waitFor = async (fn, timeout = 20000) => {
+  const waitFor = async (_page, fn, timeout = 20000) => {
     const t0 = Date.now();
     while (Date.now() - t0 < timeout) {
       const v = await fn();

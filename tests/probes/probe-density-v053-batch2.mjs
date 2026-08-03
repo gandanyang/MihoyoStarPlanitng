@@ -223,7 +223,7 @@ async function run() {
       });
       console.log('  [diag] E5 noteDump:', JSON.stringify(noteDump));
       const noteText = noteDump.text ?? '';
-      result('E5b. 靠近按E读到爷爷笔记', /今天又捡到一片|我数了数|发光的碎片/.test(noteText), noteText.substring(0, 40));
+      result('E5b. 靠近按E读到爷爷笔记', /今天又捡到一片|我数了数|发光的碎片|星辰周期/.test(noteText), noteText.substring(0, 40));
       await skipDialogue(page, 3);
     } else {
       result('E5b. 靠近按E读到爷爷笔记', false, '无笔记物件');
@@ -231,25 +231,25 @@ async function run() {
 
     // ============ E6: 少女观星后追加 ============
     console.log('\n--- E6: 少女追加（观星后） ---');
-    // 观星完成态；少女 09:00 在 farm（mystery 日程 06-08 farm → 08-12 town）
-    // 09:00 在 town。改为 07:00（farm）。少女 farm 位置 (3*16+8, 8*16+8)=(56,136)
+    // 观星完成态；07:00 mystery 在森林（mystery 日程：06:00 forest → 08:00 隐藏 → 16:00 forest）
+    // 少女 forest 位置 (15*16+8, 8*16+8)=(248,136)
     await page.evaluate(() => {
       window.debug.setStoryStep('observatory_complete');
       window.debug.setTime(7, 0);
     });
     await sleep(500);
-    await gotoScene(page, 'farm', { x: 200, y: 300 });
+    await gotoScene(page, 'forest', { x: 200, y: 300 });
     await sleep(800);
 
     const mysteryNPC = await page.evaluate(() => {
-      const s = window.__game.scene.getScene('farm');
+      const s = window.__game.scene.getScene('forest');
       const npcs = (s?.npcList ?? []).map(n => ({ id: n.id, x: n.sprite?.x, y: n.sprite?.y, vis: n.sprite?.visible }));
       return npcs.find(n => n.id === 'mystery') ?? null;
     });
     result('E6a. 观星后 farm 有少女', !!mysteryNPC, mysteryNPC ? `@(${mysteryNPC.x},${mysteryNPC.y})` : '无少女');
 
     if (mysteryNPC) {
-      await teleport(page, 'farm', mysteryNPC.x, mysteryNPC.y + 20, 'up');
+      await teleport(page, 'forest', mysteryNPC.x, mysteryNPC.y + 20, 'up');
       await pressE(page);
       await sleep(700);
       const mysteryFixed = await advanceUntil(page, '你捡起的那块碎片', 10);
@@ -270,15 +270,15 @@ async function run() {
       window.debug.setTime(7, 0);
     });
     await sleep(500);
-    await gotoScene(page, 'farm', { x: 200, y: 300 });
+    await gotoScene(page, 'forest', { x: 200, y: 300 });
     await sleep(800);
     const mysteryNPC2 = await page.evaluate(() => {
-      const s = window.__game.scene.getScene('farm');
+      const s = window.__game.scene.getScene('forest');
       const npcs = (s?.npcList ?? []).map(n => ({ id: n.id, x: n.sprite?.x, y: n.sprite?.y, vis: n.sprite?.visible }));
       return npcs.find(n => n.id === 'mystery') ?? null;
     });
     if (mysteryNPC2) {
-      await teleport(page, 'farm', mysteryNPC2.x, mysteryNPC2.y + 20, 'up');
+      await teleport(page, 'forest', mysteryNPC2.x, mysteryNPC2.y + 20, 'up');
       await pressE(page);
       await sleep(700);
       // 逐行推进 20 行找"快归位了"，不应出现

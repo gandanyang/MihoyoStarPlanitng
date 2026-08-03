@@ -50,8 +50,9 @@ import {
 } from '../systems/DailyQuestSystem';
 import { InputManager } from '../systems/InputManager';
 import * as AmbienceSystem from '../systems/AmbienceSystem';
-import { triggerTag, getTriggeredTags } from '../systems/GuiXingRecordSystem';
+import { triggerTag, getTriggeredTags, clearTags } from '../systems/GuiXingRecordSystem';
 import { TouchControls, setActionButtonLabel } from '../systems/TouchControls';
+import { showMemoryMoment } from '../ui/MemoryMoment';
 import { ShopPanel } from '../ui/ShopPanel';
 import { BackpackPanel } from '../ui/BackpackPanel';
 import { QuestPanel } from '../ui/QuestPanel';
@@ -324,6 +325,8 @@ export class MapScene extends Phaser.Scene {
   }
 
   private createScene(): void {
+    // 场景切换时清理跨存档标签（一次性人生事件不能跨新游戏污染）
+    clearTags();
     // 创建 tilemap 并关联 tileset
     const map = this.make.tilemap({ key: this.mapKey });
     // 屋内/木屋场景：收集睡觉判定格（house=床铺 gid 9；farm=木屋地板 gid 6）
@@ -2021,6 +2024,7 @@ export class MapScene extends Phaser.Scene {
     if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
     markObservatoryComplete();
     triggerTag('stargaze_night');
+    showMemoryMoment('这片星空，和爷爷记忆里的一样。');
     this.storyDialogue.play(
       DEMO_ENDING_DIALOGUE,
       () => this.finishStargaze(),
@@ -2396,7 +2400,7 @@ export class MapScene extends Phaser.Scene {
         scene: this.mapKey, facing: this.player.facing,
         dailyQuest: getDailyQuestSaveData(),
       } as any);
-      setTimeout(() => this.showDialogueText('爷爷曾经走过的路，今天又有人继续走下去了。'), 1400);
+      setTimeout(() => showMemoryMoment('爷爷曾经走过的路，今天又有人继续走下去了。'), 1400);
       // M1-3 夏雅见证：恢复完成的瞬间，夏雅走到花园旁（无需等待特定时段）
       this.spawnGardenXiya();
     }
@@ -2970,7 +2974,7 @@ export class MapScene extends Phaser.Scene {
       if (!this.firstHarvestShown) {
         this.firstHarvestShown = true;
         triggerTag('first_harvest');
-        this.showFloatText(tileCenterX, tileCenterY - 20, '原来等待，并不是没有意义。', '#ffe082');
+        showMemoryMoment('小时候爷爷告诉我，土地不会辜负认真照料它的人。');
         if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
         this.storyDialogue.play(FIRST_HARVEST_DIALOGUE, () => {
           this.updateHUD();
@@ -3000,6 +3004,7 @@ export class MapScene extends Phaser.Scene {
     this.showFloatText(col * TILE_SIZE + TILE_SIZE / 2, row * TILE_SIZE + TILE_SIZE / 2, `${CROP_DEFS[cropType].icon} ${CROP_DEFS[cropType].name} · 🌱种子-1`, '#ffe082');
     if (!getTriggeredTags().has('first_plant')) {
       triggerTag('first_plant');
+      showMemoryMoment('城市里的人已经很久没有亲手种下一颗种子了。');
     }
     onDQPlant();
     this.updateDailyQuestPanel();

@@ -21,13 +21,13 @@
  *      - 汇总：出现在某场景 = 该 NPC 此刻在该场景；未出现在任何场景 = 'home'
  *   3. 对比预期分布
  *
- * 前置：dev server 在 localhost:5178；node tests/probes/probe-npc-schedule.mjs
+ * 前置：dev server 在 localhost:5173；node tests/probes/probe-npc-schedule.mjs
  */
 
 import puppeteer from 'puppeteer-core';
 
 const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-const GAME_URL = 'http://localhost:5178/';
+const GAME_URL = 'http://localhost:5173/';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 const SCENES = ['farm', 'town', 'forest', 'mine'];

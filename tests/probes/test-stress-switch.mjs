@@ -127,16 +127,37 @@ let mineTipConsumed = false;
 async function consumeMineTip(page) {
   if (mineTipConsumed) return;
   mineTipConsumed = true;
-  // 先按 E 触发引导对话
+  // 先瞬移到第一块矿脉旁再按 E：挖矿引导要求玩家靠近矿脉，直接按 E 不会触发，
+  // 否则引导对话会延后到 mineOneOre 的首次开采才弹，拦截开采且阻塞出口检测。
+  const tipTarget = await page.evaluate(() => {
+    const s = window.__game.scene.getScene('mine');
+    const t = s?.oreSprites?.find(e => e.sprite.visible);
+    return t ? { x: t.sprite.x, y: t.sprite.y + 20 } : null;
+  });
+  if (tipTarget) {
+    await page.evaluate(([px, py]) => {
+      const s = window.__game.scene.getScene('mine');
+      s.player.x = px;
+      s.player.y = py;
+    }, [tipTarget.x, tipTarget.y]);
+    await sleep(150);
+  }
+  // 按 E 触发引导对话
   await page.keyboard.press('KeyE');
   await sleep(400);
-  // 用 advance() 跳过 3 行引导对话
-  for (let i = 0; i < 7; i++) {
-    await page.evaluate(() => {
+  // 等对话真正打开后循环 advance 直到关闭（固定 7 次会在对话未打开时空转，导致
+  // 引导对话延后到 mineOneOre 首次开采时弹出，拦截开采并阻塞后续切图）
+  for (let i = 0; i < 30; i++) {
+    const stillOpen = await page.evaluate(() => {
       const s = window.__game.scene.getScenes(true)[0];
-      if (s?.storyDialogue?.isOpen()) s.storyDialogue.advance();
+      if (s?.storyDialogue?.isOpen()) {
+        s.storyDialogue.advance();
+        return true;
+      }
+      return false;
     });
-    await sleep(150);
+    if (!stillOpen) break;
+    await sleep(50);
   }
   await sleep(500);
 }

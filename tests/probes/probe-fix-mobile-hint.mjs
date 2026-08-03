@@ -26,6 +26,15 @@ async function run() {
     args: ['--no-sandbox'],
   });
   const page = await browser.newPage();
+  // launch 级 isMobile 只模拟视口/触屏，不改 UA（实测 UA 仍为 Windows 桌面版）；
+  // isTouchDevice() 用 UA 判定（BUG-030 设计）→ 需显式注入移动 UA 才能走到移动文案分支
+  await page.evaluateOnNewDocument(() => {
+    Object.defineProperty(navigator, 'userAgent', {
+      get: () => 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36',
+      configurable: true,
+    });
+    Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 5, configurable: true });
+  });
 
   let pass = 0, fail = 0;
   const check = (name, ok, extra = '') => {

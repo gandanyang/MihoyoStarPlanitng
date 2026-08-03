@@ -66,6 +66,9 @@ async function run() {
       tags.push({ test: 'B2', pass: r1.sections.length === 5, detail: `sections=${r1.sections.length}` });
       tags.push({ test: 'B3', pass: r1.impression.title === '初见希望', detail: `impression="${r1.impression.title}"` });
 
+      // B3b: 初见希望文案含林澈人设隐性表达
+      tags.push({ test: 'B3b', pass: r1.impression.desc.includes('机器') && r1.impression.desc.includes('亲手完成'), detail: `desc="${r1.impression.desc.substring(0,30)}…"` });
+
       // B4: 段标题正确
       const titles = r1.sections.map(s => s.title);
       tags.push({ test: 'B4', pass: JSON.stringify(titles) === JSON.stringify(['土地','记忆','庄园','羁绊','评价']), detail: titles.join('/') });
@@ -74,11 +77,12 @@ async function run() {
       const icons = r1.sections.map(s => s.icon);
       tags.push({ test: 'B5', pass: JSON.stringify(icons) === JSON.stringify(['🌱','🌸','🏡','👥','⭐']), detail: icons.join('/') });
 
-      // B6: 仅 restore_garden → 新的开始
+      // B6: 仅 restore_garden → 新的开始（文案含爷爷意象）
       mod.clearTags();
       mod.triggerTag('restore_garden');
       const r3 = mod.generateGuiXingRecord();
       tags.push({ test: 'B6', pass: r3.impression.title === '新的开始', detail: `garden only: "${r3.impression.title}"` });
+      tags.push({ test: 'B6b', pass: r3.impression.desc.includes('爷爷'), detail: `garden desc includes 爷爷` });
 
       // B7: 仅 help_resident → 初见希望（需要花园+帮助+耕种过半才是归星之地）
       mod.clearTags();

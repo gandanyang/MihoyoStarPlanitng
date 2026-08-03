@@ -109,7 +109,7 @@ export function getImpression(tags: GuiXingTag[]): GuiXingImpression {
   if (gardenRestored && npcHelped && farmProgress >= 0.5) {
     return {
       title: '归星之地',
-      desc: '这里不再只是爷爷留下的庄园，而是属于新的家园。',
+      desc: '你让一座沉睡的庄园重新有了灯火。这里不再只是爷爷留下的土地，而是属于你的家园。',
     };
   }
 
@@ -117,14 +117,14 @@ export function getImpression(tags: GuiXingTag[]): GuiXingImpression {
   if (gardenRestored || farmProgress >= 0.5) {
     return {
       title: '新的开始',
-      desc: '沉睡的岛屿开始回应你的努力。',
+      desc: '爷爷曾经走过的路，今天又有人继续走下去了。',
     };
   }
 
   // 初见希望：默认
   return {
     title: '初见希望',
-    desc: '你还没有改变世界，但你让一个地方重新有了开始的可能。',
+    desc: '你修复了一片荒废的土地。过去，你习惯让机器替你完成一切。但今天，你发现：有些事情，只有亲手完成才有意义。',
   };
 }
 

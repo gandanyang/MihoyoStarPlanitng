@@ -17,6 +17,7 @@ import { getQuestState, getQuestObjective } from '../systems/QuestSystem';
 import { getDailyQuests, claimReward, getTalkNpcHomeHint, type DailyQuestInstance } from '../systems/DailyQuestSystem';
 import { play } from '../systems/AudioSystem';
 import { triggerTag } from '../systems/GuiXingRecordSystem';
+import { showMemoryMoment } from './MemoryMoment';
 
 type OnClose = () => void;
 type OnClaim = () => void;
@@ -173,6 +174,7 @@ function createDom(): void {
         const quest = getDailyQuests().find((q) => q.id === claim);
         if (quest && quest.objective.type === 'talk_npc') {
           triggerTag('help_resident');
+          showMemoryMoment('有些门，不是打不开，只是需要一个人先敲响。');
         }
         refresh('daily');
         onClaim?.();

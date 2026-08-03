@@ -571,6 +571,7 @@ export class StationScene extends Phaser.Scene {
       boxShadow: '0 0 30px rgba(0,100,255,0.3)',
       zIndex: '600', cursor: 'pointer',
       maxWidth: '380px', fontFamily: 'monospace',
+      maxHeight: '70vh', overflowY: 'auto',
       opacity: '0', transition: 'opacity 0.8s',
     });
 
@@ -583,12 +584,54 @@ export class StationScene extends Phaser.Scene {
     Object.assign(msg.style, { color: '#7eb8ff', fontSize: '15px', lineHeight: '1.6' });
     msg.textContent = '因业务流程智能化调整，您的岗位职责将进行重新分配。';
 
+    // v0.6 序章伏笔：AI 时代失落与重新寻找价值——林澈不是失败者，他的过去已成为 AI 时代的一部分
+    const msg2 = document.createElement('div');
+    Object.assign(msg2.style, { color: '#7eb8ff', fontSize: '15px', lineHeight: '1.6', marginTop: '8px' });
+    msg2.textContent = '感谢您过去五年的贡献，相关工作成果已被纳入智能系统训练库。';
+
+    const sep = document.createElement('div');
+    Object.assign(sep.style, { borderTop: '1px solid rgba(122,162,247,0.25)', margin: '12px 0' });
+
+    // v0.6 序章伏笔：远期鲸鱼娘/AI 公司新闻彩蛋（本阶段不出现角色，只留线索）
+    const newsTitle = document.createElement('div');
+    Object.assign(newsTitle.style, { color: '#8f9bb3', fontSize: '11px', marginBottom: '4px' });
+    newsTitle.textContent = '科技快讯';
+    const newsMsg = document.createElement('div');
+    Object.assign(newsMsg.style, { color: '#b8c4d9', fontSize: '13px', lineHeight: '1.5' });
+    newsMsg.textContent = '蓝鲸智能发布新一代人工智能模型。';
+
+    const sep2 = document.createElement('div');
+    Object.assign(sep2.style, { borderTop: '1px solid rgba(122,162,247,0.25)', margin: '12px 0' });
+
+    // v0.6 序章伏笔：手机 AI 助手——AI 懂计算，正在学习理解人的价值（人机共生，非反 AI）
+    const aiTitle = document.createElement('div');
+    Object.assign(aiTitle.style, { color: '#8f9bb3', fontSize: '11px', marginBottom: '4px' });
+    aiTitle.textContent = 'AI 助手';
+    const aiLines = [
+      '林澈：这片庄园……要修的东西应该不少。',
+      'AI：按照计算，恢复庄园预计需要 27 天。',
+      'AI：但数据显示，人工参与可能提高居民满意度。',
+      '林澈：你还考虑这种东西？',
+      'AI：部分结果无法通过效率衡量。',
+    ];
+    const aiMsg = document.createElement('div');
+    Object.assign(aiMsg.style, { color: '#b8c4d9', fontSize: '12px', lineHeight: '1.7' });
+    aiMsg.style.whiteSpace = 'pre-line';
+    aiMsg.textContent = aiLines.join('\n');
+
     const hint = document.createElement('div');
     Object.assign(hint.style, { color: '#333', fontSize: '11px', marginTop: '12px', textAlign: 'center' });
     hint.textContent = '点击关闭';
 
     this.phoneOverlay.appendChild(title);
     this.phoneOverlay.appendChild(msg);
+    this.phoneOverlay.appendChild(msg2);
+    this.phoneOverlay.appendChild(sep);
+    this.phoneOverlay.appendChild(newsTitle);
+    this.phoneOverlay.appendChild(newsMsg);
+    this.phoneOverlay.appendChild(sep2);
+    this.phoneOverlay.appendChild(aiTitle);
+    this.phoneOverlay.appendChild(aiMsg);
     this.phoneOverlay.appendChild(hint);
     document.body.appendChild(this.phoneOverlay);
 

@@ -292,7 +292,7 @@ async function run() {
     }
     ok('11. 夏雅立绘头像显示', portraitSrc.includes('xiya.png'), portraitSrc || '<无立绘>');
 
-    await skipDialogue(page, 13); // 推进到选项行（DEMO_ENDING 15 行，选项行前 14 行需 28 次 advance；已推进 1 行，还需 27 次=skipDialogue(13)）
+    await skipDialogue(page, 16); // 推进到选项行（DEMO_ENDING 18 行，选项行前 17 行需 34 次 advance；已推进 1 行，还需 33 次=skipDialogue(16)）
 
     const options = await page.evaluate(() =>
       [...document.querySelectorAll('button')].map(b => b.textContent?.trim()).filter(t => /^\d\./.test(t ?? ''))

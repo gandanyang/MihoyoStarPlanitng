@@ -125,7 +125,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     check('对白含生活记忆文案', d.hasMemoryLine === true, `实际=${JSON.stringify(d.hasMemoryLine)}`);
 
     // 4. 推进完对白 → 精灵销毁（一次性）
-    for (let i = 0; i < 8 && d.dialogueOpen; i++) {
+    for (let i = 0; i < 12 && d.dialogueOpen; i++) {
       await page.keyboard.press('E');
       await sleep(400);
       d = await page.evaluate(() => {

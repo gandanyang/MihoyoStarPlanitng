@@ -112,6 +112,7 @@ export const GRANDPA_NOTES: DialogueLine[] = [
   { speaker: '爷爷的笔记', color: COLORS.letter, text: '今天又捡到一片。星星……是不是也想回家？' },
   { speaker: '爷爷的笔记', color: COLORS.letter, text: '我数了数，还差一些。等它们都回来了，也许就能问清楚了。' },
   { speaker: '爷爷的笔记', color: COLORS.letter, text: '那些发光的碎片，醒来时像在看我。是我多心了吧。' },
+  { speaker: '爷爷的笔记', color: COLORS.letter, text: '最近发现，岛上的生态变化似乎和星辰周期有关。' },
 ];
 
 /** v0.5.3 剧情密度 E2：第一次收获反馈（一次性，夏雅口头肯定，非系统弹窗） */
@@ -250,6 +251,7 @@ export const GARDEN_RESTORED_XIYA_DIALOGUE: DialogueLine[] = [
   { speaker: '夏雅', color: COLORS.xiya, text: '这里以前也是爷爷最喜欢来的地方。' },
   { speaker: '夏雅', color: COLORS.xiya, text: '小时候我经常看到他坐在这里，一坐就是很久。' },
   { speaker: '夏雅', color: COLORS.xiya, text: '他说，花开的时候，这里就像又有了新的开始。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '奇怪……爷爷以前说，这里的花总是比别的地方开得早。' },
 ];
 
 // ============ Demo 结尾：观星夜（定稿版 v0.3） ============
@@ -267,7 +269,10 @@ export const DEMO_ENDING_DIALOGUE: DialogueLine[] = [
   { speaker: '信', color: COLORS.letter, text: '如果看到这封信，说明你终于回来了。' },
   { speaker: '信', color: COLORS.letter, text: '我不知道你为什么回来。可能是累了，可能是迷茫了。' },
   { speaker: '信', color: COLORS.letter, text: '但这里，永远有一个属于你的地方。' },
+  { speaker: '信', color: COLORS.letter, text: '小澈，如果有一天机器比我们更聪明，你觉得人还需要留下些什么？' },
   { speaker: '', color: COLORS.system, text: '（林澈握着信，抬头看向星空。）' },
+  { speaker: '林澈', color: COLORS.linche, text: '城市里的天空，已经很久没有这么清晰了。' },
+  { speaker: '林澈', color: COLORS.linche, text: '不知道为什么，这片星空……让我觉得有些熟悉。' },
   { speaker: '', color: COLORS.system, text: '（他没有说话。）' },
   { speaker: '', color: COLORS.system, text: '（远处传来虫鸣。星光落在庄园旧墙上。）' },
   { speaker: '', color: COLORS.system, text: '', options: ['我会留下的。这次我不走了。', '我想先弄清楚爷爷到底在这里经历了什么。', '我只是……还没想好怎么回那个城市。'] },
