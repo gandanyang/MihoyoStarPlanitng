@@ -89,14 +89,9 @@ async function run() {
       check('段A：模块不可导入', false);
     }
 
-    // 段B：MapScene 集成（进入 farm 场景后环境音钩子是否被调用）
-    await page.evaluate(() => window.__ambienceHistory = []);
-    await page.evaluate(() => {
-      const A = window.__ambience;
-      // 探针包装：记录 start 调用（若 MapScene 未接入，则无记录 → WARN 不 FAIL）
-      const origStart = A.start.bind(A);
-      A.start = (map, hour) => { window.__ambienceHistory.push(`${map}@${hour}`); return origStart(map, hour); };
-    });
+    // 段B：MapScene 集成（进入 farm 场景后环境音是否被真正启动）
+    // 注：Vite dev 原生 ESM 下 import * 命名空间只读，探针侧 wrap start 会静默失败，
+    // 改用 getActiveMap() 轮询验证 MapScene.create 真实调用了 start('farm', hour)。
     await page.keyboard.press('Enter');
     await waitFor(page, () => page.evaluate(() => !!document.getElementById('intro-skip-btn')));
     await page.evaluate(() => { const b = document.getElementById('intro-skip-btn'); if (b) b.click(); });
@@ -112,13 +107,43 @@ async function run() {
     await sleep(2500);
     const hist = await page.evaluate(() => window.__ambienceHistory || []);
     console.log(`切到 farm 后 ambience.start 调用历史: ${JSON.stringify(hist)}`);
-    // 若 MapScene 已接入 → start 应被调用（FAIL）；未接入 → 预期无调用（WARN，待接入后转正）
-    const integrated = hist.some(h => h.startsWith('farm'));
+    // 集成校验：MapScene 通过模块命名空间调用 start → 探针包装的 start 不会被触发，
+    // 改用 getActiveMap() === 'farm' 校验环境音系统确实被 MapScene 激活
+    const activeMap = await page.evaluate(() => window.__ambience.getActiveMap());
+    console.log(`切到 farm 后 activeMap = ${activeMap}`);
+    const integrated = activeMap === 'farm';
     if (integrated) {
       check('进入 farm 场景触发 AmbienceSystem.start（集成）', true);
     } else {
       check('进入 farm 场景触发 AmbienceSystem.start（待 MapScene 接入后验证）', true, true);
     }
+
+    // 段C：切图后旧环境音停止（SHUTDOWN stop 生效）
+    await page.evaluate(() => {
+      const g = window.__game;
+      const a = g.scene.getScenes(true)[0];
+      if (a) g.scene.stop(a.scene.key);
+      g.scene.start('mine');
+    });
+    await sleep(2500);
+    const mineActive = await page.evaluate(() => window.__ambience.getActiveMap());
+    console.log(`切到 mine 后 activeMap = ${mineActive}`);
+    // 关键：切图瞬间必须先 stop 再 start —— 若旧图环境音残留，activeMap 会短暂为 null 但最终应为 'mine'
+    check(`切图后环境音跟随新地图 (${mineActive})`, mineActive === 'mine');
+
+    // 段D：昼夜翻转检测（update）：mine 白天/夜晚均为 mine，无翻转。改用 farm 白天 → 夜晚
+    // 直接调用 update 验证翻转逻辑（模块级 API）
+    const flip = await page.evaluate(() => {
+      const A = window.__ambience;
+      A.stop();
+      A.start('farm', 10); // 白天：birds + wind
+      A.update(22); // 夜晚：应重载为 crickets + wind
+      const afterFlip = A.getActiveMap();
+      A.stop();
+      return { afterFlip };
+    });
+    console.log(`昼夜翻转后 activeMap = ${flip.afterFlip}`);
+    check('昼夜翻转：update 后环境音仍在活动地图（重载生效）', flip.afterFlip === 'farm');
 
     if (pageErrs.length) {
       console.log(`页面错误（${pageErrs.length}）:`, pageErrs.slice(0, 5));

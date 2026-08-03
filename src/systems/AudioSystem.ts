@@ -96,22 +96,23 @@ export function play(name: SfxName): void {
 
     case 'harvest':
       // 收获：上行三连音，丰收的愉悦感（高存在感——最核心的奖励瞬间）
+      // v0.6 制作人反馈：原 880Hz 最高音偏尖锐，降频降幅使收成反馈更圆润
       tone(440, 0.08, 'triangle', 0.16);
       tone(554, 0.08, 'triangle', 0.16, 0.06);
       tone(660, 0.14, 'triangle', 0.2, 0.12);
-      tone(880, 0.18, 'triangle', 0.14, 0.2);
+      tone(830, 0.18, 'triangle', 0.11, 0.2);
       break;
 
     case 'buy':
-      // 购买：清脆的硬币声
-      tone(1200, 0.06, 'square', 0.06);
-      tone(1600, 0.04, 'square', 0.04, 0.04);
+      // 购买：清脆的硬币声（v0.6 制作人反馈：原 square 方波谐波刺耳，改 triangle 圆润）
+      tone(1100, 0.06, 'triangle', 0.06);
+      tone(1450, 0.04, 'triangle', 0.04, 0.04);
       break;
 
     case 'sell':
-      // 出售：稍低沉的硬币声
-      tone(900, 0.06, 'square', 0.06);
-      tone(1200, 0.04, 'square', 0.04, 0.04);
+      // 出售：稍低沉的硬币声（v0.6 制作人反馈：原 square 方波谐波刺耳，改 triangle 圆润）
+      tone(830, 0.06, 'triangle', 0.06);
+      tone(1100, 0.04, 'triangle', 0.04, 0.04);
       break;
 
     case 'levelup':
@@ -139,7 +140,8 @@ export function play(name: SfxName): void {
 
     case 'invalid':
       // 无效操作：短促低沉的"拒绝"音（区别于所有成功音效，让玩家知道"这里不能做"）
-      tone(140, 0.1, 'square', 0.14);
+      // v0.6 制作人反馈：原 square 方波谐波刺耳，改 triangle + 略降频更低沉柔和
+      tone(120, 0.1, 'triangle', 0.14);
       tone(90, 0.14, 'triangle', 0.16, 0.06);
       break;
   }
