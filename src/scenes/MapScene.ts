@@ -69,6 +69,7 @@ import {
   WOODCUT_TIP_DIALOGUE, MINE_TIP_DIALOGUE, XIYA_DAWN_DIALOGUE, XIYA_EVENING_DIALOGUE, getGrandpaNote,
   GARDEN_RESTORED_XIYA_DIALOGUE,
   FIRST_HARVEST_DIALOGUE,
+  OLD_ROBOT_DIALOGUE,
 } from '../systems/StorySystem';
 import { hasSave, load, apply, save, getLastIncompatibleVersion, clearIncompatibleVersion, SAVE_VERSION } from '../systems/SaveSystem';
 import { play } from '../systems/AudioSystem';
@@ -210,6 +211,11 @@ export class MapScene extends Phaser.Scene {
   // M1-3 夏雅见证：花园恢复完成后，夏雅在花园旁出现，靠近触发 GARDEN_RESTORED_XIYA_DIALOGUE
   private gardenXiya: Phaser.GameObjects.Sprite | null = null;
   private gardenXiyaLabel: Phaser.GameObjects.Text | null = null;
+  // FEATURE-036 旧农业机器人：花园恢复后出现，修复获得（内存 flag 一次性，不进存档）
+  private oldRobot: Phaser.GameObjects.Container | null = null;
+  private oldRobotLabel: Phaser.GameObjects.Text | null = null;
+  private oldRobotPos: { x: number; y: number } = { x: 0, y: 0 };
+  private oldRobotFixed = false;
   // v0.5.3 剧情密度 E2：第一次收获反馈（一次性，内存 flag，不进存档）
   private firstHarvestShown = false;
   // 教程提示 DOM
@@ -262,6 +268,8 @@ export class MapScene extends Phaser.Scene {
     this.clearEveningXiya();
     // M1-3 夏雅见证精灵清理（场景切换时销毁，防止残留）
     this.clearGardenXiya();
+    // FEATURE-036 旧机器人精灵清理（场景切换时销毁，防止残留）
+    this.clearOldRobot();
     this.clearTestBot();
     // 自动农业机器人视觉清理
     this.clearRobots();
@@ -523,6 +531,11 @@ export class MapScene extends Phaser.Scene {
     // 自动农业机器人（v0.6 庄园自动化 MVP：从存档恢复机器人视觉）
     if (this.mapKey === 'farm') {
       this.setupRobots();
+    }
+
+    // FEATURE-036 旧农业机器人（花园恢复后出现，靠近修复获得；一次性内存 flag）
+    if (this.mapKey === 'farm') {
+      this.setupOldRobot();
     }
 
     // 第一章：首次进入小镇触发剧情（教程完成后、且从未触发过）
@@ -1848,6 +1861,11 @@ export class MapScene extends Phaser.Scene {
       if (this.tryFarmShopInteract()) return;
     }
 
+    // FEATURE-036 旧农业机器人（花园恢复后出现，靠近按 E 修复获得，一次性）
+    if (this.mapKey === 'farm' && this.oldRobot) {
+      if (this.tryOldRobotInteract()) return;
+    }
+
     // 2. 优先检测靠近 NPC（所有场景）：取交互范围内最近的一个
     // 注意：不能用数组顺序取第一个，否则多个 NPC 靠近时 elder 永远先被触发
     let nearest: NPC | null = null;
@@ -2455,6 +2473,8 @@ export class MapScene extends Phaser.Scene {
       setTimeout(() => showMemoryMoment('爷爷曾经走过的路，今天又有人继续走下去了。'), 1400);
       // M1-3 夏雅见证：恢复完成的瞬间，夏雅走到花园旁（无需等待特定时段）
       this.spawnGardenXiya();
+      // FEATURE-036：恢复完成的瞬间，花园旁出现旧农业机器人（可立即修复获得）
+      this.setupOldRobot();
     }
     return true;
   }
@@ -2501,6 +2521,96 @@ export class MapScene extends Phaser.Scene {
   private clearGardenXiya(): void {
     if (this.gardenXiya) { this.gardenXiya.destroy(); this.gardenXiya = null; }
     if (this.gardenXiyaLabel) { this.gardenXiyaLabel.destroy(); this.gardenXiyaLabel = null; }
+  }
+
+  // ============ FEATURE-036 旧农业机器人（修复获得） ============
+
+  /**
+   * 初始化旧农业机器人（花园恢复后，花园旁空地出现锈迹机器人）。
+   * 触发条件：restore.garden 已恢复 且 尚未修复获得（内存 flag，不落存档）。
+   * 复用 deployRobot 的机器人视觉（锈色 + 天线，倾斜放置模拟损坏）。
+   */
+  private setupOldRobot(): void {
+    if (this.oldRobotFixed) return;
+    if (!isRestored('garden')) return;
+    // 刷新后内存 flag 会重置：若背包已持有机器人，不再出现（避免重复领取，无新存档字段）
+    if (getItemCount('auto_farmer_robot') > 0) return;
+    const T = TILE_SIZE;
+    // 花园左上角旁 (col 28, row 3)：可走草地，距夏雅见证位 (33,6) 5 格，交互不冲突
+    const ox = 28 * T + T / 2;
+    const oy = 3 * T + T / 2;
+    this.oldRobotPos = { x: ox, y: oy };
+
+    // 机身（锈色）：圆身 + 天线 + 眼睛，整体倾斜模拟废弃
+    const g = this.add.graphics();
+    g.fillStyle(0x8a6a4a, 1);
+    g.fillCircle(0, 0, 6);
+    g.fillStyle(0x6b5238, 1);
+    g.fillCircle(0, 3, 4);
+    g.fillStyle(0xb8a080, 1);
+    g.fillCircle(-2, -2, 1.5);
+    g.fillStyle(0x3a2e20, 1);
+    g.fillCircle(2, -1, 1.2);
+    g.lineStyle(1, 0x6b5238, 1);
+    g.lineBetween(4, -5, 6, -9);
+    g.fillStyle(0x8a6a4a, 1);
+    g.fillCircle(6, -9, 1.5);
+    g.fillStyle(0x4a3a28, 1);
+    g.fillCircle(-3, 6, 2);
+    g.fillCircle(3, 6, 2);
+    // 锈斑
+    g.fillStyle(0x8a5a3a, 1);
+    g.fillCircle(-4, -1, 1.2);
+    g.fillCircle(3, 2, 1);
+    g.fillRect(-6, -3, 1.5, 3);
+    g.fillRect(4, 0, 1.5, 2.5);
+
+    const container = this.add.container(ox, oy, [g]);
+    container.setDepth(4);
+    container.setRotation(-0.12);
+    this.oldRobot = container;
+
+    this.oldRobotLabel = this.add.text(ox, oy + 14, '旧机器人', {
+      fontFamily: 'Arial', fontSize: '10px', color: '#c8a878',
+      stroke: '#000000', strokeThickness: 3,
+      backgroundColor: 'rgba(0,0,0,0.45)',
+      padding: { x: 3, y: 1 },
+    }).setShadow(0, 1, '#000000', 2).setOrigin(0.5).setDepth(6);
+  }
+
+  /** 与旧机器人交互：靠近按 E → 播放修复对白 → 获得 auto_farmer_robot */
+  private tryOldRobotInteract(): boolean {
+    if (!this.oldRobot || !this.oldRobot.visible) return false;
+    const dx = this.player.x - this.oldRobotPos.x;
+    const dy = this.player.y - this.oldRobotPos.y;
+    if (dx * dx + dy * dy > 30 * 30) return false;
+
+    this.oldRobotFixed = true;
+    this.oldRobot.destroy();
+    this.oldRobot = null;
+    if (this.oldRobotLabel) { this.oldRobotLabel.destroy(); this.oldRobotLabel = null; }
+
+    if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+    this.storyDialogue.play(OLD_ROBOT_DIALOGUE, () => {
+      addItem('auto_farmer_robot', 1);
+      triggerTag('has_robot');
+      play('levelup');
+      this.showDialogueText('获得物品：【自动农业机器人】\n打开背包即可部署到农田旁。');
+      // 里程碑入档（与花园恢复一致：修复获得后立即保存，防刷新丢失）
+      save({
+        x: this.player.x, y: this.player.y,
+        scene: this.mapKey, facing: this.player.facing,
+        dailyQuest: getDailyQuestSaveData(),
+      } as any);
+      this.updateHUD();
+    });
+    return true;
+  }
+
+  /** 清除旧机器人精灵（场景切换/跨天时调用） */
+  private clearOldRobot(): void {
+    if (this.oldRobot) { this.oldRobot.destroy(); this.oldRobot = null; }
+    if (this.oldRobotLabel) { this.oldRobotLabel.destroy(); this.oldRobotLabel = null; }
   }
 
   // ============ 农场商店摊位 ============

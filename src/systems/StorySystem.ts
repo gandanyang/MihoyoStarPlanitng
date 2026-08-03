@@ -245,6 +245,19 @@ export const GARDEN_RESTORED_XIYA_DIALOGUE: DialogueLine[] = [
   { speaker: '夏雅', color: COLORS.xiya, text: '奇怪……爷爷以前说，这里的花总是比别的地方开得早。' },
 ];
 
+/** FEATURE-036 旧农业机器人修复对白（花园恢复后，花园旁发现旧设备 → 修复）
+ *  制作人方向（2026-08-03）：路线 A「爷爷留下的旧农业机器人 + 修复」。
+ *  范围限定：A/B 类生活事件，不扩世界观真相、不主动提及爷爷具体回忆（任务卡红线），
+ *  无新剧情节点/任务/StoryStep/存档字段。 */
+export const OLD_ROBOT_DIALOGUE: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（花园旁的土里，半埋着一台旧机器。外壳锈迹斑斑，结构却还算完整。）' },
+  { speaker: '林澈', color: COLORS.linche, text: '这是……农业机器人？很旧的样子。' },
+  { speaker: '林澈', color: COLORS.linche, text: '修一修，说不定还能用。' },
+  { speaker: '', color: COLORS.system, text: '（你清理了锈蚀和灰尘，重新接上电源。）' },
+  { speaker: '', color: COLORS.system, text: '（指示灯亮了起来。老机器轻轻嗡鸣，重新运转。）' },
+  { speaker: '林澈', color: COLORS.linche, text: '……它能帮我看顾农田。' },
+];
+
 // ============ Demo 结尾：观星夜（定稿版 v0.3） ============
 
 /** 观星夜收尾（第一章完成 + 夜晚，靠近观星点触发；含静默镜头与选项） */
