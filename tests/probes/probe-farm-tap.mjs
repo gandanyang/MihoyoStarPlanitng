@@ -110,6 +110,11 @@ async function run() {
     });
     await sleep(300);
 
+    // BUG-033 后竖屏触屏会显示全屏旋转提示层 #rotate-hint（pointer:coarse 命中 portrait 媒体查询），
+    // 拦截触屏点击；本探针模拟竖屏触屏但验证的是 farm 点击逻辑，点击前先移除提示层
+    await page.evaluate(() => document.getElementById('rotate-hint')?.remove());
+    await sleep(100);
+
     // 选农田格 (15,10)：世界坐标 (248, 168)，点击前应为 empty（rect 隐藏）
     const col = 15, row = 10;
     const before = await tileVisual(page, col, row);

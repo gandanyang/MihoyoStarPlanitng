@@ -170,7 +170,7 @@ async function run() {
     await sleep(700);
     const elderText = await dialogueText(page);
     result('镇长委托对话已播放', elderText.includes('你就是林澈吧'), elderText.substring(0, 40));
-    await skipDialogue(page, 8); // ELDER_QUEST_DIALOGUE 8 行 → accepted
+    await skipDialogue(page, 11); // ELDER_QUEST_DIALOGUE 11 行 → accepted
 
     // ---------- 森林采集（程序员能力展示对话 → 自动采集） ----------
     await gotoScene(page, 'forest', { x: 328, y: 200 });
@@ -178,11 +178,11 @@ async function run() {
     await teleport(page, 'forest', 328, 184, 'up'); // 碎片 (328,168)
     await pressE(page);
     await diag(page, 'forest-after-e');
-    await advanceN(page, 3); // 精确推进 3 行，停在"它像是在等待一个条件"
+    await advanceN(page, 3); // 精确推进 3 行，停在"更像一个长期没有维护的系统"
     await sleep(900); // 等待该行打字机播完
     const forestText = await dialogueText(page);
-    result('森林对话：程序员能力展示', forestText.includes('它像是在等待一个条件'), forestText.substring(0, 40));
-    await skipDialogue(page, 4); // 剩余 4 行 + 关闭 → 自动采集
+    result('森林对话：程序员能力展示', forestText.includes('更像一个长期没有维护的系统'), forestText.substring(0, 40));
+    await skipDialogue(page, 6); // FOREST_SHARD_DIALOGUE 9 行，剩 6 行 + 关闭 → 自动采集
 
     // ---------- 返回小镇交付 ----------
     await gotoScene(page, 'town', { x: 200, y: 300 });
@@ -190,7 +190,7 @@ async function run() {
     await teleport(page, 'town', 216, 184, 'up');
     await pressE(page);
     await diag(page, 'town2-after-e');
-    await waitAndSkipDialogue(page, 6); // SHARD_DELIVER_DIALOGUE 6 行 → completed
+    await waitAndSkipDialogue(page, 8); // SHARD_DELIVER_DIALOGUE 8 行 → completed
 
     // ---------- 夜晚 → 农场观星点 ----------
     await page.evaluate(() => window.debug.setTime(21, 0));
@@ -217,18 +217,18 @@ async function run() {
     });
     result('夏雅立绘头像显示', portraitSrc.includes('xiya.png'), portraitSrc || '<无立绘>');
 
-    // 跳过 11 行（静默镜头在内），停到选项行
-    await skipDialogue(page, 10);
+    // 跳过 13 行（静默镜头在内），停到选项行（DEMO_ENDING_DIALOGUE 共 15 行）
+    await skipDialogue(page, 13);
     const options = await page.evaluate(() =>
       [...document.querySelectorAll('button')].map(b => b.textContent?.trim()).filter(t => /^\d\./.test(t ?? ''))
     );
     result('三选项渲染', options.length === 3, JSON.stringify(options));
-    result('选项 A 为「试着留下」', options[0]?.includes('试着留下') === true, options[0] ?? '');
+    result('选项 A 为「我会留下的」', options[0]?.includes('我会留下的') === true, options[0] ?? '');
     await screenshot(page, 'stargaze-options');
 
-    // 选择 B：我还不知道答案
+    // 选择 B：我想先弄清楚爷爷到底在这里经历了什么
     await page.evaluate(() => {
-      const btn = [...document.querySelectorAll('button')].find(b => b.textContent?.includes('我还不知道答案'));
+      const btn = [...document.querySelectorAll('button')].find(b => b.textContent?.includes('我想先弄清楚'));
       btn?.click();
     });
     await sleep(600);
@@ -236,11 +236,11 @@ async function run() {
       const s = window.__game.scene.getScene('farm');
       return s?.storyDialogue?.textEl?.textContent ?? '';
     });
-    result('分支 B 独白', branchText.includes('有些答案'), branchText.substring(0, 40));
+    result('分支 B 独白', branchText.includes('爷爷在这里留下的东西'), branchText.substring(0, 40));
     await screenshot(page, 'stargaze-branch');
 
-    await skipDialogue(page, 1); // 分支 → FINALE
-    await skipDialogue(page, 4); // FINALE 4 行 → 结算面板
+    await skipDialogue(page, 4); // unknown 分支 4 行 → FINALE
+    await skipDialogue(page, 5); // FINALE 5 行 → 结算面板
 
     const panel = await page.evaluate(() => {
       const el = document.getElementById('ending-panel');

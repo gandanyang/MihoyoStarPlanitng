@@ -63,10 +63,12 @@ async function run() {
       return out;
     });
 
-    // 按场景分组
+    // 按场景分组（NPC 日程错峰后有 'home' 等虚拟点，动态建组避免 undefined.push）
     const byScene = {};
-    for (const sc of scenes) byScene[sc] = [];
-    for (const s of scheduleChecks) byScene[s.loc].push(s);
+    for (const s of scheduleChecks) {
+      if (!byScene[s.loc]) byScene[s.loc] = [];
+      byScene[s.loc].push(s);
+    }
 
     for (const key of scenes) {
       await page.evaluate(([k]) => {
