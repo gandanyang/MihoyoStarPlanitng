@@ -254,7 +254,7 @@ async function run() {
     // 调试：检查 pressE 后的 in-memory quest state
     const afterPressE = await page.evaluate(() => window.debug.getQuestState?.() ?? 'no_access');
     console.log('[DEBUG] after pressE questState:', afterPressE);
-    await waitAndSkipDialogue(page, 8); // 交付 8 行 → completed + 里程碑存档
+    await waitAndSkipDialogue(page, 9); // 交付 9 行（P1 观星引导 +1） → completed + 里程碑存档
     const afterDeliver = await page.evaluate(() => {
       const raw = localStorage.getItem('return_star_save');
       return raw ? JSON.parse(raw).world.questState : null;

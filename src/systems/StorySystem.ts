@@ -190,6 +190,7 @@ export const SHARD_DELIVER_DIALOGUE: DialogueLine[] = [
   { speaker: '村长', color: COLORS.elder, text: '你能把它带回来，说明这座岛……已经认你了。' },
   { speaker: '林澈', color: COLORS.linche, text: '……我其实没做什么。它就在那儿，我只是走过去拿起来而已。' },
   { speaker: '村长', color: COLORS.elder, text: '（笑）那就够了。有时候，不是人找到东西，是东西找到人。' },
+  { speaker: '', color: COLORS.system, text: '夜晚的庄园，似乎有什么在等着你。' },
   { speaker: '', color: COLORS.system, text: '主线任务完成：星之碎片（1/…）。' },
 ];
 
