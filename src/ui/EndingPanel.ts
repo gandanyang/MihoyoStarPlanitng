@@ -99,6 +99,10 @@ function refresh(): void {
   const headerEl = panelEl.querySelector('#gx-header');
   if (headerEl) {
     headerEl.innerHTML = `
+      <div style="margin-bottom:12px;">
+        <img src="assets/portraits/linchen_ai_portrait.png" alt="林澈"
+          style="width:100%;max-height:180px;object-fit:cover;object-position:50% 15%;border-radius:8px;display:block;opacity:0.9;">
+      </div>
       <div style="font-size:12px;letter-spacing:3px;color:#6a7ab8;margin-bottom:6px;">📖 归星记录</div>
       <div style="font-size:18px;font-weight:bold;color:#fff;">第一章：重新开始</div>
       <div style="font-size:12px;color:#8090c0;margin-top:4px;">第 ${record.day} 天</div>
