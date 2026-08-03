@@ -3,7 +3,7 @@
  *
  * 验证：
  *   1. 恢复前：花园旁无夏雅精灵（gardenXiya === null）
- *   2. 三阶段恢复完成 → 夏雅在花园旁出现（gardenXiya 存在、位置 col2,row20）
+ *   2. 三阶段恢复完成 → 夏雅在花园旁出现（gardenXiya 存在、位置 col33,row6）
  *   3. 靠近按 E → 触发 GARDEN_RESTORED_XIYA_DIALOGUE（对白文本为制作人确认版"生活记忆型"）
  *   4. 触发后精灵销毁（一次性）
  *   5. 无运行时错误
@@ -97,7 +97,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       };
     });
     check('恢复后 夏雅在花园旁出现', d.gardenXiya === true, `实际=${d.gardenXiya}`);
-    check('夏雅位置 (col2,row20) 中心', d.gardenXiyaPos && d.gardenXiyaPos.x === 40 && d.gardenXiyaPos.y === 328,
+    check('夏雅位置 (col33,row6) 中心', d.gardenXiyaPos && d.gardenXiyaPos.x === 536 && d.gardenXiyaPos.y === 104,
       `实际=${JSON.stringify(d.gardenXiyaPos)}`);
     check('夏雅标签存在', d.gardenXiyaLabel === true, `实际=${d.gardenXiyaLabel}`);
 
