@@ -50,7 +50,7 @@ import {
 } from '../systems/DailyQuestSystem';
 import { InputManager } from '../systems/InputManager';
 import * as AmbienceSystem from '../systems/AmbienceSystem';
-import { triggerTag, getTriggeredTags, clearTags } from '../systems/GuiXingRecordSystem';
+import { triggerTag, getTriggeredTags } from '../systems/GuiXingRecordSystem';
 import { TouchControls, setActionButtonLabel } from '../systems/TouchControls';
 import { showMemoryMoment } from '../ui/MemoryMoment';
 import { ShopPanel } from '../ui/ShopPanel';
@@ -330,8 +330,6 @@ export class MapScene extends Phaser.Scene {
   }
 
   private createScene(): void {
-    // 场景切换时清理跨存档标签（一次性人生事件不能跨新游戏污染）
-    clearTags();
     // 创建 tilemap 并关联 tileset
     const map = this.make.tilemap({ key: this.mapKey });
     // 屋内/木屋场景：收集睡觉判定格（house=床铺 gid 9；farm=木屋地板 gid 6）
