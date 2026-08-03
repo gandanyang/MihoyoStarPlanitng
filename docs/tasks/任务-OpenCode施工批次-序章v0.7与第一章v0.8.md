@@ -1,7 +1,7 @@
 # 任务卡：OpenCode 施工批次（序章 v0.7 + 第一章 v0.8）
 
 > 立项：制作人 2026-08-03 ｜ 执行：**OpenCode** ｜ 验证：**Trae** ｜ 方案：**Codex（已完成，不改代码）**
-> 状态：📋 待施工
+> 状态：✅ 已完成（批次 A/B 均已落地并回归通过，待 Trae 验证）
 
 ---
 
@@ -13,62 +13,62 @@
 
 ---
 
-## 1. 批次 A：序章 v0.7（已落地，待收尾）
+## 1. 批次 A：序章 v0.7（已完成）
 
-> 施工图：docs/design/序章重构方案-v0.7.md ｜ **代码已在工作区（未提交）**，本批次 = 核查 + 探针适配 + 回归 + 提交
+> 施工图：docs/design/序章重构方案-v0.7.md ｜ 落地：ddf9a34 / ed7c8af
 
 ### A1 核查项
 
-- [ ] 两页通知（StationScene.ts）已按 v0.7 落地
-- [ ] 车站独白 / 初遇夏雅 / 开门旧锄头 / 教程三句 / 第一夜旧笔记本 已落地
+- [x] 两页通知（StationScene.ts）已按 v0.7 落地
+- [x] 车站独白 / 初遇夏雅 / 开门旧锄头 / 教程三句 / 第一夜旧笔记本 已落地
 
-### A2 探针适配（**必做，当前必挂**）
+### A2 探针适配（已完成）
 
-- [ ] `probe-mobile-text`：单击 → 改为"点击翻页 → 点击关闭"两次点击
-- [ ] `probe-bug030-034` / `probe-bug031` / `probe-mobile-layout` / `probe-mobile-ux`：核查并适配两次点击
-- [ ] `test-ch1-story`：车站对白行数注释更新（12 → 9）；通知段确认轮询可二次点击
+- [x] `probe-mobile-text`：单击 → 改为"点击翻页 → 点击关闭"两次点击
+- [x] `probe-bug030-034` / `probe-bug031` / `probe-mobile-layout` / `probe-mobile-ux`：核查并适配两次点击
+- [x] `test-ch1-story`：车站对白行数注释更新（12 → 9）；通知段确认轮询可二次点击
 
-### A3 回归
+### A3 回归（已完成）
 
-- [ ] `tsc` + test-tutorial + probe-mobile-text + probe-mobile-tutorial + test-ch1-story
+- [x] `tsc` + test-tutorial + probe-mobile-text + probe-mobile-tutorial + test-ch1-story
 
 ---
 
-## 2. 批次 B：第一章 v0.8（待施工）
+## 2. 批次 B：第一章 v0.8（已完成）
 
-> 施工图：docs/design/第一章本地化修订-v0.8.md
+> 施工图：docs/design/第一章本地化修订-v0.8.md ｜ 落地：1b24126
 
 ### B1 P0 文本（StorySystem.ts）
 
-- [ ] 村长委托拆信息（老人化 + 星之碎片后置）
-- [ ] 挖矿引导夏雅减解释 + 爷爷线
-- [ ] E9 傍晚简单关心版（删 KPI/周报）
-- [ ] E2 收获生活化版
-- [ ] 爷爷信加祖孙生活铺垫（观星夜）
+- [x] 村长委托拆信息（老人化 + 星之碎片后置）
+- [x] 挖矿引导夏雅减解释 + 爷爷线
+- [x] E9 傍晚简单关心版（删 KPI/周报）
+- [x] E2 收获生活化版
+- [x] 爷爷信加祖孙生活铺垫（观星夜）
 
 ### B2 P1 文本
 
-- [ ] 花园"院子有人照顾，就不会冷清"
-- [ ] 爷爷笔记第 4 条生活化（"花比往年开得早……是不是这座岛在回应什么"）
-- [ ] 观星夜选项 A → "至少现在，我想留下来看看"
-- [ ] 庄园口语混用（老林家的院子 / 那片地；正式名保留）
+- [x] 花园"院子有人照顾，就不会冷清"
+- [x] 爷爷笔记第 4 条生活化（"花比往年开得早……是不是这座岛在回应什么"）
+- [x] 观星夜选项 A → "至少现在，我想留下来看看"
+- [x] 庄园口语混用（老林家的院子 / 那片地；正式名保留）
 
 ### B3 青禾镇改名（制作人拍板）
 
-- [ ] `StorySystem.ts` 文本：星火镇 → 青禾镇（TOWN_INTRO / ELDER_QUEST 等）
-- [ ] `exits.ts` MAP_NAMES：town 区域名 → 青禾镇
-- [ ] 探针/断言同步（HUD 区域名相关）
+- [x] `StorySystem.ts` 文本：星火镇 → 青禾镇（TOWN_INTRO / ELDER_QUEST 等）
+- [x] `exits.ts` MAP_NAMES：town 区域名 → 青禾镇
+- [x] 探针/断言同步（HUD 区域名相关）
 - 保留：归星物语（标题）/ 星黎庄园 / 星之碎片
 
 ### B4 HUD 目标文案（配套，防剧透）
 
-- [ ] `QuestSystem.getQuestObjective` accepted 态 → "去爷爷以前常去的森林看看"
-- [ ] 已接对白 → "去你爷爷以前常去的森林看看吧"
-- [ ] `test-ch1-story` 若断言"星之碎片"目标文案需同步
+- [x] `QuestSystem.getQuestObjective` accepted 态 → "去爷爷以前常去的森林看看"
+- [x] 已接对白 → "去你爷爷以前常去的森林看看吧"
+- [x] `test-ch1-story` 若断言"星之碎片"目标文案需同步
 
-### B5 回归
+### B5 回归（已完成）
 
-- [ ] `tsc` + test-ch1-story + probe-density-v053(+batch2) + probe-garden-xiya
+- [x] `tsc` + test-ch1-story + probe-density-v053(+batch2) + probe-garden-xiya
 
 ---
 
