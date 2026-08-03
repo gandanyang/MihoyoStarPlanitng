@@ -13,6 +13,13 @@ export const GAME_CONFIG = {
 export const GAME_TITLE = '归星物语';
 
 /**
+ * 临时测试机器人开关（开发期用）：
+ * 农场出生点旁出现「测试机器人」，对话可领取测试道具（自动农业机器人/钻石/种子）。
+ * ⚠️ 发布前必须改为 false 或删除本功能。
+ */
+export const ENABLE_TEST_BOT = true;
+
+/**
  * 判断是否为移动端布局（小屏）。
  * 用于 HUD 等 UI 自适应：移动端精简信息、PC 保留完整提示。
  * 注意：输入控件（摇杆/按钮）PC 和手机都显示，不依赖此判断。

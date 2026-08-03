@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
 import { MAP_EXITS, MAP_NAMES } from '../data/exits';
-import { isMobileLayout, isTouchDevice } from '../config';
+import { isMobileLayout, isTouchDevice, ENABLE_TEST_BOT } from '../config';
 import {
   FARM_AREA,
   TILE_SIZE,
@@ -190,6 +190,10 @@ export class MapScene extends Phaser.Scene {
   private grandpaNote: Phaser.GameObjects.Text | null = null;
   // 爷爷笔记交互基准坐标（椭圆实际位置，label 有 -8px 偏移）
   private grandpaNotePos: { x: number; y: number } = { x: 0, y: 0 };
+  // 临时测试机器人（开发期道具发放，ENABLE_TEST_BOT=false 时关闭）
+  private testBot: Phaser.GameObjects.Ellipse | null = null;
+  private testBotLabel: Phaser.GameObjects.Text | null = null;
+  private testBotPos: { x: number; y: number } = { x: 0, y: 0 };
   // M1-3 爷爷旧花园恢复点（farm 左下角木屋旁）：三阶段清理交互状态
   private gardenRestore: {
     /** 0=未清理 1=已清倒木 2=已清破花架 3=已恢复 */
@@ -258,6 +262,7 @@ export class MapScene extends Phaser.Scene {
     this.clearEveningXiya();
     // M1-3 夏雅见证精灵清理（场景切换时销毁，防止残留）
     this.clearGardenXiya();
+    this.clearTestBot();
     // 自动农业机器人视觉清理
     this.clearRobots();
   }
@@ -557,6 +562,7 @@ export class MapScene extends Phaser.Scene {
     // v0.5.3 剧情密度 E5：爷爷的笔记（庄园角落可读物件，多条轮换、不解释）
     if (this.mapKey === 'farm') {
       this.setupGrandpaNote();
+      this.setupTestBot();
     }
 
     // 触屏控件（摇杆+交互按钮，DOM 单例；移动端额外显示背包按钮）
@@ -1822,6 +1828,11 @@ export class MapScene extends Phaser.Scene {
       if (this.tryGrandpaNoteInteract()) return;
     }
 
+    // 临时测试机器人（开发期）：对话领取测试道具包
+    if (this.mapKey === 'farm' && this.testBot) {
+      if (this.tryTestBotInteract()) return;
+    }
+
     // M1-3 爷爷旧花园恢复点（未恢复时靠近按 E 三阶段清理）
     if (this.mapKey === 'farm' && this.gardenRestore && this.gardenRestore.stage < 3) {
       if (this.tryGardenRestoreInteract()) return;
@@ -2216,6 +2227,43 @@ export class MapScene extends Phaser.Scene {
   /** 清除爷爷笔记精灵（场景切换/跨天时调用） */
   private clearGrandpaNote(): void {
     if (this.grandpaNote) { this.grandpaNote.destroy(); this.grandpaNote = null; }
+  }
+
+  /** 临时测试机器人：农场出生点旁（(18,6)，开放格），对话领取测试道具包（开发期用） */
+  private setupTestBot(): void {
+    if (this.mapKey !== 'farm' || !ENABLE_TEST_BOT) return;
+    const nx = 18 * TILE_SIZE + TILE_SIZE / 2;
+    const ny = 6 * TILE_SIZE + TILE_SIZE / 2;
+    this.testBot = this.add.ellipse(nx, ny, 18, 18, 0x6a8a45, 0.9);
+    this.testBot.setDepth(3);
+    this.testBotLabel = this.add.text(nx, ny - 12, '测试机器人 🤖', {
+      fontFamily: 'Arial', fontSize: '11px', color: '#8fe388',
+    }).setOrigin(0.5).setDepth(4);
+    this.testBotPos = { x: nx, y: ny };
+  }
+
+  /** 与测试机器人交互：发放测试道具包（自动农业机器人/钻石/作物种子） */
+  private tryTestBotInteract(): boolean {
+    if (!this.testBot || !this.testBot.visible) return false;
+    const dx = this.player.x - this.testBotPos.x;
+    const dy = this.player.y - this.testBotPos.y;
+    if (dx * dx + dy * dy > 30 * 30) return false;
+    addItem('auto_farmer_robot', 1);
+    addItem('diamond', 20);
+    addItem('radish_seed', 3);
+    addItem('tomato_seed', 3);
+    addItem('corn_seed', 3);
+    addItem('strawberry_seed', 3);
+    play('levelup');
+    this.showDialogueText('[测试] 获得测试道具：自动农业机器人 ×1、钻石 ×20、萝卜/番茄/玉米/草莓种子 ×3');
+    this.updateHUD();
+    return true;
+  }
+
+  /** 清除测试机器人精灵（场景切换时调用） */
+  private clearTestBot(): void {
+    if (this.testBot) { this.testBot.destroy(); this.testBot = null; }
+    if (this.testBotLabel) { this.testBotLabel.destroy(); this.testBotLabel = null; }
   }
 
   // ============ M1-3 爷爷旧花园恢复点 ============
