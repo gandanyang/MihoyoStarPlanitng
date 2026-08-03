@@ -98,9 +98,16 @@ const QUEST_POOL: DailyQuestTemplate[] = [
 let dailyQuests: DailyQuestInstance[] = [];
 let currentDay: number = 0;
 
+/** E-06：教程期（主线未完成）仅投放当天必可完成的任务（播种/浇水），避免与教程目标抢注意力 */
+const TUTORIAL_COMPATIBLE_TYPES: readonly QuestObjective['type'][] = ['plant', 'water'];
+
+function isTutorialCompatible(t: DailyQuestTemplate): boolean {
+  return TUTORIAL_COMPATIBLE_TYPES.includes(t.objective.type);
+}
+
 /** 随机选取 n 个不重复的任务 */
-function pickRandom(n: number, opts?: { allowTalk?: boolean }): DailyQuestTemplate[] {
-  const pool = [...QUEST_POOL];
+function pickRandom(n: number, opts?: { allowTalk?: boolean; pool?: DailyQuestTemplate[] }): DailyQuestTemplate[] {
+  const pool = [...(opts?.pool ?? QUEST_POOL)];
   // B-1（制作人拍板 2026-08-03）：晚间 NPC 回家，不生成新的对话任务
   // 避免"接了 talk_* 才发现 NPC 找不到"。仅在明确允许时保留 talk 任务。
   if (opts?.allowTalk !== true) {
@@ -151,8 +158,14 @@ export function refreshDailyQuests(): void {
     // 首次：教程完成后才固定投放引导任务（挖矿/砍树）；
     // 教程未完成时玩家还没有斧头/未解锁矿洞，提前投放会导致"按E无法推进任务"
     const guide = isTutorialDone() ? QUEST_POOL.filter((t) => GUIDE_QUEST_IDS.has(t.id)) : [];
-    const rest = pickRandom(4 - guide.length, { allowTalk });
-    dailyQuests = [...guide, ...rest].map(createInstance);
+    if (!isTutorialDone()) {
+      // E-06：教程期只投当天必可完成的播种/浇水任务（首日任务池与教程目标一致）
+      const rest = pickRandom(4, { allowTalk, pool: QUEST_POOL.filter(isTutorialCompatible) });
+      dailyQuests = rest.map(createInstance);
+    } else {
+      const rest = pickRandom(4 - guide.length, { allowTalk });
+      dailyQuests = [...guide, ...rest].map(createInstance);
+    }
   } else {
     const rest = pickRandom(4 - keepGuide.length, { allowTalk });
     dailyQuests = [...keepGuide, ...rest.map(createInstance)];

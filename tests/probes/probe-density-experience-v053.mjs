@@ -33,8 +33,14 @@ async function sceneInfo(page) {
   return page.evaluate(() => ({
     scene: window.__game.scene.getScenes(true)[0]?.scene?.key ?? 'none',
     step: window.debug?.getStoryStep?.(),
-    day: window.debug ? (() => { try { return window.__game.scene.getScenes(true)[0].player ? 0 : 0; } catch { return 0; } })() : 0,
   }));
+}
+
+// ===== 断言（v0.6 补：原为无断言走查） =====
+let pass = 0, fail = 0;
+function check(name, ok, detail = '') {
+  if (ok) { pass++; console.log(`  ✅ ${name}`); }
+  else { fail++; console.log(`  ❌ ${name} ${detail}`); }
 }
 
 async function gotoScene(page, key, spawn) {
@@ -118,6 +124,8 @@ async function run() {
     console.log('\n【Day1 清晨 06:00】走进庄园……');
     await gotoScene(page, 'farm', { x: 200, y: 300 });
     await sleep(800);
+    let si = await sceneInfo(page);
+    check('进入农场场景', si.scene === 'farm', `实际=${si.scene}`);
     await screenshot(page, 'v053-1-farm-morning');
 
     // 走向夏雅（v0.6 NPC生活化：清晨夏雅在花园旁(1,21)浇水）
@@ -127,6 +135,8 @@ async function run() {
     console.log('\n[靠近夏雅，按 E]');
     await pressE(page);
     await sleep(600);
+    let t = await dialogueText(page);
+    check('E1 清晨夏雅偶遇对话触发', t !== '<closed>' && t.includes('清晨的庄园很安静'), `实际=${t.slice(0, 40)}`);
     await readDialogueSlowly(page, 8);
     await screenshot(page, 'v053-3-xiya-dawn-dialogue');
 
@@ -136,6 +146,8 @@ async function run() {
     await sleep(400);
     await gotoScene(page, 'town', { x: 200, y: 300 });
     await sleep(800);
+    si = await sceneInfo(page);
+    check('进入小镇场景', si.scene === 'town', `实际=${si.scene}`);
     // 跳过小镇开场（真实玩家会读，这里为聚焦新事件快速过）
     console.log('\n[小镇开场]');
     await readDialogueSlowly(page, 6);
@@ -145,6 +157,8 @@ async function run() {
     await teleport(page, 'town', 200, 216, 'up');
     await pressE(page);
     await sleep(600);
+    t = await dialogueText(page);
+    check('E4 小镇每日闲聊触发', t !== '<closed>' && t.trim().length > 0, `实际=${t.slice(0, 40)}`);
     await readDialogueSlowly(page, 14);
     await screenshot(page, 'v053-4-adventurer-daily');
 
@@ -152,14 +166,19 @@ async function run() {
     console.log('\n【Day1 上午】去矿洞看看老张……');
     await gotoScene(page, 'mine', { x: 200, y: 300 });
     await sleep(800);
+    si = await sceneInfo(page);
+    check('进入矿洞场景', si.scene === 'mine', `实际=${si.scene}`);
     console.log('\n[靠近老张（矿洞）]');
     await teleport(page, 'mine', 200, 184, 'up');
     await pressE(page);
     await sleep(600);
+    t = await dialogueText(page);
+    check('E3 老张闲聊触发（林澈过去）', t !== '<closed>' && t.trim().length > 0, `实际=${t.slice(0, 40)}`);
     await readDialogueSlowly(page, 24);
     await screenshot(page, 'v053-5-miner-linche-past');
 
-    console.log('\n=== 体验验证完成 ===');
+    console.log(`\n=== 体验验证完成：${pass} 通过 / ${fail} 失败 ===`);
+    if (fail > 0) process.exitCode = 1;
   } finally {
     await browser.close();
   }

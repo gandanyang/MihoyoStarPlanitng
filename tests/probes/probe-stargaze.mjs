@@ -249,6 +249,22 @@ async function run() {
     result('结算面板打开', panel.exists && panel.display === 'flex', JSON.stringify(panel));
     await screenshot(page, 'stargaze-ending-panel');
 
+    // A6：归星记录内容真实渲染（五段 + 标题）——此前只验纯函数，这里补真实面板内容断言
+    const record = await page.evaluate(() => {
+      const sec = document.querySelector('#gx-sections');
+      const hdr = document.querySelector('#gx-header');
+      const stats = document.querySelector('#gx-stats');
+      return {
+        sectionsFilled: !!sec && sec.innerHTML.trim().length > 0,
+        sectionsCount: sec?.querySelectorAll('div[style*="border-left"]').length ?? 0,
+        hasTitle: hdr?.textContent?.includes('归星记录') ?? false,
+        hasStats: !!stats && stats.textContent?.includes('第') === true,
+      };
+    });
+    result('归星记录内容渲染（标题+五段+脚注）',
+      record.hasTitle && record.sectionsFilled && record.sectionsCount >= 5 && record.hasStats,
+      JSON.stringify(record));
+
     const info = await sceneInfo(page);
     result('storyStep = observatory_complete', info.step === 'observatory_complete', `步骤=${info.step}`);
 

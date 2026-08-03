@@ -68,7 +68,7 @@ async function run() {
     check('P2a. 车站对白打开', opened);
     const skipVisibleWhileOpen = await page.evaluate(() => !!document.getElementById('intro-skip-btn'));
     check('P2b. 对白期间跳过按钮存在（预期存在）', skipVisibleWhileOpen);
-    // 推进全部 12 行 → 对白结束
+    // 推进全部 9 行 → 对白结束
     for (let i = 0; i < 25; i++) {
       await page.evaluate(() => {
         const s = window.__game.scene.getScenes(true)[0];

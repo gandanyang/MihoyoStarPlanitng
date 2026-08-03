@@ -30,13 +30,13 @@ async function teleport(page, sceneKey, x, y, facing = 'up') {
   await sleep(200);
 }
 
-/** 读取某农田格视觉：rect 是否可见（锄地成功 → tilled 深棕方块显示） */
+/** 读取某农田格视觉：plot 是否可见（锄地成功 → tilled 地块显示，frame 0） */
 async function tileVisual(page, col, row) {
   return page.evaluate(([c, r]) => {
     const s = window.__game.scene.getScene('farm');
     const v = s?.tileRects?.get(`${c},${r}`);
-    if (!v?.rect) return { exists: false };
-    return { exists: true, visible: v.rect.visible, fillColor: v.rect.fillColor };
+    if (!v?.plot) return { exists: false };
+    return { exists: true, visible: v.plot.visible, frame: v.plot.frame.name };
   }, [col, row]);
 }
 
@@ -115,10 +115,10 @@ async function run() {
     await page.evaluate(() => document.getElementById('rotate-hint')?.remove());
     await sleep(100);
 
-    // 选农田格 (15,10)：世界坐标 (248, 168)，点击前应为 empty（rect 隐藏）
+    // 选农田格 (15,10)：世界坐标 (248, 168)，点击前应为 empty（plot 隐藏）
     const col = 15, row = 10;
     const before = await tileVisual(page, col, row);
-    console.log(`3. 点击前格子(${col},${row}) rect可见=${before.visible} ${before.visible ? '❌ 应为隐藏' : '✅'}`);
+    console.log(`3. 点击前格子(${col},${row}) plot可见=${before.visible} ${before.visible ? '❌ 应为隐藏' : '✅'}`);
 
     const { sx, sy, vw } = await worldToScreen(page, col * 16 + 8, row * 16 + 8);
     console.log(`   视口=(${vw.x.toFixed(0)},${vw.y.toFixed(0)},${vw.w},${vw.h}) 目标格屏幕=(${sx.toFixed(0)},${sy.toFixed(0)})`);
@@ -126,14 +126,14 @@ async function run() {
     await sleep(600);
 
     const after = await tileVisual(page, col, row);
-    const tilled = after.exists && after.visible && after.fillColor === 0x6b4423;
-    console.log(`4. 点击后格子(${col},${row}) rect可见=${after.visible} 颜色=#${after.fillColor?.toString(16)} ${tilled ? '✅ 锄地成功' : '❌ 未锄地'}`);
+    const tilled = after.exists && after.visible && after.frame === 0;
+    console.log(`4. 点击后格子(${col},${row}) plot可见=${after.visible} 帧=${after.frame} ${tilled ? '✅ 锄地成功' : '❌ 未锄地'}`);
 
     // 再点一次同一格：tilled → 无种子则无操作（避免报错），有种子则播种。只要不抛错即可
     await page.touchscreen.tap(sx, sy);
     await sleep(400);
     const after2 = await tileVisual(page, col, row);
-    console.log(`5. 连点不崩溃 → rect可见=${after2.visible} ✅`);
+    console.log(`5. 连点不崩溃 → plot可见=${after2.visible} 帧=${after2.frame} ✅`);
 
     if (!tilled) throw new Error('点击种田未生效');
     console.log('\n🎉 点击种田探针通过');

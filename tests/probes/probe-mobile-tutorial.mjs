@@ -99,7 +99,7 @@ async function run() {
     await teleport(page, 'gate', 248, 200, 'up');
     await pressInteract(page);
     await sleep(800);
-    await skipDialogue(page, 13); // XIYA_DIALOGUE 13 行（含夏雅观察式关心）
+    await skipDialogue(page, 7); // XIYA_DIALOGUE 7 行（v0.7）
     info = await sceneInfo(page);
     console.log(`3. 夏雅对话拿钥匙 → 步骤=${info.step}${info.step === 'get_key' ? ' ✅' : ' ❌'}`);
 
@@ -115,7 +115,7 @@ async function run() {
       if (btn) btn.click();
     });
     await sleep(1200);
-    await skipDialogue(page, 7); // GATE_OPENED_DIALOGUE
+    await skipDialogue(page, 6); // GATE_OPENED_DIALOGUE 6 行（v0.7）
     info = await sceneInfo(page);
     console.log(`5. 使用钥匙开门 → 步骤=${info.step}${info.step === 'clear_land' ? ' ✅' : ' ❌'}`);
 
@@ -131,7 +131,7 @@ async function run() {
       await teleport(page, 'farm', x, y, 'up');
       await pressInteract(page);
     }
-    await skipDialogue(page, 7); // SOW_SEEDS_DIALOGUE
+    await skipDialogue(page, 3); // SOW_SEEDS_DIALOGUE 3 行（v0.7）
     info = await sceneInfo(page);
     console.log(`7. 锄地×3 → 播种教学 → 步骤=${info.step}${info.step === 'sow_seeds' ? ' ✅' : ' ❌'}`);
 
@@ -140,7 +140,7 @@ async function run() {
       await teleport(page, 'farm', x, y, 'up');
       await pressInteract(page);
     }
-    await skipDialogue(page, 6); // WATER_CROPS_DIALOGUE 6 行（含"土地不会催你"）
+    await skipDialogue(page, 3); // WATER_CROPS_DIALOGUE 3 行（v0.7）
     info = await sceneInfo(page);
     console.log(`8. 播种×3 → 浇水教学 → 步骤=${info.step}${info.step === 'water_crops' ? ' ✅' : ' ❌'}`);
 

@@ -16,7 +16,6 @@ import puppeteer from 'puppeteer-core';
 const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const GAME_URL = process.env.GAME_URL || 'http://localhost:5173/';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const hex = v => (v < 0 ? '-' : '0x') + Math.abs(v).toString(16);
 
 (async () => {
   console.log('=== v0.6 自动农业机器人 MVP 验证 ===\n');
@@ -81,7 +80,8 @@ const hex = v => (v < 0 ? '-' : '0x') + Math.abs(v).toString(16);
       return {
         robotCount: window.debug.robotCount(),
         hasAutomation: s.robots && s.robots.length,
-        tileState: (() => { const t = s.tileRects.get('14,10'); return t ? t.rect.visible : 'no-tile'; })(),
+        // TileVisual 新结构 {plot, crop}：tilled → plot 可见 frame 0
+        tileState: (() => { const t = s.tileRects.get('14,10'); return t ? t.plot.visible : 'no-tile'; })(),
       };
     });
     check('无机器人 初始 count=0', d.robotCount === 0, `实际=${d.robotCount}`);
@@ -162,21 +162,22 @@ const hex = v => (v < 0 ? '-' : '0x') + Math.abs(v).toString(16);
       const t1410 = s.tileRects.get('14,10');
       const t1610 = s.tileRects.get('16,10');
       return {
-        tile1410: t1410 ? t1410.rect.fillColor : -1, // watered=0x3d2817(4007447), tilled=0x6b4423(7031843)
+        // 新结构 {plot, crop}：watered → plot frame 2；tilled → plot frame 0
+        plot1410: t1410 ? t1410.plot.frame.name : -1,
         frame1410: t1410 ? t1410.crop.frame.name : -1, // watered 萝卜 frame=1
         frame1610: t1610 ? t1610.crop.frame.name : -1, // 收获后 tilled 无作物 visible=false
         crop1610visible: t1610 ? t1610.crop.visible : null,
       };
     });
-    check('机器人浇水 14,10 → watered(帧1)', d.frame1410 === 1, `实际=frame${d.frame1410} 色${d.tile1410}`);
+    check('机器人浇水 14,10 → watered(地块帧2+作物帧1)', d.plot1410 === 2 && d.frame1410 === 1, `实际=plot帧${d.plot1410} 作物帧${d.frame1410}`);
     check('机器人收获 16,10 → 作物消失', d.crop1610visible === false, `实际=frame${d.frame1610} visible=${d.crop1610visible}`);
-    // 收获萝卜进背包：16,10 变为 tilled（深棕 0x6b4423 = 7029795）
-    const inv = await evalFarm(() => {
+    // 收获萝卜进背包：16,10 变为 tilled（地块帧 0）
+    const harvested = await evalFarm(() => {
       const s = window.__game.scene.getScene('farm');
       const t = s.tileRects.get('16,10');
-      return t ? t.rect.fillColor : -1;
+      return t ? { visible: t.plot.visible, frame: t.plot.frame.name } : null;
     });
-    check('16,10 收获后变 tilled（深棕 0x6b4423）', inv === 0x6b4423, `实际=${inv}(${hex(inv)})`);
+    check('16,10 收获后变 tilled（地块可见+帧0）', !!harvested && harvested.visible && harvested.frame === 0, `实际=${JSON.stringify(harvested)}`);
 
     // ============ 3. 存档重进：机器人仍存在 ============
     console.log('\n--- 3. 存档保存重进：机器人仍存在 ---');

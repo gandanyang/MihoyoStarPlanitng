@@ -81,7 +81,7 @@ async function run() {
       }), 10000);
       await page.keyboard.press('Enter');
 
-      // 等 skip-btn 出现（代表开场已启动）再点通知
+      // 等 skip-btn 出现（代表开场已启动）再点通知（v0.7 两页：点两次）
       await waitFor(page, () => page.evaluate(() => !!document.getElementById('intro-skip-btn')), 15000);
       const phoneClicked = await waitFor(page, () =>
         page.evaluate(() => {
@@ -90,6 +90,12 @@ async function run() {
           return false;
         }), 15000);
       check('手机通知出现并点击', !!phoneClicked);
+      await sleep(300);
+      // 第二次点击：翻到第2页后关闭
+      await page.evaluate(() => {
+        const o = [...document.querySelectorAll('div')].find(d => d.style.zIndex === '600' && d.textContent.includes('人事通知'));
+        if (o) o.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+      });
 
       await page.evaluate(() => { const b = document.getElementById('intro-skip-btn'); if (b) b.click(); });
       await sleep(1500);
@@ -152,6 +158,12 @@ async function run() {
           if (o) { o.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })); return true; }
           return false;
         }), 15000);
+      await sleep(300);
+      // v0.7 两页通知：第二次点击关闭
+      await page.evaluate(() => {
+        const o = [...document.querySelectorAll('div')].find(d => d.style.zIndex === '600' && d.textContent.includes('人事通知'));
+        if (o) o.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+      });
       await page.evaluate(() => { const b = document.getElementById('intro-skip-btn'); if (b) b.click(); });
       await sleep(1500);
       await page.evaluate(() => window.debug?.setStoryStep('done'));
@@ -203,6 +215,12 @@ async function run() {
           if (o) { o.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })); return true; }
           return false;
         }), 15000);
+      await sleep(300);
+      // v0.7 两页通知：第二次点击关闭
+      await page.evaluate(() => {
+        const o = [...document.querySelectorAll('div')].find(d => d.style.zIndex === '600' && d.textContent.includes('人事通知'));
+        if (o) o.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+      });
       await page.evaluate(() => { const b = document.getElementById('intro-skip-btn'); if (b) b.click(); });
       await sleep(1500);
       await page.evaluate(() => window.debug?.setStoryStep('done'));

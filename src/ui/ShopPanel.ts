@@ -127,6 +127,8 @@ let onClose: (() => void) | null = null;
 let onBuyCallback: ((itemId: string, count: number) => void) | undefined;
 /** 卖出回调（每日任务通知） */
 let onSellCallback: ((count: number) => void) | undefined;
+/** E-01：首次打开商店的引导 toast 只弹一次 */
+let shopFirstOpened = false;
 
 /** 关闭面板（模块级，事件监听器和 ShopPanel.close() 都走这里） */
 function closePanel(): void {
@@ -195,6 +197,15 @@ function createDom(): void {
     }
     const item = SHOP_ITEMS.find(i => i.action === action);
     if (item) {
+      // E-03：按钮不禁用（保留禁用样式）→ 点击给解释，避免"只知道买不了不知道为什么"
+      if (!item.canDo()) {
+        const need = item.price - getCoins();
+        showToast(item.type === 'buy'
+          ? `资金不足：还差 ${Math.max(need, 0)} G，把收获的作物卖掉就能赚钱`
+          : `背包里没有${item.label}，先收获作物吧`);
+        play('invalid');
+        return;
+      }
       item.do();
       if (item.type === 'buy') {
         onBuyCallback?.(item.id, 1);
@@ -236,9 +247,10 @@ function refresh(): void {
     const sellItems = SHOP_ITEMS.filter(i => i.type === 'sell');
     sellEl.innerHTML = sellItems.map(item => {
       const canSell = item.canDo();
+      // E-03：保留禁用样式但不禁用按钮——点击给解释（资金/作物不足提示）
       return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
         <span>${itemIconHtml(item.id, 16)} ${item.label}</span>
-        <button data-action="${item.action}" ${canSell ? '' : 'disabled'} style="${canSell ? btnActive : btnDisabled}">卖 ${item.price}G</button>
+        <button data-action="${item.action}" style="${canSell ? btnActive : btnDisabled}">卖 ${item.price}G</button>
       </div>`;
     }).join('');
   }
@@ -251,7 +263,7 @@ function refresh(): void {
       const canBuy = item.canDo();
       return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
         <span>${itemIconHtml(item.id, 16)} ${item.label}</span>
-        <button data-action="${item.action}" ${canBuy ? '' : 'disabled'} style="${canBuy ? btnActive : btnDisabled}">买 ${item.price}G</button>
+        <button data-action="${item.action}" style="${canBuy ? btnActive : btnDisabled}">买 ${item.price}G</button>
       </div>`;
     }).join('');
   }
@@ -274,6 +286,11 @@ export class ShopPanel {
     if (panelEl) {
       refresh();
       panelEl.style.display = 'flex';
+      // E-01：首次打开商店引导卖作物赚钱（立即显示，玩家尚未操作，不会覆盖后续购买反馈）
+      if (!shopFirstOpened) {
+        shopFirstOpened = true;
+        showToast('把收获的作物卖给我换金币，就能买更多种子！');
+      }
     }
   }
 

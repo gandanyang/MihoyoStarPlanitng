@@ -54,47 +54,37 @@ function hint(pc: string, mob: string): string {
 
 // ============ 对话数据 ============
 
-/** 车站开场 */
+/** 车站开场（v0.7 程序员克制版） */
 export const STATION_DIALOGUE: DialogueLine[] = [
-  { speaker: '', color: COLORS.system, text: '（「嘀——」列车到站声。晨光从车窗漏进来。）' },
-  { speaker: '', color: COLORS.system, text: '（手机屏幕亮起：「尊敬的林澈先生：因业务流程智能化调整，您的岗位职责将进行重新分配。感谢您五年来的付出。」）' },
+  { speaker: '', color: COLORS.system, text: '（手机屏幕还亮着。HR 的话停在最后一句：）' },
+  { speaker: '', color: COLORS.system, text: '「林先生，根据评估，你完全可以加入智能生态部门。」' },
+  { speaker: '', color: COLORS.system, text: '（收起手机。）' },
   { speaker: '林澈', color: COLORS.linche, inner: true, text: '五年了。' },
-  { speaker: '林澈', color: COLORS.linche, inner: true, text: '五年前，我以为走进大城市，就是走进了未来。' },
-  { speaker: '林澈', color: COLORS.linche, inner: true, text: '五年里，我换过无数版本的工具。每一次，都告诉自己：跑得快就不会被追上。' },
-  { speaker: '林澈', color: COLORS.linche, inner: true, text: '可是收到邮件的时候，我其实松了一口气。' },
-  { speaker: '', color: COLORS.system, text: '（林澈关掉手机。）' },
-  { speaker: '林澈', color: COLORS.linche, text: '算了。至少这次，是我自己选的离开。' },
-  { speaker: '', color: COLORS.system, text: '（林澈抬起头。远处，晨雾里有一座安静的庄园。）' },
-  { speaker: '林澈', color: COLORS.linche, inner: true, text: '星黎庄园……爷爷留给我的那封信，写着这个地址。' },
-  { speaker: '林澈', color: COLORS.linche, inner: true, text: '他说，如果有一天不知道往哪走，就回来看看。' },
+  { speaker: '林澈', color: COLORS.linche, inner: true, text: '……换个环境，也许也不错。' },
+  { speaker: '', color: COLORS.system, text: '（抬头，远处晨雾里的老院子。）' },
+  { speaker: '林澈', color: COLORS.linche, inner: true, text: '爷爷说，如果不知道往哪走，就回来看看。' },
+  { speaker: '林澈', color: COLORS.linche, text: '至少这次，是我自己选的离开。' },
   { speaker: '', color: COLORS.system, text: hint('使用 [W/A/S/D] 或方向键控制林澈移动。前往星黎庄园。', '使用屏幕左下方摇杆控制林澈移动。前往星黎庄园。') },
 ];
 
-/** 初遇夏雅 */
+/** 初遇夏雅（v0.7 减少等待感） */
 export const XIYA_DIALOGUE: DialogueLine[] = [
-  { speaker: '', color: COLORS.system, text: '（庄园大门前，一个年轻女孩正在清理门口的杂草。她看到林澈后停下动作。）' },
-  { speaker: '夏雅', color: COLORS.xiya, text: '你就是林澈吧？终于来了。' },
-  { speaker: '林澈', color: COLORS.linche, text: '（愣了一下）你认识我？' },
-  { speaker: '夏雅', color: COLORS.xiya, text: '当然。你爷爷走得太突然了，镇上的人都在猜……还会不会有人回来。' },
-  { speaker: '夏雅', color: COLORS.xiya, text: '你的家人离开之后，这里已经荒废好多年了。大家都以为……不会有人再回来了。' },
-  { speaker: '林澈', color: COLORS.linche, text: '我也没想到自己会回来。本来只是想处理一下庄园。然后……看看以后怎么办。' },
-  { speaker: '夏雅', color: COLORS.xiya, text: '你刚才在门口站了很久。' },
-  { speaker: '夏雅', color: COLORS.xiya, text: '是在想爷爷的事吗？' },
-  { speaker: '夏雅', color: COLORS.xiya, text: '如果现在还不想说，也没关系。' },
-  { speaker: '林澈', color: COLORS.linche, text: '只是有点想知道，爷爷最后看到的，会不会也是这样的天空。' },
-  { speaker: '夏雅', color: COLORS.xiya, text: '那就从这里开始吧。房子虽然旧了，田地虽然荒了。但是只要有人愿意重新照顾它，总会慢慢恢复的。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '你就是林澈？' },
+  { speaker: '林澈', color: COLORS.linche, text: '你认识我？' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '林爷爷以前提过你。……大家都以为，不会有人回来了。' },
+  { speaker: '林澈', color: COLORS.linche, text: '我也没想到自己会回来。本来只是想看看爷爷留下的地方。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '那就先从这扇门开始吧。' },
   { speaker: '', color: COLORS.system, text: '（夏雅递出钥匙。）' },
   { speaker: '', color: COLORS.system, text: hint('获得物品：【庄园钥匙】  按 [B] 键打开背包，使用钥匙打开大门。', '获得物品：【庄园钥匙】  点按右下角「背包」按钮，使用钥匙打开大门。') },
 ];
 
-/** 开门后 → 整理庄园 */
+/** 开门后 → 整理庄园（v0.7 旧锄头+祖孙情感） */
 export const GATE_OPENED_DIALOGUE: DialogueLine[] = [
-  { speaker: '', color: COLORS.system, text: '（大门伴随着沉重的「吱呀」声被推开，院子里长满杂草，土地已经多年无人打理。）' },
-  { speaker: '夏雅', color: COLORS.xiya, text: '这里以前可是镇上最漂亮的庄园。现在嘛……可能需要一点时间。' },
+  { speaker: '林澈', color: COLORS.linche, text: '……比我以为的还要荒。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '旧了点，但还能用。你爷爷当年就是用这把锄头，把这片地一锄一锄开出来的。' },
+  { speaker: '林澈', color: COLORS.linche, text: '他从来没跟我说过这些。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '有些事，要等你自己回来了，才会知道。' },
   { speaker: '', color: COLORS.system, text: '（夏雅拿出一把旧锄头。）' },
-  { speaker: '夏雅', color: COLORS.xiya, text: '这个应该还能用。虽然旧了点。' },
-  { speaker: '林澈', color: COLORS.linche, text: '以前我每天面对的是屏幕。现在突然让我面对一块地……感觉屏幕外的东西，确实不太一样，有点不习惯。' },
-  { speaker: '夏雅', color: COLORS.xiya, text: '放心。很多事情都是从第一次开始的。' },
   { speaker: '', color: COLORS.system, text: hint('获得物品：【旧锄头】  对着农田区域按 [E] 键锄地，清理 3 块土地。', '获得物品：【旧锄头】  对着农田区域点「交互」锄地，清理 3 块土地。') },
 ];
 
@@ -132,35 +122,28 @@ export const XIYA_EVENING_DIALOGUE: DialogueLine[] = [
   { speaker: '林澈', color: COLORS.linche, text: '（沉默片刻）……谢谢。' },
 ];
 
-/** 清理完成 → 播种 */
+/** 清理完成 → 播种（v0.7 生活化引导） */
 export const SOW_SEEDS_DIALOGUE: DialogueLine[] = [
-  { speaker: '', color: COLORS.system, text: '（土地整理完成，阳光洒在新翻开的土地上。）' },
-  { speaker: '夏雅', color: COLORS.xiya, text: '不错。开了个好头，这片土地已经重新醒过来了。' },
-  { speaker: '夏雅', color: COLORS.xiya, text: '这里还有一些种子。你试试看吧。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '先开三块地。地要翻过，种子才肯住下。' },
   { speaker: '', color: COLORS.system, text: '获得物品：【萝卜种子】×3' },
-  { speaker: '林澈', color: COLORS.linche, text: '种下一颗种子。然后等待它成长……这种感觉，好像和写代码完全不一样。' },
-  { speaker: '夏雅', color: COLORS.xiya, text: '但是它们都有一点相同。需要时间。也需要耐心。' },
   { speaker: '', color: COLORS.system, text: hint('按 [R] 键切换到萝卜种子，然后对着锄过的土地按 [E] 播种。播种 3 块土地。', '对着锄过的土地点「交互」播种萝卜（默认种子）。播种 3 块土地。') },
 ];
 
-/** 播种完成 → 浇水 */
+/** 播种完成 → 浇水（v0.7 生活化引导） */
 export const WATER_CROPS_DIALOGUE: DialogueLine[] = [
-  { speaker: '', color: COLORS.system, text: '（井边。）' },
-  { speaker: '夏雅', color: COLORS.xiya, text: '每天照顾它们。它们才会回应你的努力。' },
-  { speaker: '夏雅', color: COLORS.xiya, text: '不用着急。土地不会催你，它只会等着。' },
-  { speaker: '夏雅', color: COLORS.xiya, text: '在这里，慢一点也没关系。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '种下去，就得天天来看它。你爷爷说，庄稼最怕被忘记。' },
   { speaker: '', color: COLORS.system, text: '获得物品：【旧水壶】' },
   { speaker: '', color: COLORS.system, text: hint('对已播种的土地按 [E] 键浇水。为所有作物浇水。', '对已播种的土地点「交互」浇水。为所有作物浇水。') },
 ];
 
-/** 晚间结尾 */
+/** 晚间结尾（v0.7 第一夜·睡前+旧笔记本） */
 export const EVENING_DIALOGUE: DialogueLine[] = [
   { speaker: '', color: COLORS.system, text: '（夜晚，林澈坐在庄园门口，看着重新整理过的土地。）' },
   { speaker: '林澈', color: COLORS.linche, inner: true, text: '以前总觉得，只要不断追赶时代，就不会被淘汰。' },
   { speaker: '林澈', color: COLORS.linche, inner: true, text: '可是现在……也许慢下来，也不是坏事。' },
-  { speaker: '', color: COLORS.system, text: '（手机亮起，是一条城市新闻：「AI技术持续改变就业市场……」）' },
-  { speaker: '', color: COLORS.system, text: '（林澈看了一眼，然后关掉手机。）' },
-  { speaker: '林澈', color: COLORS.linche, text: '明天还有很多事情要做。' },
+  { speaker: '', color: COLORS.system, text: '（回到屋里，翻到一本旧笔记本。）' },
+  { speaker: '', color: COLORS.system, text: '（笔记本里夹着一张纸条：「今年番茄长得很好。植物似乎会记住照顾它的人。」）' },
+  { speaker: '林澈', color: COLORS.linche, inner: true, text: '……爷爷连种地都要记笔记。' },
   { speaker: '', color: COLORS.system, text: '回到床上睡觉，结束第一天。' },
 ];
 
@@ -271,8 +254,7 @@ export const DEMO_ENDING_DIALOGUE: DialogueLine[] = [
   { speaker: '信', color: COLORS.letter, text: '但这里，永远有一个属于你的地方。' },
   { speaker: '信', color: COLORS.letter, text: '小澈，如果有一天机器比我们更聪明，你觉得人还需要留下些什么？' },
   { speaker: '', color: COLORS.system, text: '（林澈握着信，抬头看向星空。）' },
-  { speaker: '林澈', color: COLORS.linche, text: '城市里的天空，已经很久没有这么清晰了。' },
-  { speaker: '林澈', color: COLORS.linche, text: '不知道为什么，这片星空……让我觉得有些熟悉。' },
+  { speaker: '林澈', color: COLORS.linche, text: '城市里，很久没见过这样的星星了。' },
   { speaker: '', color: COLORS.system, text: '（他没有说话。）' },
   { speaker: '', color: COLORS.system, text: '（远处传来虫鸣。星光落在庄园旧墙上。）' },
   { speaker: '', color: COLORS.system, text: '', options: ['我会留下的。这次我不走了。', '我想先弄清楚爷爷到底在这里经历了什么。', '我只是……还没想好怎么回那个城市。'] },

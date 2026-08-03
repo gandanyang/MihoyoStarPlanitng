@@ -168,7 +168,7 @@ async function run() {
     // 夏雅在 gate (15*16+8, 11*16+8)=(248,184)，玩家靠到旁边按 E
     await teleport(page, 'gate', 248, 204, 'up');
     await pressE(page);
-    await waitAndSkipDialogue(page, 13); // XIYA_DIALOGUE 13 行（含夏雅观察式关心）
+    await waitAndSkipDialogue(page, 7); // XIYA_DIALOGUE 7 行（v0.7 减少等待感）
 
     info = await sceneInfo(page);
     result('5. 获得庄园钥匙', info.step === 'get_key', `步骤=${info.step}`);
@@ -186,7 +186,7 @@ async function run() {
     });
     result('6a. 点击「使用」钥匙', keyClicked);
     await sleep(500);
-    await waitAndSkipDialogue(page, 7); // GATE_OPENED_DIALOGUE 7 行
+    await waitAndSkipDialogue(page, 6); // GATE_OPENED_DIALOGUE 6 行（v0.7 旧锄头）
 
     info = await sceneInfo(page);
     const afterKey = await page.evaluate(() => {
@@ -215,7 +215,7 @@ async function run() {
       await pressE(page);
       await sleep(400);
     }
-    await waitAndSkipDialogue(page, 7); // SOW_SEEDS_DIALOGUE 7 行
+    await waitAndSkipDialogue(page, 3); // SOW_SEEDS_DIALOGUE 3 行（v0.7 生活化引导）
 
     info = await sceneInfo(page);
     result('8. 锄地完成 → 播种教学', info.step === 'sow_seeds', `步骤=${info.step}`);
@@ -229,7 +229,7 @@ async function run() {
       await pressE(page);
       await sleep(400);
     }
-    await waitAndSkipDialogue(page, 6); // WATER_CROPS_DIALOGUE 6 行（含"土地不会催你"）
+    await waitAndSkipDialogue(page, 3); // WATER_CROPS_DIALOGUE 3 行（v0.7 生活化引导）
 
     info = await sceneInfo(page);
     result('9. 播种完成 → 浇水教学', info.step === 'water_crops', `步骤=${info.step}`);

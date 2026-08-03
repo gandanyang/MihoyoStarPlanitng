@@ -12,7 +12,7 @@
  */
 
 import { addXp } from '../data/FarmProgress';
-import { COLORS, ELDER_QUEST_DIALOGUE, SHARD_DELIVER_DIALOGUE, type DialogueLine } from './StorySystem';
+import { COLORS, ELDER_QUEST_DIALOGUE, SHARD_DELIVER_DIALOGUE, type DialogueLine, getStoryStep, isTutorialDone } from './StorySystem';
 
 /** 任务状态 */
 export type QuestState = 'not_started' | 'accepted' | 'collected' | 'completed';
@@ -75,8 +75,10 @@ export function getElderDialogue(): DialogueLine[] {
 
 /**
  * 返回当前任务目标提示文字（HUD 显示用）
+ * E-05：教程期（主线未完成）优先显示当前教程步骤目标，避免「与村长对话」与教程动作冲突
  */
 export function getQuestObjective(): string {
+  if (!isTutorialDone()) return tutorialObjective();
   switch (questState) {
     case 'not_started':
       return '与村长对话（农场/小镇）';
@@ -86,5 +88,31 @@ export function getQuestObjective(): string {
       return '返回村长交付任务';
     case 'completed':
       return '主线任务完成！';
+  }
+}
+
+/** E-05：教程步骤 → 目标文案（跟随 showTutorialHint 的引导，让 HUD 与教程动作一致） */
+function tutorialObjective(): string {
+  switch (getStoryStep()) {
+    case 'station_intro':
+    case 'station_move':
+    case 'arrive_manor':
+      return '前往庄园（跟着夏雅走）';
+    case 'xiya_talk':
+      return '与夏雅对话';
+    case 'get_key':
+      return '获得庄园钥匙';
+    case 'gate_opened':
+      return '进入庄园';
+    case 'clear_land':
+      return '清理土地（锄地）';
+    case 'sow_seeds':
+      return '播种萝卜种子';
+    case 'water_crops':
+      return '给作物浇水';
+    case 'evening_talk':
+      return '回屋睡觉，结束第一天';
+    default:
+      return '与村长对话（农场/小镇）';
   }
 }

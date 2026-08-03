@@ -68,6 +68,11 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       return false;
     });
     await sleep(300);
+    // v0.7 两页通知：第二次点击关闭
+    await page.evaluate(() => {
+      const o = [...document.querySelectorAll('div')].find(d => d.style.zIndex === '600' && d.textContent.includes('人事通知'));
+      if (o) o.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
     await page.evaluate(() => { const b = document.getElementById('intro-skip-btn'); if (b) b.click(); });
     await sleep(1500);
     await page.evaluate(() => window.debug?.setStoryStep('done'));

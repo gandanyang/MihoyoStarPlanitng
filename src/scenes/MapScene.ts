@@ -472,6 +472,7 @@ export class MapScene extends Phaser.Scene {
     this.hudDom.appendChild(this.hudQuestDom);
 
     this.updateHUD();
+    this.updateQuestHUD(); // E-05：创建时即显示当前目标（教程期=教程步骤，主线期=主线目标）
 
     // 记录初始帧时间戳
     this.lastFrameTime = this.time.now;
@@ -2489,13 +2490,14 @@ export class MapScene extends Phaser.Scene {
     g.fillCircle(x - 2, y - 3, 2.5);
     g.fillStyle(0xf1c40f, 1);
     g.fillCircle(x + 8, y - 3, 2.5);
-    // 标签（放摊位下方空地，不压农田）
-    const mark = this.add.text(x, y + 16, '商店', {
+    // 标签（放摊位下方空地，不压农田）——E-02：加"打开方式"提示，让摊位可交互性一目了然
+    const mark = this.add.text(x, y + 16, this.hintText('商店\n[按E]打开', '商店\n[点击]打开'), {
       fontFamily: 'Arial',
-      fontSize: '10px',
+      fontSize: '11px',
       color: '#ffe082',
       stroke: '#000000',
       strokeThickness: 2,
+      align: 'center',
     }).setOrigin(0.5).setDepth(4);
     this.farmShop = { mark, stall: g, pos: { x, y } };
   }
@@ -2977,6 +2979,10 @@ export class MapScene extends Phaser.Scene {
         showMemoryMoment('小时候爷爷告诉我，土地不会辜负认真照料它的人。');
         if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
         this.storyDialogue.play(FIRST_HARVEST_DIALOGUE, () => {
+          // E-01：首次收获后引导赚钱闭环（底部提示条，3 秒自动消失，不打断）
+          this.showDialogueText(this.hintText(
+            '收获的作物可以拿到农田右下角的商店卖掉换金币！',
+            '收获的作物可以拿到农田右下角的商店卖掉换金币！'));
           this.updateHUD();
         });
       }

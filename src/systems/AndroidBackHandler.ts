@@ -31,6 +31,95 @@ const BACK_TARGET: Record<string, string> = {
 /** 回退兜底出生点：农场顶部入口（15,6）瓦片 */
 const FALLBACK_SPAWN = { x: 15 * 16, y: 6 * 16 };
 
+/** 退出确认框状态（防重复弹出/便于返回键关闭） */
+let exitConfirmOpen = false;
+let exitConfirmEl: HTMLDivElement | null = null;
+
+/** 关闭退出确认框（继续游戏 / 已处理完动作） */
+function closeExitConfirm(): void {
+  exitConfirmOpen = false;
+  if (exitConfirmEl) {
+    exitConfirmEl.remove();
+    exitConfirmEl = null;
+  }
+}
+
+/**
+ * 弹出退出确认框（Android 返回手势不再直接退 App）。
+ * 按钮：继续游戏 / 回到主菜单（仅地图场景显示）/ 退出游戏。
+ * 点击遮罩空白处 = 继续游戏。
+ */
+function showExitConfirm(game: Phaser.Game, scene: Phaser.Scene): void {
+  if (exitConfirmOpen) return;
+  exitConfirmOpen = true;
+
+  const el = document.createElement('div');
+  exitConfirmEl = el;
+  el.id = 'exit-confirm';
+  Object.assign(el.style, {
+    position: 'fixed',
+    inset: '0',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'rgba(0,0,0,0.55)',
+    zIndex: '950',
+    userSelect: 'none',
+    pointerEvents: 'auto',
+  });
+
+  const card =
+    'width:min(300px,85vw);background:#3d3226;border:3px solid #8a6a45;' +
+    'border-radius:10px;padding:18px 16px;color:#fff;font-family:Arial;' +
+    'text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.6);';
+  const btnBase =
+    'display:block;width:100%;margin-top:10px;padding:12px 0;font-size:16px;' +
+    'border:none;border-radius:6px;cursor:pointer;color:#fff;';
+  const isMap = scene instanceof MapScene;
+
+  el.innerHTML = `
+    <div style="${card}">
+      <div style="font-size:17px;font-weight:bold;margin-bottom:6px;">确定要退出游戏吗？</div>
+      <div style="font-size:12px;color:#b8a88a;margin-bottom:4px;">当前进度已自动存档</div>
+      <button data-act="resume" style="${btnBase}background:#8a6a45;">继续游戏</button>
+      ${isMap ? `<button data-act="title" style="${btnBase}background:#5a6a8a;">回到主菜单</button>` : ''}
+      <button data-act="exit" style="${btnBase}background:#a04030;">退出游戏</button>
+    </div>`;
+  document.body.appendChild(el);
+
+  // 触屏：pointerup 主处理，click 兜底去重（同 TitleScene 清除存档按钮）
+  let pointerHandled = false;
+  const doAction = (act: string | undefined): void => {
+    if (act === 'exit') {
+      closeExitConfirm();
+      void App.exitApp();
+    } else if (act === 'title') {
+      closeExitConfirm();
+      game.scene.start('title');
+    } else {
+      closeExitConfirm(); // resume / 空白遮罩 → 继续游戏
+    }
+  };
+  el.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+  });
+  el.addEventListener('pointerup', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    pointerHandled = true;
+    const btn = (e.target as HTMLElement).closest?.('button[data-act]') as HTMLElement | null;
+    doAction(btn?.dataset.act);
+  });
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (pointerHandled) { pointerHandled = false; return; }
+    const btn = (e.target as HTMLElement).closest?.('button[data-act]') as HTMLElement | null;
+    doAction(btn?.dataset.act);
+  });
+}
+
 export function initAndroidBackHandler(game: Phaser.Game): void {
   // 仅 Android 原生（WebView）环境注册；浏览器调试走 PC 键盘 Esc
   if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'android') return;
@@ -39,6 +128,12 @@ export function initAndroidBackHandler(game: Phaser.Game): void {
     const scene = game.scene.getScenes(true)[0];
     if (!scene) {
       void App.exitApp();
+      return;
+    }
+
+    // 0. 退出确认框已打开 → 返回键关闭它（最高优先级，等于"继续游戏"）
+    if (exitConfirmOpen) {
+      closeExitConfirm();
       return;
     }
 
@@ -52,7 +147,8 @@ export function initAndroidBackHandler(game: Phaser.Game): void {
       // 3. 无 UI → 回退场景（如有回退目标）
       const to = BACK_TARGET[scene.scene.key];
       if (!to) {
-        void App.exitApp();
+        // 无回退目标（农场/大门等）→ 弹退出确认框，不再直接退 App
+        showExitConfirm(game, scene);
         return;
       }
       const exit = MAP_EXITS[scene.scene.key]?.find((e) => e.target === to);
@@ -72,7 +168,7 @@ export function initAndroidBackHandler(game: Phaser.Game): void {
       return;
     }
 
-    // 4. Title / Station 等非地图场景 → 退出
-    void App.exitApp();
+    // 4. Title / Station 等非地图场景 → 弹退出确认框，不再直接退 App
+    showExitConfirm(game, scene);
   });
 }

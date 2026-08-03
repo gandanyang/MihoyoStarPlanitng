@@ -65,7 +65,7 @@ async function run() {
     await page.keyboard.press('Enter');
     console.log('  等待开场动画（列车声→淡入→手机通知）…');
 
-    // 3. 等待手机通知（zIndex 600 含"人事通知"）并点击
+    // 3. 等待手机通知（zIndex 600 含"人事通知"）并点击两次（v0.7 两页通知：第1页翻页→第2页关闭）
     const phoneClicked = await waitFor(async () => {
       return await page.evaluate(() => {
         const overlay = [...document.querySelectorAll('div')].find(d => d.style.zIndex === '600' && d.textContent.includes('人事通知'));
@@ -74,6 +74,12 @@ async function run() {
       });
     });
     check('手机通知出现并点击', !!phoneClicked);
+    await sleep(300);
+    // 第二次点击：翻到第2页后关闭
+    await page.evaluate(() => {
+      const overlay = [...document.querySelectorAll('div')].find(d => d.style.zIndex === '600' && d.textContent.includes('人事通知'));
+      if (overlay) overlay.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
 
     // 4. 等待对话打开且有文本
     const opened = await waitFor(async () => {
@@ -83,8 +89,8 @@ async function run() {
     check('对话已打开', !!opened);
     if (opened) console.log(`  首句: "${opened.p[opened.p.length - 1]?.slice(0, 40)}"`);
 
-    // 5. 推进全部 12 句（每句打字中→空格显示全文→再空格下一句，故 ×2）
-    for (let i = 0; i < 24; i++) {
+    // 5. 推进全部 9 句（每句打字中→空格显示全文→再空格下一句，故 ×2）
+    for (let i = 0; i < 18; i++) {
       await page.keyboard.press('Space');
       await sleep(160);
     }

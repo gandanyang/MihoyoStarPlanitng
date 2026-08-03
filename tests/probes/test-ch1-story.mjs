@@ -179,7 +179,7 @@ async function run() {
       if (!stationText.includes('岗位职责将进行重新分配')) await sleep(200);
     }
     ok('3c. 辞退邮件对白出现', stationText.includes('岗位职责将进行重新分配'), stationText.substring(0, 40));
-    await skipDialogue(page, 11); // 跳过剩余车站对白（12 行 - 已推进 1 行）
+    await skipDialogue(page, 8); // 跳过剩余车站对白（9 行 - 已推进 1 行）
 
     // 教程完整路径由 test-tutorial.mjs 覆盖，此处直接置为 done
     await page.evaluate(() => {

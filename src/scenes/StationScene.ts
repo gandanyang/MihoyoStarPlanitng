@@ -558,7 +558,7 @@ export class StationScene extends Phaser.Scene {
     }, 600);
   }
 
-  // ============ 手机通知 ============
+  // ============ 手机通知（v0.7 两页） ============
 
   private showPhoneNotification(onClose: () => void): void {
     this.phoneOverlay = document.createElement('div');
@@ -575,73 +575,73 @@ export class StationScene extends Phaser.Scene {
       opacity: '0', transition: 'opacity 0.8s',
     });
 
-    const title = document.createElement('div');
-    Object.assign(title.style, { color: '#4a9eff', fontSize: '12px', marginBottom: '8px' });
-    // P1-2：世界内表达——这是公司人事发来的通知，不是"系统"通知
-    title.textContent = '人事通知';
+    // === 第 1 页：裁员 + 中性感谢 ===
+    const page1 = document.createElement('div');
 
-    const msg = document.createElement('div');
-    Object.assign(msg.style, { color: '#7eb8ff', fontSize: '15px', lineHeight: '1.6' });
-    msg.textContent = '因业务流程智能化调整，您的岗位职责将进行重新分配。';
+    const title1 = document.createElement('div');
+    Object.assign(title1.style, { color: '#4a9eff', fontSize: '12px', marginBottom: '8px' });
+    title1.textContent = '人事通知';
 
-    // v0.6 序章伏笔：AI 时代失落与重新寻找价值——林澈不是失败者，他的过去已成为 AI 时代的一部分
+    const msg1 = document.createElement('div');
+    Object.assign(msg1.style, { color: '#7eb8ff', fontSize: '15px', lineHeight: '1.6' });
+    msg1.textContent = '因业务流程智能化调整，您的岗位职责将进行重新分配。';
+
+    const msg1b = document.createElement('div');
+    Object.assign(msg1b.style, { color: '#7eb8ff', fontSize: '15px', lineHeight: '1.6', marginTop: '8px' });
+    msg1b.textContent = '您参与开发的相关成果，将继续服务于智能化系统升级。';
+
+    const hint1 = document.createElement('div');
+    Object.assign(hint1.style, { color: '#556', fontSize: '11px', marginTop: '14px', textAlign: 'center' });
+    hint1.textContent = '（点击翻页）';
+
+    page1.appendChild(title1);
+    page1.appendChild(msg1);
+    page1.appendChild(msg1b);
+    page1.appendChild(hint1);
+
+    // === 第 2 页：选择权 ===
+    const page2 = document.createElement('div');
+    page2.style.display = 'none';
+
+    const title2 = document.createElement('div');
+    Object.assign(title2.style, { color: '#4a9eff', fontSize: '12px', marginBottom: '8px' });
+    title2.textContent = '人事通知 · 职业转换支持计划';
+
     const msg2 = document.createElement('div');
-    Object.assign(msg2.style, { color: '#7eb8ff', fontSize: '15px', lineHeight: '1.6', marginTop: '8px' });
-    msg2.textContent = '感谢您过去五年的贡献，相关工作成果已被纳入智能系统训练库。';
+    Object.assign(msg2.style, { color: '#7eb8ff', fontSize: '14px', lineHeight: '1.7' });
+    msg2.textContent =
+      '随着智能化系统升级，公司将对部分岗位进行调整。\n\n' +
+      '根据员工意愿，您可以选择：\n\n' +
+      '1. 转入 AI 协作相关岗位（智能生态部门），继续参与公司业务\n' +
+      '2. 接受职业转换支持计划（含离职补偿），自行安排后续\n\n' +
+      '请您于 7 个工作日内回复意向。';
 
-    const sep = document.createElement('div');
-    Object.assign(sep.style, { borderTop: '1px solid rgba(122,162,247,0.25)', margin: '12px 0' });
+    const hint2 = document.createElement('div');
+    Object.assign(hint2.style, { color: '#556', fontSize: '11px', marginTop: '14px', textAlign: 'center' });
+    hint2.textContent = '（点击关闭）';
 
-    // v0.6 序章伏笔：远期鲸鱼娘/AI 公司新闻彩蛋（本阶段不出现角色，只留线索）
-    const newsTitle = document.createElement('div');
-    Object.assign(newsTitle.style, { color: '#8f9bb3', fontSize: '11px', marginBottom: '4px' });
-    newsTitle.textContent = '科技快讯';
-    const newsMsg = document.createElement('div');
-    Object.assign(newsMsg.style, { color: '#b8c4d9', fontSize: '13px', lineHeight: '1.5' });
-    newsMsg.textContent = '蓝鲸智能发布新一代人工智能模型。';
+    page2.appendChild(title2);
+    page2.appendChild(msg2);
+    page2.appendChild(hint2);
 
-    const sep2 = document.createElement('div');
-    Object.assign(sep2.style, { borderTop: '1px solid rgba(122,162,247,0.25)', margin: '12px 0' });
-
-    // v0.6 序章伏笔：手机 AI 助手——AI 懂计算，正在学习理解人的价值（人机共生，非反 AI）
-    const aiTitle = document.createElement('div');
-    Object.assign(aiTitle.style, { color: '#8f9bb3', fontSize: '11px', marginBottom: '4px' });
-    aiTitle.textContent = 'AI 助手';
-    const aiLines = [
-      '林澈：这片庄园……要修的东西应该不少。',
-      'AI：按照计算，恢复庄园预计需要 27 天。',
-      'AI：但数据显示，人工参与可能提高居民满意度。',
-      '林澈：你还考虑这种东西？',
-      'AI：部分结果无法通过效率衡量。',
-    ];
-    const aiMsg = document.createElement('div');
-    Object.assign(aiMsg.style, { color: '#b8c4d9', fontSize: '12px', lineHeight: '1.7' });
-    aiMsg.style.whiteSpace = 'pre-line';
-    aiMsg.textContent = aiLines.join('\n');
-
-    const hint = document.createElement('div');
-    Object.assign(hint.style, { color: '#333', fontSize: '11px', marginTop: '12px', textAlign: 'center' });
-    hint.textContent = '点击关闭';
-
-    this.phoneOverlay.appendChild(title);
-    this.phoneOverlay.appendChild(msg);
-    this.phoneOverlay.appendChild(msg2);
-    this.phoneOverlay.appendChild(sep);
-    this.phoneOverlay.appendChild(newsTitle);
-    this.phoneOverlay.appendChild(newsMsg);
-    this.phoneOverlay.appendChild(sep2);
-    this.phoneOverlay.appendChild(aiTitle);
-    this.phoneOverlay.appendChild(aiMsg);
-    this.phoneOverlay.appendChild(hint);
+    this.phoneOverlay.appendChild(page1);
+    this.phoneOverlay.appendChild(page2);
     document.body.appendChild(this.phoneOverlay);
 
     requestAnimationFrame(() => { if (this.phoneOverlay) this.phoneOverlay.style.opacity = '1'; });
 
+    // 两页交互：第 1 页点击 → 翻页；第 2 页点击 → 关闭
     this.phoneOverlay.addEventListener('click', () => {
       if (!this.phoneOverlay) return;
+      if (page1.style.display !== 'none') {
+        // 翻到第 2 页
+        page1.style.display = 'none';
+        page2.style.display = 'block';
+        return;
+      }
+      // 第 2 页点击 → 关闭
       this.phoneOverlay.style.opacity = '0';
       setTimeout(() => {
-        // 竞态保护：若期间已被 skipIntro 移除并置 null，跳过重复移除
         if (this.phoneOverlay) {
           this.phoneOverlay.remove();
           this.phoneOverlay = null as any;
