@@ -1698,14 +1698,16 @@ export class MapScene extends Phaser.Scene {
     visual.plot.setVisible(true);
     // 五态地块贴图帧：tilled=0 / planted=1 / watered=2 / growing=3 / grown=4
     visual.plot.setFrame(state === 'tilled' ? 0 : state === 'planted' ? 1 : state === 'watered' ? 2 : 4);
-    // 作物标记：planted/watered 显示像素作物（grown 由成熟地块贴图表达，避免双萝卜）
-    const hasCrop = state === 'planted' || state === 'watered';
+    // 作物标记：planted/watered/grown 显示对应阶段帧（发芽/生长/成熟），成熟态不再统一萝卜
+    const hasCrop = state === 'planted' || state === 'watered' || state === 'grown';
     visual.crop.setVisible(hasCrop);
     if (hasCrop) {
       const cropData = getCrop(col, row);
       const cropType = cropData?.cropType ?? 'radish';
       const cropIdx = CROP_TYPES.indexOf(cropType);
-      if (state === 'watered') {
+      if (state === 'grown') {
+        visual.crop.setFrame(cropIdx * 3 + 2);
+      } else if (state === 'watered') {
         visual.crop.setFrame(cropIdx * 3 + 1);
       } else {
         visual.crop.setFrame(cropIdx * 3 + 0);

@@ -1,5 +1,5 @@
 /**
- * 农田作物视觉基线探针（Batch D-01 视觉回归 · 升级前基线）
+ * 农田作物视觉基线探针（Batch D-01 视觉回归 · 升级后基线）
  *
  * 用途：记录农田五态地块 + 四作物（萝卜/番茄/玉米/草莓）当前视觉基线。
  *  - 升级前跑一次 → 存图作为基线；Batch D-01 作物精灵升级落地后重跑 → 截图对比（A/B）。
@@ -7,9 +7,8 @@
  *      tilled  → plot frame 0，crop 隐藏
  *      planted → plot frame 1，crop 可见 frame cropIdx*3+0（发芽）
  *      watered → plot frame 2，crop 可见 frame cropIdx*3+1（生长）
- *      grown   → plot frame 4，crop 隐藏（"成熟态统一"基线：成熟态由地块贴图表达，无作物差异）
- *  - ⚠️ 若 Batch D 升级后 grown 改为显示对应作物精灵，本探针的 grown 断言会变红：
- *     那是"回归抓变化"的预期行为，此时需按新设计更新断言后再作为新基线。
+ *      grown   → plot frame 4，crop 可见 frame cropIdx*3+2（成熟，Batch D-01 分品种精灵）
+ *  - Batch D-01 落地后：grown 由"地块烘焙绿植（成熟态统一）"改为显示对应作物成熟帧。
  *
  * 方式：注入种子存档（13 格 tiles + 12 格 crops）→ 直达农场 → 读运行时 tileRects 断言 + 截图。
  * 前置：dev server 在 localhost:5173；node probe-crop-visual-baseline.mjs
@@ -91,7 +90,7 @@ async function zoomTo(page, zoom, wx, wy) {
 }
 
 async function run() {
-  console.log('=== 农田作物视觉基线（Batch D-01 升级前）===\n');
+  console.log('=== 农田作物视觉基线（Batch D-01 升级后）===\n');
   const browser = await puppeteer.launch({
     executablePath: CHROME_PATH,
     headless: false,
@@ -176,12 +175,13 @@ async function run() {
         `可见=${v?.cropVisible} 帧=${v?.cropFrame}`);
     }
 
-    // grown：plot frame 4 + crop 隐藏（"成熟态统一"基线）
+    // grown：plot frame 4 + crop 可见 frame cropIdx*3+2（Batch D-01 成熟态分品种精灵）
     for (const p of PLOTS.grown) {
       const v = d.tiles[p.col];
+      const expectFrame = CROP_IDX[p.cropType] * 3 + 2;
       check(`grown ${p.cropType} 地块帧=4`, v?.plotFrame === 4, `实际=${v?.plotFrame}`);
-      check(`grown ${p.cropType} 作物精灵隐藏（基线：成熟态无作物差异）`, v?.cropVisible === false,
-        `可见=${v?.cropVisible}`);
+      check(`grown ${p.cropType} 作物精灵帧=${expectFrame}（成熟分品种）`, v?.cropVisible && v?.cropFrame === expectFrame,
+        `可见=${v?.cropVisible} 帧=${v?.cropFrame}`);
     }
 
     // 3. 截图基线
