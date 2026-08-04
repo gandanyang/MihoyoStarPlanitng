@@ -73,6 +73,7 @@ import {
 } from '../systems/StorySystem';
 import { hasSave, load, apply, save, getLastIncompatibleVersion, clearIncompatibleVersion, SAVE_VERSION } from '../systems/SaveSystem';
 import { play } from '../systems/AudioSystem';
+import { MusicSystem } from '../audio/MusicSystem';
 import {
   getRobots,
   getRobotAt,
@@ -321,6 +322,7 @@ export class MapScene extends Phaser.Scene {
     this.events.on(Phaser.Scenes.Events.SHUTDOWN, this.cleanupSceneDom, this);
     // 场景切换时停止环境音（防止上一场景环境音残留到下一场景——P0 防黑屏/残留）
     this.events.on(Phaser.Scenes.Events.SHUTDOWN, () => AmbienceSystem.stop(), this);
+    this.events.on(Phaser.Scenes.Events.SHUTDOWN, () => MusicSystem.stop(), this);
     // 兜底：create 阶段任何未预期的异常（贴图缺失/地图数据异常等）都不允许演变成黑屏，
     // 统一捕获并显示错误遮罩 + 刷新按钮
     try {
@@ -669,6 +671,9 @@ export class MapScene extends Phaser.Scene {
 
     // 环境音：进入地图按 mapKey + 当前小时启动氛围音（白天鸟叫/夜晚虫鸣等）
     AmbienceSystem.start(this.mapKey, getTime().hour);
+    // BGM?????? / ??????19:00-5:00?
+    const mHour = getTime().hour;
+    MusicSystem.play(mHour >= 19 || mHour < 5 ? 'stargaze_night' : 'farm_day');
   }
 
   update(timeMs: number): void {
@@ -3027,6 +3032,12 @@ export class MapScene extends Phaser.Scene {
     const tileCenterY = row * TILE_SIZE + TILE_SIZE / 2;
     if (state === 'empty') {
       // 锄地：空地 → 耕地
+      // 制作人反馈：任务未解锁锄地前应提示没有锄头（教程期玩家尚未获得锄头）
+      if (getItemCount('old_hoe') <= 0) {
+        this.flashTileError(col, row);
+        this.showFloatText(tileCenterX, tileCenterY, '没有锄头，不能锄地', '#ff8a80');
+        return;
+      }
       setTileState(col, row, 'tilled');
       play('hoe');
       this.showFloatText(tileCenterX, tileCenterY, '锄地');
@@ -3067,6 +3078,13 @@ export class MapScene extends Phaser.Scene {
       }
     } else if (state === 'planted') {
       // 浇水：已种 → 已浇水（成长前置条件）
+      // 制作人反馈：任务未解锁浇水前应提示没有水壶（教程期玩家尚未获得水壶）
+      if (getItemCount('old_watering_can') <= 0) {
+        this.flashTileError(col, row);
+        this.showFloatText(tileCenterX, tileCenterY, '没有水壶，不能浇水', '#ff8a80');
+        this.showDialogueText('还没有水壶，完成播种任务后才能浇水。');
+        return;
+      }
       setTileState(col, row, 'watered');
       const crop = getCrop(col, row);
       if (crop) setCrop(col, row, { ...crop, watered: true });

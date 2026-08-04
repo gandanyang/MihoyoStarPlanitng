@@ -12,6 +12,7 @@ import Phaser from 'phaser';
 import { hasSave, deleteSave } from '../systems/SaveSystem';
 import { play } from '../systems/AudioSystem';
 import { isMobileLayout } from '../config';
+import { MusicSystem } from '../audio/MusicSystem';
 
 // BUG-027 修复：移除标题画面主角头像（linchen_avatar.png）
 // 封面图 title_bg.jpg 本身已有主角形象，右侧小头像冗余且位置突兀
@@ -32,6 +33,8 @@ export class TitleScene extends Phaser.Scene {
 
   create(): void {
     this.cameras?.main?.fadeIn(500, 0, 0, 0);
+    MusicSystem.play('title');
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => MusicSystem.stop());
 
     const W = 800;
     const H = 600;
