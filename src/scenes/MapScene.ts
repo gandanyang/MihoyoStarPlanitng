@@ -1681,6 +1681,10 @@ export class MapScene extends Phaser.Scene {
       lines = [...lines, ...getMysteryAfterObservatory()];
     }
     this.storyDialogue.play(lines, () => {
+      // BUG-041：神秘少女对白末尾「消失在林间」→ 对话完成隐藏精灵（演出层，不存档）
+      if (npc.id === 'mystery') {
+        npc.setVanished();
+      }
       // 商店老板：对话结束后自动打开商店
       if (npc.id === 'shopkeeper') {
         this.inputManager.clearAction();
@@ -1900,7 +1904,7 @@ export class MapScene extends Phaser.Scene {
     let nearest: NPC | null = null;
     let nearestDist = 24 * 24;
     for (const npc of this.npcList) {
-      if (!npc.sprite) continue;
+      if (!npc.sprite || npc.vanished) continue;
       const dx = this.player.x - npc.sprite.x;
       const dy = this.player.y - npc.sprite.y;
       const d2 = dx * dx + dy * dy;

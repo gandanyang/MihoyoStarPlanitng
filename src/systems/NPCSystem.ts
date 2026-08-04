@@ -358,6 +358,8 @@ export function refreshSchedule(): void {
     npc.targetY = active.y;
     // v0.6 NPC 生活化 P0：写入当前时段动作（仅渲染用，不存档）
     npc.dailyAction = active.action ?? '';
+    // BUG-041：演出消失标记随作息刷新清除（重新进场景 / 跨天 / 下一时段恢复出现）
+    npc.vanished = false;
   }
 }
 

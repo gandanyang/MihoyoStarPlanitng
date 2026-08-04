@@ -50,6 +50,10 @@ export class NPC {
    *  不进入存档，不影响对话/任务/好感 */
   dailyAction: string = '';
 
+  /** BUG-041：对白结束后演出消失标记（"消失在林间"），仅运行时，不存档。
+   *  refreshSchedule() 时清除 → 重新进入场景 / 跨天 / 下一时段按作息恢复出现 */
+  vanished = false;
+
   /** 渲染对象（由 MapScene 在 create 时创建并赋值，离开场景时置空） */
   sprite: Phaser.GameObjects.Image | null = null;
   /** 名字标签 */
@@ -319,5 +323,15 @@ export class NPC {
       this.sprite.scaleX = 0.5;
       this.sprite.scaleY = 0.5;
     }
+  }
+
+  /** BUG-041：演出消失（对白末尾"消失在林间"）——隐藏精灵/标签并停止动作。
+   *  仅运行时演出层，不存档；由 MapScene 对白完成后调用。
+   *  恢复：refreshSchedule() 清除 vanished 标记（重新进场景 / 睡觉跨天 / 下一时段）。 */
+  setVanished(): void {
+    this.vanished = true;
+    this.stopIdleAnimation();
+    if (this.sprite) this.sprite.setVisible(false);
+    if (this.label) this.label.setVisible(false);
   }
 }
