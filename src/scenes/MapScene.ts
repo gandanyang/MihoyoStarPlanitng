@@ -229,6 +229,8 @@ export class MapScene extends Phaser.Scene {
   private readonly STARGAZE_POS = { x: 504, y: 232 };
   private stargazeSprites: Phaser.GameObjects.Ellipse[] = [];
   private stargazeMark: Phaser.GameObjects.Text | null = null;
+  private lastQuestObj: string = '';
+  private lastHour: number = -1;
   // 农场商店摊位（v0.6 商店入口：农田旁空地，靠近按 E 打开 ShopPanel）
   private farmShop: {
     mark: Phaser.GameObjects.Text;
@@ -481,6 +483,7 @@ export class MapScene extends Phaser.Scene {
 
     this.updateHUD();
     this.updateQuestHUD(); // E-05：创建时即显示当前目标（教程期=教程步骤，主线期=主线目标）
+    this.lastQuestObj = this.hudQuestDom.textContent?.replace('任务：', '') ?? '';
 
     // 记录初始帧时间戳
     this.lastFrameTime = this.time.now;
@@ -750,6 +753,16 @@ export class MapScene extends Phaser.Scene {
     const dtMs = Math.max(0, Math.min(rawDt, 1000));
     this.lastFrameTime = timeMs;
     timeTick(dtMs);
+    // 主线完成后：小时切换时刷新 HUD 目标文案（白天/夜晚文案不同）
+    const curHour = getTime().hour;
+    if (getQuestState() === 'completed' && curHour !== this.lastHour) {
+      this.lastHour = curHour;
+      const obj = getQuestObjective();
+      if (obj !== this.lastQuestObj) {
+        this.lastQuestObj = obj;
+        this.updateQuestHUD();
+      }
+    }
     // 种子切换冷却递减
     if (this.seedSwitchCooldown > 0) this.seedSwitchCooldown -= dtMs;
 
@@ -2028,6 +2041,12 @@ export class MapScene extends Phaser.Scene {
     const eligible = getQuestState() === 'completed' && getTime().hour >= 20 && !isObservatoryComplete();
     const show = eligible && !(this.storyDialogue && this.storyDialogue.isOpen());
     this.setStargazeVisible(show);
+    // 主线完成后实时刷新 HUD 目标文案（白天/夜晚文案不同）
+    const obj = getQuestObjective();
+    if (obj !== this.lastQuestObj) {
+      this.lastQuestObj = obj;
+      this.updateQuestHUD();
+    }
     if (!show) return;
     const pulse = 0.5 + 0.5 * Math.sin(this.time.now / 400);
     this.stargazeSprites[0].setAlpha(0.08 + 0.1 * pulse);

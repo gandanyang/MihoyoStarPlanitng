@@ -12,7 +12,8 @@
  */
 
 import { addXp } from '../data/FarmProgress';
-import { COLORS, ELDER_QUEST_DIALOGUE, SHARD_DELIVER_DIALOGUE, type DialogueLine, getStoryStep, isTutorialDone } from './StorySystem';
+import { getTime } from '../data/TimeSystem';
+import { COLORS, ELDER_QUEST_DIALOGUE, SHARD_DELIVER_DIALOGUE, type DialogueLine, getStoryStep, isTutorialDone, isObservatoryComplete } from './StorySystem';
 
 /** 任务状态 */
 export type QuestState = 'not_started' | 'accepted' | 'collected' | 'completed';
@@ -87,7 +88,12 @@ export function getQuestObjective(): string {
     case 'collected':
       return '返回村长交付任务';
     case 'completed':
-      return '主线任务完成！';
+      if (!isObservatoryComplete()) {
+        return getTime().hour >= 20
+          ? '前往农场观星点（按 E 触发观星夜）'
+          : '夜晚去农田边那块空地看看（20:00 后可触发）';
+      }
+      return 'Demo 体验完成！';
   }
 }
 
