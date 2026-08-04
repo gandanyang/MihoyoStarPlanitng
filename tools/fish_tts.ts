@@ -32,10 +32,11 @@ interface TtsArgs {
   listVoices: boolean;
   search: string | null;
   previewId: string | null;
+  myVoices: boolean;
 }
 
 function parseArgs(argv: string[]): TtsArgs {
-  const args: TtsArgs = { character: '', text: '', emotion: '', output: null, voiceId: null, dryRun: false, listVoices: false, search: null, previewId: null };
+  const args: TtsArgs = { character: '', text: '', emotion: '', output: null, voiceId: null, dryRun: false, listVoices: false, search: null, previewId: null, myVoices: false };
   for (let i = 0; i < argv.length; i++) {
     switch (argv[i]) {
       case '--character': args.character = argv[++i] ?? ''; break;
@@ -46,11 +47,13 @@ function parseArgs(argv: string[]): TtsArgs {
       case '--preview': args.previewId = argv[++i] ?? null; break;
       case '--dry-run': args.dryRun = true; break;
       case '--list-voices': args.listVoices = true; break;
+      case '--my-voices': args.myVoices = true; break;
       case '--search': args.search = argv[++i] ?? null; break;
       case '--help': case '-h':
         console.log(`Fish Audio TTS 配音工具
 用法:
   npm run tts -- --list-voices [--search 关键词]    # 列出可用公开音色（id + 标题）
+  npm run tts -- --my-voices [--search 关键词]     # 列出自己账号的音色（含声音设计/克隆）
   npm run tts -- --preview <音色id> [--character 角色]  # 免费下载该音色的官方试听音频（不消耗额度）
   npm run tts -- --character <角色> --text "<文本>" [--emotion "<情绪>"] [--voice-id <ID>] [--dry-run]
 配置: FISH_API_KEY（环境变量/tools/.env/加密保险箱）/ VOICE_ID_MAP（JSON：{"夏雅":"voiceId"}）`);
@@ -138,8 +141,9 @@ async function callTts(apiKey: string, referenceId: string, text: string): Promi
   return buf;
 }
 
-async function listVoices(apiKey: string, search: string | null): Promise<void> {
+async function listVoices(apiKey: string, search: string | null, selfOnly: boolean): Promise<void> {
   const params = new URLSearchParams({ page_size: '20' });
+  if (selfOnly) params.set('self_only', 'true');
   if (search) params.set('title', search);
   const res = await fetch(`https://api.fish.audio/model?${params}`, {
     headers: { Authorization: `Bearer ${apiKey}` },
@@ -154,7 +158,7 @@ async function listVoices(apiKey: string, search: string | null): Promise<void> 
     console.log('未获取到音色列表（检查 Key 或换 --search 关键词）');
     return;
   }
-  console.log(`共 ${items.length} 个音色：`);
+    console.log(`共 ${items.length} 个${selfOnly ? '我的' : '公开'}音色：`);
   for (const v of items) {
     const id = v._id ?? v.id ?? v.voice_id ?? '?';
     const title = v.title ?? v.name ?? '(无标题)';
@@ -191,12 +195,12 @@ async function main(): Promise<void> {
   const fileEnv = loadEnv();
   const { apiKey, voiceMap } = await getConfig(fileEnv);
 
-  if (args.listVoices) {
+  if (args.listVoices || args.myVoices) {
     if (!apiKey) {
       console.error('❌ 未设置 FISH_API_KEY（列出音色需要 Key）');
       process.exit(2);
     }
-    await listVoices(apiKey, args.search);
+    await listVoices(apiKey, args.search, args.myVoices);
     process.exitCode = 0;
     return;
   }
