@@ -31,10 +31,11 @@ interface TtsArgs {
   dryRun: boolean;
   listVoices: boolean;
   search: string | null;
+  previewId: string | null;
 }
 
 function parseArgs(argv: string[]): TtsArgs {
-  const args: TtsArgs = { character: '', text: '', emotion: '', output: null, voiceId: null, dryRun: false, listVoices: false, search: null };
+  const args: TtsArgs = { character: '', text: '', emotion: '', output: null, voiceId: null, dryRun: false, listVoices: false, search: null, previewId: null };
   for (let i = 0; i < argv.length; i++) {
     switch (argv[i]) {
       case '--character': args.character = argv[++i] ?? ''; break;
@@ -42,6 +43,7 @@ function parseArgs(argv: string[]): TtsArgs {
       case '--emotion': args.emotion = argv[++i] ?? ''; break;
       case '--output': args.output = argv[++i] ?? null; break;
       case '--voice-id': args.voiceId = argv[++i] ?? null; break;
+      case '--preview': args.previewId = argv[++i] ?? null; break;
       case '--dry-run': args.dryRun = true; break;
       case '--list-voices': args.listVoices = true; break;
       case '--search': args.search = argv[++i] ?? null; break;
@@ -49,6 +51,7 @@ function parseArgs(argv: string[]): TtsArgs {
         console.log(`Fish Audio TTS 配音工具
 用法:
   npm run tts -- --list-voices [--search 关键词]    # 列出可用公开音色（id + 标题）
+  npm run tts -- --preview <音色id> [--character 角色]  # 免费下载该音色的官方试听音频（不消耗额度）
   npm run tts -- --character <角色> --text "<文本>" [--emotion "<情绪>"] [--voice-id <ID>] [--dry-run]
 配置: FISH_API_KEY（环境变量/tools/.env/加密保险箱）/ VOICE_ID_MAP（JSON：{"夏雅":"voiceId"}）`);
         process.exit(0);
@@ -161,6 +164,21 @@ async function listVoices(apiKey: string, search: string | null): Promise<void> 
   console.log('\n把想要音色的 id 填进 VOICE_ID_MAP 即可（{"角色":"id"}）。');
 }
 
+async function downloadPreview(apiKey: string, voiceId: string): Promise<{ audioUrl: string; sampleText: string; title: string }> {
+  const res = await fetch(`https://api.fish.audio/model/${voiceId}`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => '');
+    throw new Error(`Fish Audio ${res.status}: ${err.slice(0, 300)}`);
+  }
+  const json = await res.json().catch(() => ({}));
+  const samples = Array.isArray(json.samples) ? json.samples : [];
+  const sample = samples.find((s: any) => s && s.audio) ?? samples[0];
+  if (!sample?.audio) throw new Error(`音色无试听音频（${json.title ?? voiceId}）`);
+  return { audioUrl: sample.audio, sampleText: sample.text ?? json.default_text ?? '', title: json.title ?? voiceId };
+}
+
 async function main(): Promise<void> {
   let args: TtsArgs;
   try {
@@ -179,7 +197,33 @@ async function main(): Promise<void> {
       process.exit(2);
     }
     await listVoices(apiKey, args.search);
-    process.exit(0);
+    process.exitCode = 0;
+    return;
+  }
+
+  if (args.previewId) {
+    if (!apiKey) {
+      console.error('❌ 未设置 FISH_API_KEY（下载试听需要 Key 查询音色）');
+      process.exit(2);
+    }
+    const { audioUrl, sampleText, title } = await downloadPreview(apiKey, args.previewId);
+    const now = new Date();
+    const date = now.toISOString().slice(0, 10).replace(/-/g, '');
+    const name = args.character || title;
+    const seq = await nextSeq(name, date);
+    const outPath = args.output
+      ? resolve(process.cwd(), args.output)
+      : resolve(OUT_DIR, `${name}_${date}_${String(seq).padStart(3, '0')}.mp3`);
+    console.log(`音色      : ${title}（${args.previewId}）`);
+    if (sampleText) console.log(`试听文本  : ${sampleText.slice(0, 80)}${sampleText.length > 80 ? '…' : ''}`);
+    const audioRes = await fetch(audioUrl);
+    if (!audioRes.ok) throw new Error(`试听音频下载失败: ${audioRes.status}`);
+    const buf = Buffer.from(await audioRes.arrayBuffer());
+    await mkdir(dirname(outPath), { recursive: true });
+    await writeFile(outPath, buf);
+    console.log(`✅ 已保存: ${outPath}（${(buf.length / 1024).toFixed(1)} KB，免费试听）`);
+    process.exitCode = 0;
+    return;
   }
 
   if (!args.character || !args.text) {
