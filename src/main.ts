@@ -130,13 +130,15 @@ syncGameContainer();
       }
     }
     // 睡觉后自动存档（含每日任务数据）
-    const player = (scene as unknown as { player?: { x: number; y: number; scene: string; facing: string } })?.player;
-    if (player) {
-      save({
-        x: player.x, y: player.y,
-        scene: player.scene, facing: player.facing,
-        dailyQuest: getDailyQuestSaveData(),
-      } as any);
+    if (scene) {
+      const player = (scene as unknown as { player?: { x: number; y: number; facing: string } })?.player;
+      if (player) {
+        save({
+          x: player.x, y: player.y,
+          scene: scene.scene.key, facing: player.facing,
+          dailyQuest: getDailyQuestSaveData(),
+        } as any);
+      }
     }
     console.log(`[debug] nextDay → Day ${newDay} 06:00`);
     return newDay;

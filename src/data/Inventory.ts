@@ -98,6 +98,11 @@ export function getAllInventoryEntries(): [ItemType, number][] {
 
 /** 恢复所有物品数量（存档恢复用） */
 export function restoreAllInventory(data: Partial<Record<ItemType, number>>): void {
+  // 先清零所有物品（避免旧默认值残留，如 radish_seed: 5）
+  for (const id of Object.keys(ITEM_DEFS) as ItemType[]) {
+    inventory[id] = 0;
+  }
+  // 再从存档覆盖
   for (const id of Object.keys(ITEM_DEFS) as ItemType[]) {
     if (data[id] !== undefined) {
       inventory[id] = Math.max(0, Math.floor(data[id]));
