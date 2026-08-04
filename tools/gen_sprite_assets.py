@@ -65,13 +65,13 @@ class C:
     CHEEK = (245, 170, 160, 255)    # 腮红（少女 / 村长）
 
     # —— 玩家配色：亮红外套 + 深蓝裤（与草地绿色高对比度）——
-    P_HAIR = (240, 190, 120, 255)   # 金黄短发
-    P_HAIR_MID = (220, 160, 80, 255)
-    P_HAIR_SHADOW = (200, 140, 60, 255)
-    P_SHIRT = (220, 60, 70, 255)    # 亮红夹克主色
-    P_SHIRT_MID = (190, 48, 60, 255)
-    P_SHIRT_SHADOW = (160, 36, 50, 255)  # 深红阴影
-    P_SHIRT_HIGHLIGHT = (250, 120, 120, 255)  # 红高光（左肩/胸前）
+    P_HAIR = (66, 44, 34, 255)   # 金黄短发
+    P_HAIR_MID = (88, 60, 46, 255)
+    P_HAIR_SHADOW = (46, 30, 23, 255)
+    P_SHIRT = (96, 124, 168, 255)    # 亮红夹克主色
+    P_SHIRT_MID = (120, 146, 186, 255)
+    P_SHIRT_SHADOW = (62, 86, 124, 255)  # 深红阴影
+    P_SHIRT_HIGHLIGHT = (148, 172, 210, 255)  # 红高光（左肩/胸前）
     P_PANTS = (56, 66, 110, 255)    # 深蓝裤子
     P_PANTS_MID = (46, 54, 94, 255)
     P_PANTS_SHADOW = (36, 44, 80, 255)
@@ -79,8 +79,11 @@ class C:
     P_SHOES_LACE = (60, 60, 80, 255)
     P_BELT = (80, 50, 24, 255)      # 深棕宽腰带
     P_BELT_BUCKLE = (255, 200, 80, 255)  # 腰带扣（金）
-    P_BADGE_OUTER = (255, 180, 60, 255)  # 金色胸章外圈
-    P_BADGE_INNER = (255, 240, 160, 255)  # 金色胸章内圈
+    P_BADGE_OUTER = (44, 60, 92, 255)  # 金色胸章外圈
+    P_BADGE_INNER = (214, 224, 238, 255)  # 金色胸章内圈
+    P_GLASSES = (26, 22, 30, 255)      # ??????? B?
+    P_WATCH = (54, 60, 76, 255)        # ??????
+    P_WATCH_FACE = (196, 206, 220, 255)  # ??????
     P_NECKLACE = (200, 160, 100, 255)    # 颈部阴影/衣领
 
     # —— 村长：蓝袍老者 ——
@@ -617,6 +620,11 @@ def player_frame_32(direction: str, step: int) -> Image.Image:
     rect(img, 6, hand_l_y, 7, hand_l_y + 1, C.SKIN)
     px(img, 6, hand_l_y + 1, C.SKIN_SHADOW)
     px(img, 7, hand_l_y + 1, C.SKIN_SHADOW)
+    # direction-B details (glasses / watch)
+    px(img, 6, hand_l_y - 1, C.P_WATCH)
+    px(img, 7, hand_l_y - 1, C.P_WATCH)
+    px(img, 6, hand_l_y, C.P_WATCH_FACE)
+    px(img, 7, hand_l_y, C.P_WATCH_FACE)
 
     # 右臂（x 24..25）
     arm_r_y0 = by0 + 2 + arm_offsets_r
@@ -638,6 +646,20 @@ def player_frame_32(direction: str, step: int) -> Image.Image:
                           hair=C.P_HAIR, hair_mid=C.P_HAIR_MID, hair_s=C.P_HAIR_SHADOW,
                           eye_y=9 + hy_off, left_eye_x=12, right_eye_x=18,
                           brow=True, nose=True, mouth=True, cheek=True)
+        # direction-B details (glasses / watch)
+        gy = 9 + hy_off
+        hline(img, 11, 13, gy - 1, C.P_GLASSES)
+        hline(img, 11, 13, gy + 1, C.P_GLASSES)
+        px(img, 11, gy, C.P_GLASSES)
+        px(img, 13, gy, C.P_GLASSES)
+        hline(img, 17, 19, gy - 1, C.P_GLASSES)
+        hline(img, 17, 19, gy + 1, C.P_GLASSES)
+        px(img, 17, gy, C.P_GLASSES)
+        px(img, 19, gy, C.P_GLASSES)
+        px(img, 15, gy, C.P_GLASSES)
+        px(img, 15, gy - 1, C.P_GLASSES)
+        px(img, 10, gy, C.P_GLASSES)
+        px(img, 20, gy, C.P_GLASSES)
         # 头顶头发（y 0..4，帽形短碎发）
         rect(img, 9, 0 + hy_off, 22, 1 + hy_off, C.P_HAIR)
         rect(img, 8, 2 + hy_off, 23, 3 + hy_off, C.P_HAIR)
@@ -667,6 +689,12 @@ def player_frame_32(direction: str, step: int) -> Image.Image:
 
     elif direction == "left":
         draw_head_side_32(img, C.SKIN, C.P_HAIR, C.P_HAIR_MID, C.P_HAIR_SHADOW, "left")
+        # direction-B details (glasses / watch)
+        hline(img, 6, 10, 8, C.P_GLASSES)
+        hline(img, 6, 10, 10, C.P_GLASSES)
+        px(img, 6, 9, C.P_GLASSES)
+        px(img, 10, 9, C.P_GLASSES)
+        px(img, 11, 9, C.P_GLASSES)
         # 头顶
         rect(img, 10, 0 + hy_off, 22, 1 + hy_off, C.P_HAIR)
         # 脖子（侧面）
@@ -674,6 +702,12 @@ def player_frame_32(direction: str, step: int) -> Image.Image:
         vline(img, 14, 12, by0 - 1, C.SKIN_SHADOW)
     elif direction == "right":
         draw_head_side_32(img, C.SKIN, C.P_HAIR, C.P_HAIR_MID, C.P_HAIR_SHADOW, "right")
+        # direction-B details (glasses / watch)
+        hline(img, 21, 25, 8, C.P_GLASSES)
+        hline(img, 21, 25, 10, C.P_GLASSES)
+        px(img, 21, 9, C.P_GLASSES)
+        px(img, 25, 9, C.P_GLASSES)
+        px(img, 20, 9, C.P_GLASSES)
         rect(img, 9, 0 + hy_off, 21, 1 + hy_off, C.P_HAIR)
         rect(img, 12, 12, 17, by0 - 1, C.SKIN)
         vline(img, 17, 12, by0 - 1, C.SKIN_SHADOW)
