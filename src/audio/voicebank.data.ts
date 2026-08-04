@@ -1,7 +1,7 @@
 /* eslint-disable */
 // ══════════════════════════════════════════════════════════════════
 // 语音映射数据 —— 由 tools/gen_mainline_voice.py --emit-voicebank 自动生成，勿手改
-// 生成时间：2026-08-04 18:46:29
+// 生成时间：2026-08-04 20:01:59
 // 说明：speaker='' 表示通配（少女/HR/纸条），text 为归一化后原文（已剥（笑）等标注）
 // ══════════════════════════════════════════════════════════════════
 export interface VoiceEntry { file: string; speaker: string; text: string }
@@ -99,6 +99,7 @@ export const VOICE_ENTRIES: VoiceEntry[] = [
   { file: 'elder/shard_03.wav', speaker: '村长', text: '他跟我说过，这座岛上的碎片，只有真正"想留下来"的人才能拿起来。' },
   { file: 'elder/shard_04.wav', speaker: '村长', text: '你能把它带回来，说明这座岛……已经认你了。' },
   { file: 'elder/shard_06.wav', speaker: '村长', text: '那就够了。有时候，不是人找到东西，是东西找到人。' },
+  { file: 'elder/shard_07.wav', speaker: '村长', text: '你爷爷以前啊，总喜欢在晚上去农田后面的地方坐一会儿。他说，那里的星星很亮。' },
   { file: 'grandpa/notes_01.wav', speaker: '爷爷的笔记', text: '今天又捡到一片。星星……是不是也想回家？' },
   { file: 'grandpa/notes_02.wav', speaker: '爷爷的笔记', text: '我数了数，还差一些。等它们都回来了，也许就能问清楚了。' },
   { file: 'grandpa/notes_03.wav', speaker: '爷爷的笔记', text: '那些发光的碎片，醒来时像在看我。是我多心了吧。' },
