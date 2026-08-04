@@ -95,6 +95,14 @@ def leaf_fan(img: Image.Image, cx: int, top: int) -> None:
     px(img, cx + 7, top + 4, I.LEAF_D)
     px(img, cx + 4, top + 2, I.LEAF_L)
 
+def sparkle(img, x, y):
+    """2x2 white glint (mature/harvest signal)."""
+    px(img, x, y, C.WHITE)
+    px(img, x + 1, y, C.WHITE)
+    px(img, x, y + 1, C.WHITE)
+    px(img, x + 1, y + 1, C.WHITE)
+
+
 
 # ============================================================================
 # 萝卜（row 0）
@@ -131,6 +139,7 @@ def radish_mature():
     px(img, 17, 28, I.RADISH_D)
     leaf_fan(img, 16, 9)
     add_outline(img)
+    sparkle(img, 11, 15)
     return img
 
 
@@ -182,6 +191,7 @@ def tomato_mature():
     px(img, 8, 20, I.LEAF_D)
     px(img, 24, 20, I.LEAF_D)
     add_outline(img)
+    sparkle(img, 10, 16)
     return img
 
 
@@ -230,6 +240,7 @@ def corn_mature():
     # 底部收束
     rect(img, 12, 29, 18, 29, I.LEAF_D)
     add_outline(img)
+    sparkle(img, 12, 17)
     return img
 
 
@@ -284,6 +295,7 @@ def strawberry_mature():
     px(img, 18, 13, I.LEAF)
     rect(img, 16, 10, 16, 13, I.LEAF_D)
     add_outline(img)
+    sparkle(img, 11, 20)
     return img
 
 
