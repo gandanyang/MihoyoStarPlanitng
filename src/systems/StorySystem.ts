@@ -102,10 +102,10 @@ export const XIYA_DAWN_DIALOGUE: DialogueLine[] = [
 
 /** v0.5.3 剧情密度 E5：爷爷的笔记（庄园角落可读物件，多条轮换、不解释） */
 export const GRANDPA_NOTES: DialogueLine[] = [
-  { speaker: '爷爷的笔记', color: COLORS.letter, text: '今天又捡到一片。星星……是不是也想回家？' },
-  { speaker: '爷爷的笔记', color: COLORS.letter, text: '我数了数，还差一些。等它们都回来了，也许就能问清楚了。' },
-  { speaker: '爷爷的笔记', color: COLORS.letter, text: '那些发光的碎片，醒来时像在看我。是我多心了吧。' },
-  { speaker: '爷爷的笔记', color: COLORS.letter, text: '今晚的星星很亮，花比往年开得早。不知道是不是这座岛在回应什么。' },
+  { speaker: '爷爷的笔记', color: COLORS.letter, text: '今年番茄长得很好，比去年早熟了几天。' },
+  { speaker: '爷爷的笔记', color: COLORS.letter, text: '后山的竹子又长高了，看来春天比往年来得早。' },
+  { speaker: '爷爷的笔记', color: COLORS.letter, text: '村口老周家的孩子回来了一趟，带了不少城里的东西。' },
+  { speaker: '爷爷的笔记', color: COLORS.letter, text: '今晚的星星，比往年亮。' },
 ];
 
 /** v0.5.3 剧情密度 E2：第一次收获反馈（v0.8 生活化） */
