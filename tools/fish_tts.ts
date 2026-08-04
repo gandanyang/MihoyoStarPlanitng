@@ -29,10 +29,12 @@ interface TtsArgs {
   output: string | null;
   voiceId: string | null;
   dryRun: boolean;
+  listVoices: boolean;
+  search: string | null;
 }
 
 function parseArgs(argv: string[]): TtsArgs {
-  const args: TtsArgs = { character: '', text: '', emotion: '', output: null, voiceId: null, dryRun: false };
+  const args: TtsArgs = { character: '', text: '', emotion: '', output: null, voiceId: null, dryRun: false, listVoices: false, search: null };
   for (let i = 0; i < argv.length; i++) {
     switch (argv[i]) {
       case '--character': args.character = argv[++i] ?? ''; break;
@@ -41,10 +43,14 @@ function parseArgs(argv: string[]): TtsArgs {
       case '--output': args.output = argv[++i] ?? null; break;
       case '--voice-id': args.voiceId = argv[++i] ?? null; break;
       case '--dry-run': args.dryRun = true; break;
+      case '--list-voices': args.listVoices = true; break;
+      case '--search': args.search = argv[++i] ?? null; break;
       case '--help': case '-h':
         console.log(`Fish Audio TTS 配音工具
-用法: npm run tts -- --character <角色> --text "<文本>" [--emotion "<情绪>"] [--output <路径>] [--voice-id <ID>] [--dry-run]
-配置: FISH_API_KEY / VOICE_ID_MAP（JSON：{"夏雅":"voiceId","林澈":"voiceId"}）`);
+用法:
+  npm run tts -- --list-voices [--search 关键词]    # 列出可用公开音色（id + 标题）
+  npm run tts -- --character <角色> --text "<文本>" [--emotion "<情绪>"] [--voice-id <ID>] [--dry-run]
+配置: FISH_API_KEY（环境变量/tools/.env/加密保险箱）/ VOICE_ID_MAP（JSON：{"夏雅":"voiceId"}）`);
         process.exit(0);
       default:
         if (argv[i].startsWith('--')) throw new Error(`未知参数: ${argv[i]}`);
@@ -68,12 +74,16 @@ function loadEnv(): Record<string, string> {
 
 function loadEncryptedSecret(name: string): Promise<string> {
   return new Promise((resPromise) => {
-    execFile(
-      process.execPath,
-      [resolve(process.cwd(), 'tools', 'secret_key.mjs'), 'get', name],
-      { windowsHide: true, maxBuffer: 4 * 1024 * 1024, timeout: 30_000 },
-      (err, stdout) => resPromise(err ? '' : stdout.trim())
-    );
+    try {
+      execFile(
+        process.execPath,
+        [resolve(process.cwd(), 'tools', 'secret_key.mjs'), 'get', name],
+        { windowsHide: true, maxBuffer: 4 * 1024 * 1024, timeout: 30_000 },
+        (err, stdout) => resPromise(err ? '' : stdout.trim())
+      );
+    } catch {
+      resPromise('');
+    }
   });
 }
 
@@ -125,6 +135,32 @@ async function callTts(apiKey: string, referenceId: string, text: string): Promi
   return buf;
 }
 
+async function listVoices(apiKey: string, search: string | null): Promise<void> {
+  const params = new URLSearchParams({ page_size: '20' });
+  if (search) params.set('title', search);
+  const res = await fetch(`https://api.fish.audio/model?${params}`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => '');
+    throw new Error(`Fish Audio ${res.status}: ${err.slice(0, 300)}`);
+  }
+  const json = await res.json().catch(() => ({}));
+  const items: any[] = Array.isArray(json) ? json : (json.items ?? json.data ?? []);
+  if (!items.length) {
+    console.log('未获取到音色列表（检查 Key 或换 --search 关键词）');
+    return;
+  }
+  console.log(`共 ${items.length} 个音色：`);
+  for (const v of items) {
+    const id = v._id ?? v.id ?? v.voice_id ?? '?';
+    const title = v.title ?? v.name ?? '(无标题)';
+    const tags = Array.isArray(v.tags) ? v.tags.join(' / ') : (v.tags || '');
+    console.log(`  ${id}  ${title}${tags ? `  [${tags}]` : ''}`);
+  }
+  console.log('\n把想要音色的 id 填进 VOICE_ID_MAP 即可（{"角色":"id"}）。');
+}
+
 async function main(): Promise<void> {
   let args: TtsArgs;
   try {
@@ -136,6 +172,15 @@ async function main(): Promise<void> {
 
   const fileEnv = loadEnv();
   const { apiKey, voiceMap } = await getConfig(fileEnv);
+
+  if (args.listVoices) {
+    if (!apiKey) {
+      console.error('❌ 未设置 FISH_API_KEY（列出音色需要 Key）');
+      process.exit(2);
+    }
+    await listVoices(apiKey, args.search);
+    process.exit(0);
+  }
 
   if (!args.character || !args.text) {
     console.error('❌ 缺少 --character 或 --text（--help 查看用法）');
