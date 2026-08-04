@@ -58,9 +58,11 @@ class I:
     IRON_D = (152, 157, 174, 255)
     IRON_L = (238, 240, 250, 255)
     # 星之碎片 / 钻石
-    SHARD = (188, 136, 255, 255)
-    SHARD_D = (150, 96, 230, 255)
-    SHARD_L = (244, 224, 255, 255)
+    SHARD = (80, 160, 255, 255)       # 幽蓝主色
+    SHARD_D = (40, 100, 220, 255)     # 深蓝阴影
+    SHARD_L = (180, 220, 255, 255)    # 冰蓝高光
+    SHARD_GLOW = (120, 190, 255, 200) # 发光晕（半透明）
+    SHARD_CORE = (220, 240, 255, 255) # 核心白亮
     DIAMOND = (120, 200, 255, 255)
     DIAMOND_D = (80, 160, 230, 255)
     DIAMOND_L = (230, 250, 255, 255)
@@ -245,7 +247,46 @@ def gem_icon(main, main_d, main_l, facet):
 
 
 # ============================================================================
-# 庄园钥匙（圆头 + 齿）
+# 星之碎片（幽蓝发光星芒，P1 视觉升级）
+# ============================================================================
+def star_shard_icon():
+    """幽蓝星芒碎片：中心菱形 + 四向星芒 + 发光晕 + 核心高光。"""
+    img = blank()
+    # 外层发光晕（半透明蓝圈，半径5）
+    for dy in range(-5, 6):
+        for dx in range(-5, 6):
+            d2 = dx * dx + dy * dy
+            if d2 <= 25:
+                a = max(0, int(180 * (1 - d2 / 25)))
+                px(img, 8 + dx, 8 + dy, (100, 180, 255, a))
+    # 中心菱形（主体）
+    for y in range(4, 13):
+        half = min(y - 4, 12 - y) + 1
+        for x in range(8 - half, 8 + half + 1):
+            px(img, x, y, I.SHARD)
+    # 切割面暗线
+    for x in range(5, 12):
+        px(img, x, 8, I.SHARD_D)
+    px(img, 7, 6, I.SHARD_D)
+    px(img, 9, 6, I.SHARD_D)
+    # 四向星芒（上下左右尖刺）
+    for i, (dx, dy) in enumerate([(0, -1), (0, 1), (-1, 0), (1, 0)]):
+        length = 3 if i < 2 else 2  # 纵向更长
+        for s in range(1, length + 1):
+            px(img, 8 + dx * s, 8 + dy * s, I.SHARD_L)
+    # 对角短芒
+    for dx, dy in [(-1, -1), (1, -1), (-1, 1), (1, 1)]:
+        px(img, 8 + dx * 2, 8 + dy * 2, I.SHARD_GLOW)
+    # 核心高光（中心白亮点）
+    px(img, 8, 7, I.SHARD_CORE)
+    px(img, 7, 7, I.SHARD_CORE)
+    px(img, 8, 6, (200, 230, 255, 255))
+    # 左上高光弧
+    px(img, 6, 4, I.SHARD_L)
+    px(img, 5, 5, I.SHARD_L)
+    px(img, 6, 5, (200, 230, 255, 255))
+    add_outline(img, C.OUTLINE)
+    return img
 # ============================================================================
 def key_icon():
     img = blank()
@@ -462,7 +503,7 @@ def main() -> None:
         ("tomato_seed.png", seed_icon(), "番茄种子"),
         ("corn_seed.png", seed_icon(), "玉米种子"),
         ("strawberry_seed.png", seed_icon(), "草莓种子"),
-        ("star_shard.png", gem_icon(I.SHARD, I.SHARD_D, I.SHARD_L, (255, 255, 255, 255)), "星之碎片"),
+        ("star_shard.png", star_shard_icon(), "星之碎片"),
         ("diamond.png", gem_icon(I.DIAMOND, I.DIAMOND_D, I.DIAMOND_L, (200, 240, 255, 255)), "钻石"),
         ("stone.png", ore_icon(I.STONE, I.STONE_D, I.STONE_L), "石头"),
         ("copper.png", ore_icon(I.COPPER, I.COPPER_D, I.COPPER_L), "铜矿"),
