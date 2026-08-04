@@ -358,6 +358,7 @@ def npc_xiya_frame_32() -> Image.Image:
     # 右腰工具兜（深棕）
     rect(img, 20, 18, 22, 21, T.X_BELT)
     px(img, 21, 20, T.X_BUCKLE)
+    px(img, 21, 19, (200, 160, 60, 255))
 
     # —— 工装背带（深蓝，交叉搭在衬衫上）——
     for step in range(3):
@@ -420,6 +421,11 @@ def npc_xiya_frame_32() -> Image.Image:
     # 橙金发色呼应对话色 #f0a050：刘海高光点缀
     px(img, 10, 3, T.X_HAIR_HI)
     px(img, 21, 3, T.X_HAIR_HI)
+    # hair clip (v1.3: orange-gold bob + clip)
+    px(img, 18, 2, (245, 150, 170, 255))
+    px(img, 19, 2, (245, 150, 170, 255))
+    px(img, 18, 3, (210, 120, 145, 255))
+    px(img, 19, 3, (245, 150, 170, 255))
 
     add_outline(img, C.OUTLINE)
     return img
