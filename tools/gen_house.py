@@ -115,10 +115,127 @@ def gen_tileset():
             for y in range(shelf_y, min(shelf_y + 3, T)):
                 new_img.putpixel((x0 + 2 + i * 3, y), bc)
 
+    upgrade_house_tiles(new_img)
     out = os.path.join(TILE_DIR, "house_tileset.png")
     new_img.save(out)
     print(f"[OK] tileset -> {out}  (192x16)")
 
+
+
+def upgrade_house_tiles(img):
+    """???????v0.9?????/???/?????gid ?????"""
+    # ??? gid6 (tile 5, x=80)
+    x0 = 5 * T
+    base_w = (150, 110, 70); dark = (118, 82, 40); light = (180, 140, 96); seam = (96, 64, 30)
+    for y in range(T):
+        for x in range(T):
+            img.putpixel((x0 + x, y), base_w)
+    for y in range(T):
+        if y % 4 == 3:
+            for x in range(T):
+                img.putpixel((x0 + x, y), seam)
+    for plank in range(4):
+        py = plank * 4
+        off = (plank % 2) * 3
+        for x in range(off, min(off + 5, T)):
+            img.putpixel((x0 + x, py + 1), dark)
+        for x in (2, 7, 12):
+            for y in range(py + 1, min(py + 3, T - 1)):
+                if (x + y) % 2 == 0:
+                    img.putpixel((x0 + x, y), dark)
+    for x in range(T):
+        img.putpixel((x0 + x, 0), light)
+    # ??? gid3 (tile 2, x=32)
+    x1 = 2 * T
+    wall = (135, 112, 92); mortar = (96, 78, 62); wall_l = (160, 136, 112)
+    for y in range(T):
+        for x in range(T):
+            img.putpixel((x1 + x, y), wall)
+    for by in range(0, T, 4):
+        for x in range(T):
+            img.putpixel((x1 + x, min(by + 3, T - 1)), mortar)
+    for bx in range(0, T, 4):
+        for y in range(T):
+            img.putpixel((x1 + min(bx + 3, T - 1), y), mortar)
+    for by in range(0, T, 4):
+        for bx in range(0, T, 4):
+            img.putpixel((x1 + bx, by), wall_l)
+            img.putpixel((x1 + bx + 1, by), wall_l)
+    # ? gid9 (tile 8, x=128)
+    x2 = 8 * T
+    for x in range(T):
+        img.putpixel((x2 + x, 0), (72, 44, 26))
+        img.putpixel((x2 + x, 15), (72, 44, 26))
+    for y in range(T):
+        img.putpixel((x2, y), (72, 44, 26))
+        img.putpixel((x2 + 15, y), (72, 44, 26))
+    for y in range(3, 15):
+        for x in range(1, 15):
+            img.putpixel((x2 + x, y), (139, 58, 58) if (x + y) % 2 else (128, 50, 50))
+    for y in range(1, 4):
+        for x in range(1, 5):
+            img.putpixel((x2 + x, y), (238, 238, 238))
+    img.putpixel((x2 + 5, 1), (200, 200, 200)); img.putpixel((x2 + 5, 2), (200, 200, 200))
+    # ? gid10 (tile 9, x=144)
+    x3 = 9 * T
+    for y in range(T):
+        for x in range(T):
+            img.putpixel((x3 + x, y), (160, 120, 70))
+    for y in range(1, 4):
+        for x in range(1, 15):
+            if (x + y) % 4 == 0:
+                img.putpixel((x3 + x, y), (180, 138, 84))
+    for x in range(1, 15):
+        img.putpixel((x3 + x, 1), (190, 150, 94))
+    for x in range(T):
+        img.putpixel((x3 + x, 3), (120, 85, 45))
+        img.putpixel((x3 + x, 4), (120, 85, 45))
+    for y in range(2):
+        for x in range(3, 5):
+            img.putpixel((x3 + x, y), (235, 235, 235))
+    img.putpixel((x3 + 5, 0), (235, 235, 235)); img.putpixel((x3 + 5, 1), (180, 90, 60))
+    for y in range(5, T):
+        img.putpixel((x3 + 2, y), (90, 60, 30))
+        img.putpixel((x3 + 13, y), (90, 60, 30))
+        img.putpixel((x3 + 3, y), (70, 45, 20))
+        img.putpixel((x3 + 12, y), (70, 45, 20))
+    # ? gid11 (tile 10, x=160)
+    x4 = 10 * T
+    for y in range(T):
+        for x in range(T):
+            img.putpixel((x4 + x, y), (110, 44, 44))
+    for x in range(T):
+        img.putpixel((x4 + x, 0), (170, 78, 78)); img.putpixel((x4 + x, 15), (170, 78, 78))
+    for y in range(T):
+        img.putpixel((x4, y), (170, 78, 78)); img.putpixel((x4 + 15, y), (170, 78, 78))
+    cx, cy = 8, 8
+    for y in range(T):
+        for x in range(T):
+            d = abs(x - cx) + abs(y - cy)
+            if d <= 5:
+                img.putpixel((x4 + x, y), (200, 110, 110))
+            if d <= 2:
+                img.putpixel((x4 + x, y), (235, 150, 150))
+    # ? gid12 (tile 11, x=176)
+    x5 = 11 * T
+    for y in range(T):
+        for x in range(T):
+            img.putpixel((x5 + x, y), (100, 65, 35))
+    for y in range(T):
+        img.putpixel((x5, y), (72, 44, 20)); img.putpixel((x5 + 15, y), (72, 44, 20))
+    for x in range(T):
+        img.putpixel((x5 + x, 5), (70, 45, 20)); img.putpixel((x5 + x, 10), (70, 45, 20))
+    book_colors = [(180, 50, 50), (50, 80, 180), (50, 150, 70), (200, 180, 50)]
+    for shelf_y in [2, 7, 12]:
+        for i, bc in enumerate(book_colors):
+            for y in range(shelf_y, min(shelf_y + 3, T)):
+                for bx in range(2 + i * 3, 2 + i * 3 + 2):
+                    img.putpixel((x5 + bx, y), bc)
+    for y in range(7, 10):
+        img.putpixel((x5 + 11, y), (150, 100, 50))
+        img.putpixel((x5 + 12, y), (150, 100, 50))
+    img.putpixel((x5 + 11, 6), (120, 80, 40)); img.putpixel((x5 + 12, 6), (120, 80, 40))
+    return img
 
 def new_layer(fill=0):
     return [fill] * (MAP_W * MAP_H)
