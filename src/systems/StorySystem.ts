@@ -173,12 +173,12 @@ export const ELDER_QUEST_DIALOGUE: DialogueLine[] = [
   { speaker: '林澈', color: COLORS.linche, text: '您好，您是……' },
   { speaker: '村长', color: COLORS.elder, text: '我是青禾镇的镇长。你爷爷啊，年轻时候就喜欢晚上坐在那块石头上看天。' },
   { speaker: '林澈', color: COLORS.linche, text: '……他真的喜欢看星星？' },
-  { speaker: '村长', color: COLORS.elder, text: '喜欢。他以前也经常往森林跑。' },
+  { speaker: '村长', color: COLORS.elder, text: '喜欢。他以前也经常往后山跑。' },
   { speaker: '林澈', color: COLORS.linche, text: '去做什么？' },
   { speaker: '村长', color: COLORS.elder, text: '（笑了笑）他说那里有些东西，值得看看。' },
-  { speaker: '', color: COLORS.system, text: '（村长看向远处的森林，没有再说下去。）' },
+  { speaker: '', color: COLORS.system, text: '（村长看向远处的后山，没有再说下去。）' },
   { speaker: '林澈', color: COLORS.linche, text: '……那我去看看吧。' },
-  { speaker: '', color: COLORS.system, text: '主线任务已接受：去爷爷以前常去的森林看看。' },
+  { speaker: '', color: COLORS.system, text: '主线任务已接受：去爷爷以前常去的后山看看。' },
 ];
 
 /** 交付星之碎片（第一章完成） */
@@ -201,7 +201,7 @@ export const SHARD_DELIVER_DIALOGUE: DialogueLine[] = [
 
 /** 森林采集对话（首次交互播放，结束后自动采集） */
 export const FOREST_SHARD_DIALOGUE: DialogueLine[] = [
-  { speaker: '', color: COLORS.system, text: '（森林深处，一块泛着幽蓝光芒的碎片静静躺在树根旁。）' },
+  { speaker: '', color: COLORS.system, text: '（后山深处，一块泛着幽蓝光芒的碎片静静躺在树根旁。）' },
   { speaker: '夏雅', color: COLORS.xiya, text: '我们试过很多办法，可它一直没有反应。' },
   { speaker: '林澈', color: COLORS.linche, text: '不是没有反应。' },
   { speaker: '林澈', color: COLORS.linche, text: '更像一个长期没有维护的系统。' },

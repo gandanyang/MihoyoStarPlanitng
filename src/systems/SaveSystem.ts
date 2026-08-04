@@ -80,7 +80,7 @@ export interface SaveData {
     /** M1-3 环境恢复点状态（可选，旧档无此字段视为全部未恢复） */
     restore?: Record<string, boolean>;
     /** 自动化设备（可选，旧档无此字段视为无机器人） */
-    automation?: { robots: RobotData[] };
+    automation?: { level: number; robots: RobotData[] };
   };
   /** 剧情进度 */
   story: {

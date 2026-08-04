@@ -107,7 +107,7 @@ async function run() {
       { speaker: '', color: '#aaaaaa', text: '「林先生，根据评估，你完全可以加入智能生态部门。」' },
       { speaker: '林澈', color: '#7eb8da', text: '嗯。' },
       { speaker: '林澈', color: '#7eb8da', text: '嗯。' },
-      { speaker: '爷爷的笔记', color: '#e8d8a8', text: '今天又捡到一片。星星……是不是也想回家？' },
+      { speaker: '爷爷的笔记', color: '#e8d8a8', text: '今年番茄长得很好，比去年早熟了几天。' },
     ];
     await playLines(page, 'farm', LINES, 900);
 

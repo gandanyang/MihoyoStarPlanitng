@@ -18,6 +18,7 @@ import { getDailyQuests, claimReward, getTalkNpcHomeHint, type DailyQuestInstanc
 import { play } from '../systems/AudioSystem';
 import { triggerTag } from '../systems/GuiXingRecordSystem';
 import { showMemoryMoment } from './MemoryMoment';
+import { panelFadeIn, panelFadeOut } from './dom-anim';
 
 type OnClose = () => void;
 type OnClaim = () => void;
@@ -132,7 +133,8 @@ function syncBadge(): void {
 function closePanel(): void {
   if (!open) return;
   open = false;
-  if (panelEl) panelEl.style.display = 'none';
+  // A4 动效：面板 fadeOut
+  if (panelEl) panelFadeOut(panelEl, 150);
   onClose?.();
 }
 
@@ -218,7 +220,8 @@ export class QuestPanel {
     open = true;
     if (panelEl) {
       refresh('daily');
-      panelEl.style.display = 'flex';
+      // A4 动效：面板 fadeIn
+      panelFadeIn(panelEl, 180);
     }
   }
 

@@ -15,6 +15,7 @@ import { advanceStory, getStoryStep, setStoryStep } from './systems/StorySystem'
 import { initAndroidBackHandler } from './systems/AndroidBackHandler';
 import { addItem } from './data/Inventory';
 import { getRobotCount, runDailyAutomation } from './systems/AutomationSystem';
+import { setTileState as farmSetTile, setCrop as farmSetCrop, getTileState as farmGetTile } from './data/FarmState';
 
 // 临时调试入口：URL 带 ?reset=1 时启动前强制清除本地存档（用于移动端真机测试清档）
 // 仅前端操作 localStorage，不进存档逻辑、不属于正式功能
@@ -110,7 +111,7 @@ syncGameContainer();
 //   window.debug.advanceStory()     推进教程剧情一步
 //   window.debug.setStoryStep(s)    设置教程剧情步骤
 //   window.debug.getStoryStep()     获取当前教程步骤
-(window as unknown as { debug: { nextDay: () => number; setTime: (h: number, m: number) => void; advanceStory: () => void; setStoryStep: (s: string) => void; getStoryStep: () => string; getQuestState: () => string; giveRobot: (n?: number) => void; robotCount: () => number } }).debug = {
+(window as unknown as { debug: { nextDay: () => number; setTime: (h: number, m: number) => void; advanceStory: () => void; setStoryStep: (s: string) => void; getStoryStep: () => string; getQuestState: () => string; giveRobot: (n?: number) => void; robotCount: () => number; farm: { setTileState: (col: number, row: number, state: string) => void; setCrop: (col: number, row: number, crop: { cropType: string; plantDay: number; watered: boolean } | undefined) => void; getTileState: (col: number, row: number) => string } } }).debug = {
   nextDay: () => {
     // Phase 4 起统一走 TimeSystem.nextDay，它内调 FarmState.advanceDay
     const newDay = timeNextDay();
@@ -173,6 +174,20 @@ syncGameContainer();
   },
   robotCount: () => {
     return getRobotCount();
+  },
+  // 农场状态钩子：指向游戏真实 FarmState 实例（绕过 Vite dev 双模块问题，供自动化测试驱动）
+  farm: {
+    setTileState: (col, row, state) => {
+      farmSetTile(col, row, state as never);
+      console.log(`[debug] farm.setTileState(${col},${row}) → ${state}`);
+    },
+    setCrop: (col, row, crop) => {
+      farmSetCrop(col, row, crop as never);
+      console.log(`[debug] farm.setCrop(${col},${row})`);
+    },
+    getTileState: (col, row) => {
+      return farmGetTile(col, row);
+    },
   },
 };
 

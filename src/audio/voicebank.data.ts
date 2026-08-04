@@ -1,7 +1,7 @@
 /* eslint-disable */
 // ══════════════════════════════════════════════════════════════════
 // 语音映射数据 —— 由 tools/gen_mainline_voice.py --emit-voicebank 自动生成，勿手改
-// 生成时间：2026-08-05 01:12:33
+// 生成时间：2026-08-05 02:21:53
 // 说明：speaker='' 表示通配（少女/HR/纸条），text 为归一化后原文（已剥（笑）等标注）
 // ══════════════════════════════════════════════════════════════════
 export interface VoiceEntry { file: string; speaker: string; text: string }
@@ -93,24 +93,26 @@ export const VOICE_ENTRIES: VoiceEntry[] = [
   { file: 'xiya/finale_02.wav', speaker: '夏雅', text: '青禾镇，欢迎你。' },
   { file: 'elder/elder_01.wav', speaker: '村长', text: '你就是林澈吧？星黎庄园的新主人。' },
   { file: 'elder/elder_03.wav', speaker: '村长', text: '我是青禾镇的镇长。你爷爷啊，年轻时候就喜欢晚上坐在那块石头上看天。' },
-  { file: 'elder/elder_05.wav', speaker: '村长', text: '喜欢。他以前也经常往森林跑。' },
+  { file: 'elder/elder_05.wav', speaker: '村长', text: '喜欢。他以前也经常往后山跑。' },
   { file: 'elder/elder_07.wav', speaker: '村长', text: '他说那里有些东西，值得看看。' },
   { file: 'elder/shard_02.wav', speaker: '村长', text: '这光泽……没错，就是星之碎片。你爷爷当年捡到第一片的时候，也是这样的光。' },
   { file: 'elder/shard_03.wav', speaker: '村长', text: '他跟我说过，这座岛上的碎片，只有真正"想留下来"的人才能拿起来。' },
   { file: 'elder/shard_04.wav', speaker: '村长', text: '你能把它带回来，说明这座岛……已经认你了。' },
   { file: 'elder/shard_06.wav', speaker: '村长', text: '那就够了。有时候，不是人找到东西，是东西找到人。' },
   { file: 'elder/shard_07.wav', speaker: '村长', text: '你爷爷以前啊，总喜欢在晚上去农田后面的地方坐一会儿。他说，那里的星星很亮。' },
-  { file: 'grandpa/notes_01.wav', speaker: '爷爷的笔记', text: '今天又捡到一片。星星……是不是也想回家？' },
-  { file: 'grandpa/notes_02.wav', speaker: '爷爷的笔记', text: '我数了数，还差一些。等它们都回来了，也许就能问清楚了。' },
-  { file: 'grandpa/notes_03.wav', speaker: '爷爷的笔记', text: '那些发光的碎片，醒来时像在看我。是我多心了吧。' },
-  { file: 'grandpa/notes_04.wav', speaker: '爷爷的笔记', text: '今晚的星星很亮，花比往年开得早。不知道是不是这座岛在回应什么。' },
+  { file: 'grandpa/notes_01.wav', speaker: '爷爷的笔记', text: '今年番茄长得很好，比去年早熟了几天。' },
+  { file: 'grandpa/notes_02.wav', speaker: '爷爷的笔记', text: '后山的竹子又长高了，看来春天比往年来得早。' },
+  { file: 'grandpa/notes_03.wav', speaker: '爷爷的笔记', text: '村口老周家的孩子回来了一趟，带了不少城里的东西。' },
+  { file: 'grandpa/notes_04.wav', speaker: '爷爷的笔记', text: '今晚的星星，比往年亮。' },
   { file: 'grandpa/ending_06.wav', speaker: '信', text: '如果看到这封信，说明你终于回来了。' },
   { file: 'grandpa/ending_07.wav', speaker: '信', text: '小澈，你小时候总问我，为什么每天都要给花浇水。' },
   { file: 'grandpa/ending_08.wav', speaker: '信', text: '爷爷想了很久。后来发现，人做很多事情，不一定都是为了结果。' },
   { file: 'grandpa/ending_09.wav', speaker: '信', text: '如果有一天机器比我们更聪明，你觉得人还需要留下些什么？' },
   { file: 'grandpa/evening_note.wav', speaker: '', text: '今年番茄长得很好。植物似乎会记住照顾它的人。' },
   { file: 'girl/forest_08.wav', speaker: '', text: '……它沉睡太久了。' },
+  { file: 'system/hr_station_01.wav', speaker: '', text: '因业务流程智能化调整，您的岗位职责将进行重新分配。' },
   { file: 'system/hr_station_02.wav', speaker: '', text: '林先生，根据评估，你完全可以加入智能生态部门。' },
+  { file: 'system/hr_station_03.wav', speaker: '', text: '随着智能化系统升级，公司将对部分岗位进行调整。' },
   { file: 'girl/mystery_talk_01.wav', speaker: '', text: '……你来了。' },
   { file: 'girl/mystery_talk_02.wav', speaker: '', text: '不认识。……只是觉得，你应该会来。' },
   { file: 'girl/mystery_talk_03.wav', speaker: '', text: '你身上……有那颗星的味道。' },
@@ -138,11 +140,11 @@ export const VOICE_ENTRIES: VoiceEntry[] = [
   { file: 'linche/garden_answer_01.wav', speaker: '林澈', text: '托给谁？' },
   { file: 'linche/garden_reflect_01.wav', speaker: '林澈', text: '……这座岛上的事情，好像都是"总有一天"。' },
   { file: 'adventurer/adv_01.wav', speaker: '冒险家阿风', text: '嘿！新来的庄园主！我叫阿风，这座岛的每个角落我都跑遍了。' },
-  { file: 'adventurer/adv_02.wav', speaker: '冒险家阿风', text: '告诉你个秘密——森林深处有东西在发光，镇长神神秘秘的不肯说。' },
-  { file: 'adventurer/adv_03.wav', speaker: '冒险家阿风', text: '想去探险的话，记得备足体力。森林可比看上去大得多！' },
-  { file: 'adventurer/adv_04.wav', speaker: '冒险家阿风', text: '森林深处……有些东西，最好别惊醒。' },
+  { file: 'adventurer/adv_02.wav', speaker: '冒险家阿风', text: '告诉你个秘密——后山深处有东西在发光，镇长神神秘秘的不肯说。' },
+  { file: 'adventurer/adv_03.wav', speaker: '冒险家阿风', text: '想去探险的话，记得备足体力。后山可比看上去大得多！' },
+  { file: 'adventurer/adv_04.wav', speaker: '冒险家阿风', text: '后山深处……有些东西，最好别惊醒。' },
   { file: 'adventurer/adv_05.wav', speaker: '冒险家阿风', text: '嘿！你这小子，胆子不小啊！' },
-  { file: 'adventurer/adv_06.wav', speaker: '冒险家阿风', text: '说得对。有空来森林，我带你转转。' },
+  { file: 'adventurer/adv_06.wav', speaker: '冒险家阿风', text: '说得对。有空来后山，我带你转转。' },
   { file: 'shopkeeper/shop_01.wav', speaker: '商店老板', text: '欢迎光临星辰杂货店！' },
   { file: 'shopkeeper/shop_02.wav', speaker: '商店老板', text: '收获的作物、挖到的矿石都可以卖给我换金币。种子和工具也有卖。' },
   { file: 'shopkeeper/shop_03.wav', speaker: '商店老板', text: '需要什么随便看。钱货两清，童叟无欺。' },

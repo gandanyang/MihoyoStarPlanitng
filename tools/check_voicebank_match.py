@@ -20,12 +20,15 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-STORY_TS = ROOT / "src" / "systems" / "StorySystem.ts"
+STORY_FILES = [
+    ROOT / "src" / "systems" / "StorySystem.ts",
+    ROOT / "src" / "systems" / "NPCSystem.ts",
+]
 DATA_TS = ROOT / "src" / "audio" / "voicebank.data.ts"
 
-# DialogueLine 行：{ speaker: 'X', color: COLORS.y, [inner: true,] text: 'T' }
+# DialogueLine 行：{ speaker: 'X', color: COLORS.y | '#hex', [inner: true,] text: 'T' }
 LINE_RE = re.compile(
-    r"\{\s*speaker:\s*'([^']*)',\s*color:\s*COLORS\.\w+,\s*"
+    r"\{\s*speaker:\s*'([^']*)',\s*color:\s*(?:COLORS\.\w+|'#[0-9a-fA-F]{6}'),\s*"
     r"(?:inner:\s*true,\s*)?text:\s*'([^']*)'\s*\}"
 )
 
@@ -43,7 +46,7 @@ def normalize(text: str) -> str:
 
 
 def load_story_lines() -> list[tuple[str, str]]:
-    src = STORY_TS.read_text(encoding="utf-8")
+    src = "\n".join(p.read_text(encoding="utf-8") for p in STORY_FILES)
     lines: list[tuple[str, str]] = []
     for m in LINE_RE.finditer(src):
         spk, text = m.group(1), m.group(2)
@@ -68,11 +71,11 @@ def main() -> int:
     print(f"StorySystem.ts 台词行（含空 speaker）：{len(story)} 条")
     print(f"voicebank.data.ts 映射：{len(entries)} 条")
 
-    # 建查找表：norm text → entries
+    # 建查找表：norm text → entries（与运行时 VoiceBank.find 一致：双侧 normalize）
     from collections import defaultdict
     by_norm: dict[str, list[tuple[str, str]]] = defaultdict(list)  # norm → [(speaker,file)]
     for file, spk, text in entries:
-        by_norm[text].append((spk, file))
+        by_norm[normalize(text)].append((spk, file))
 
     def find(spk: str, text: str):
         norm = normalize(text)

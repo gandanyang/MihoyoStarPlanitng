@@ -26,11 +26,16 @@
 - 验收：新玩家一眼看出"这块地在变化"；探针同步
 - 状态：✅ 暂定完成（2026-08-04，制作人确认）；**AI 高精度升级（gpt-image-2）留待资源充足后做**（16×16 直接 AI 生成不可行，需大分辨率管线）
 
-## A4 动效
+## A4 动效（P0 范围限定）
 
-- 目标：关键 UI/场景动效清单 + 落地（对话框/面板/切场/环境缓动）
-- 涉及：`src/ui/*`、场景
-- 验收：清单交付 + 至少核心动效（切场/对话框）落地
+- 目标：**仅** 3 项核心动效，提升"完成度感"，不碰复杂环境动画
+- P0 范围：
+  1. **对话框出现动画**（StoryDialogue 容器 fadeIn/slideUp）
+  2. **UI 面板打开动画**（BackpackPanel/ShopPanel/QuestPanel 弹出缓动）
+  3. **场景切换淡入淡出**（MapScene 切场过渡）
+- 涉及：`src/ui/StoryDialogue.ts`、`src/ui/BackpackPanel.ts`、`src/ui/ShopPanel.ts`、`src/ui/QuestPanel.ts`、`src/scenes/MapScene.ts`
+- 不做：复杂环境动画、粒子效果、角色动作动画
+- 验收：3 项动效落地 + 无性能回退 + 探针同步
 
 ## A5 室内场景升级
 

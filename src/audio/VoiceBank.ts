@@ -32,11 +32,34 @@ function normalize(text: string): string {
 }
 
 let currentAudio: HTMLAudioElement | null = null;
-let pendingAudio: HTMLAudioElement | null = null; // 正在等待 ready 的音频（BUG-039）
-let pendingTimer: ReturnType<typeof setTimeout> | null = null; // ready 超时兜底定时器
 
-/** 已确认可立即播放的音频 URL（BUG-039：二次播放同句免等加载，Android 首次加载慢后即缓存） */
-const readyCache = new Set<string>();
+/** 被 autoplay 策略拒绝、待全局手势解锁时重试的音频（兜底；正常路径在手势窗口内不被拒） */
+let gesturePendingAudio: HTMLAudioElement | null = null;
+
+/** 已发起过预加载的音频 URL（避免重复加载同一文件） */
+const preloadCache = new Set<string>();
+
+/** 全局手势解锁：首次交互时恢复 AudioContext，并重试被 autoplay 拦截的音频。
+ *  背景（BUG-039 真机复现）：Android WebView 开局第一句 play() 若离点击手势过远（如等
+ *  loadeddata 回调），会被 autoplay 策略拒绝——第一句无声，且被拒的 play() 会在玩家后续
+ *  点击时自动恢复 → 最后一句响起第一句的声音。正常路径下 play() 立即调用（手势窗口内）
+ *  不会触发；此处仅兜底。 */
+function unlockAudio(): void {
+  try {
+    const ctx = getCtx();
+    if (ctx.state === 'suspended') void ctx.resume();
+  } catch { /* ignore */ }
+  const a = gesturePendingAudio;
+  gesturePendingAudio = null;
+  if (a && currentAudio === a) {
+    a.play().catch(() => { /* 静默失败 */ });
+  }
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('pointerdown', unlockAudio);
+  document.addEventListener('touchend', unlockAudio);
+  document.addEventListener('keydown', unlockAudio);
+}
 
 /** 现场生成短指数衰减噪声 IR，用于内心独白轻混响（不依赖外部文件） */
 function makeImpulse(ctx: AudioContext, seconds: number, decay: number): AudioBuffer {
@@ -59,7 +82,8 @@ export class VoiceBank {
   static find(speaker: string, text: string): string | null {
     const norm = normalize(text);
     const matches = VOICE_ENTRIES.filter(
-      (e: VoiceEntry) => (e.speaker === '' || e.speaker === speaker) && e.text === norm,
+      (e: VoiceEntry) =>
+        (e.speaker === '' || e.speaker === speaker) && normalize(e.text) === norm,
     );
     if (matches.length === 0) return null;
     // 同 (speaker,text) 多个文件（如「嗯。」harvest_02/evening_04）→ 轮换，保证都用上
@@ -83,8 +107,14 @@ export class VoiceBank {
     audio.volume = 1.0;
     currentAudio = audio;
 
-    /** 音频就绪后真正起播（inner 走混响链路，失败回退原音） */
-    const tryPlay = () => {
+    /** autoplay 拒绝兜底：Android 开局离手势过远时记录待播，解锁后重试（期间换行则放弃） */
+    const onReject = (e: unknown) => {
+      if ((e as DOMException)?.name === 'NotAllowedError') {
+        gesturePendingAudio = audio;
+      }
+    };
+
+    const doPlay = () => {
       if (currentAudio !== audio) return; // 已被新行/stop 替换，放弃本次播放
       if (inner) {
         try {
@@ -101,43 +131,43 @@ export class VoiceBank {
           src.connect(conv);
           conv.connect(wet);
           wet.connect(ctx.destination);
-          audio.play().catch(() => { /* 静默失败 */ });
+          audio.play().catch(onReject);
           return;
         } catch {
           // 混响链路不可用 → 走原音播放（TODO: 后续可接入正式混响）
         }
       }
-      audio.play().catch(() => { /* 静默失败：找不到/格式不支持不阻塞对话 */ });
+      audio.play().catch(onReject);
     };
 
-    // BUG-039：安卓 WebView 音频加载慢，立即 play() 导致起播晚于当前台词（声音错位）。
-    // 等 loadeddata 再播（本地已就绪或命中缓存则立即播），并加超时兜底防永不播放。
-    if (audio.readyState >= 2 || readyCache.has(url)) {
-      tryPlay();
-      return;
+    // BUG-039：立即 play()（保留场景切换后的 transient activation 窗口，避免开局被拒）。
+    // 加载未就绪时 HTMLMediaElement 内置等待就绪后起播；起播延迟由 preload() 预加载下一句吸收。
+    doPlay();
+  }
+
+  /** 预加载 (speaker,text) 的全部候选语音（不改变轮换；旁白/选项行 find 内天然跳过）。
+   *  用于对白推进前预热下一句，消除 Android WebView 加载慢导致的起播延迟。 */
+  static preload(speaker: string, text: string): void {
+    const norm = normalize(text);
+    const matches = VOICE_ENTRIES.filter(
+      (e: VoiceEntry) =>
+        (e.speaker === '' || e.speaker === speaker) && normalize(e.text) === norm,
+    );
+    for (const m of matches) {
+      const url = 'audio/voice/' + m.file;
+      if (preloadCache.has(url)) continue;
+      preloadCache.add(url);
+      const a = new Audio(url);
+      a.preload = 'auto';
+      // 仅加载不播放；失败也标记，避免反复重试
+      a.addEventListener('loadeddata', () => { /* 加载完成即就绪 */ }, { once: true });
+      a.addEventListener('error', () => { /* 忽略加载失败 */ }, { once: true });
     }
-    pendingAudio = audio;
-    const cleanup = () => {
-      pendingAudio = null;
-      if (pendingTimer) { clearTimeout(pendingTimer); pendingTimer = null; }
-      audio.removeEventListener('loadeddata', onReady);
-      audio.removeEventListener('error', onError);
-    };
-    const onReady = () => { readyCache.add(url); cleanup(); tryPlay(); };
-    const onError = () => { cleanup(); if (currentAudio === audio) currentAudio = null; };
-    audio.addEventListener('loadeddata', onReady);
-    audio.addEventListener('error', onError);
-    // 兜底：2.5s 仍未就绪也尝试播放（慢网络不永久沉默，播放失败静默）
-    pendingTimer = setTimeout(() => { readyCache.add(url); cleanup(); tryPlay(); }, 2500);
   }
 
   /** 停止当前语音（切换台词/关闭对话/场景切换时调用） */
   static stop(): void {
-    if (pendingTimer) { clearTimeout(pendingTimer); pendingTimer = null; }
-    if (pendingAudio) {
-      try { pendingAudio.pause(); pendingAudio.src = ''; } catch { /* ignore */ }
-      pendingAudio = null;
-    }
+    gesturePendingAudio = null;
     if (currentAudio) {
       try {
         currentAudio.pause();

@@ -225,13 +225,13 @@ const GARDENER_DIALOGUES: DialogueLine[] = [
 /** 冒险家阿风：冒险与森林提示 */
 const ADVENTURER_DIALOGUES: DialogueLine[] = [
   { speaker: '冒险家阿风', color: '#88b8e8', text: '嘿！你就是新搬来的林澈吧？我叫阿风，这座岛的每个角落我都跑遍了。' },
-  { speaker: '冒险家阿风', color: '#88b8e8', text: '告诉你个秘密——森林深处有东西在发光，镇长神神秘秘的不肯说。' },
-  { speaker: '冒险家阿风', color: '#88b8e8', text: '想去探险的话，记得备足体力。森林可比看上去大得多！' },
-  { speaker: '冒险家阿风', color: '#88b8e8', text: '森林深处……有些东西，最好别惊醒。' },
+  { speaker: '冒险家阿风', color: '#88b8e8', text: '告诉你个秘密——后山深处有东西在发光，镇长神神秘秘的不肯说。' },
+  { speaker: '冒险家阿风', color: '#88b8e8', text: '想去探险的话，记得备足体力。后山可比看上去大得多！' },
+  { speaker: '冒险家阿风', color: '#88b8e8', text: '后山深处……有些东西，最好别惊醒。' },
   { speaker: '林澈', color: COLORS.linche, text: '（笑）你越这么说，我越想去看。' },
   { speaker: '冒险家阿风', color: '#88b8e8', text: '嘿！你这小子，胆子不小啊！' },
   { speaker: '林澈', color: COLORS.linche, text: '不是胆子大。只是觉得，既然来了这座岛，就该看看它藏着什么。' },
-  { speaker: '冒险家阿风', color: '#88b8e8', text: '说得对。有空来森林，我带你转转。' },
+  { speaker: '冒险家阿风', color: '#88b8e8', text: '说得对。有空来后山，我带你转转。' },
 ];
 
 // ============ v0.5.3 剧情密度：NPC 每日随机一句 ============
@@ -276,12 +276,12 @@ const NPC_DAILY_LINES: Record<string, DialogueLine[]> = {
     { speaker: '花匠小梅', color: '#a0d888', text: '以前爷爷经常带我们去看星星。' },
   ],
   adventurer: [
-    { speaker: '冒险家阿风', color: '#88b8e8', text: '森林最近有奇怪的声音，我可没说谎。' },
+    { speaker: '冒险家阿风', color: '#88b8e8', text: '后山最近有奇怪的声音，我可没说谎。' },
     { speaker: '冒险家阿风', color: '#88b8e8', text: '我今天又发现一个没人去过的地方。' },
     { speaker: '冒险家阿风', color: '#88b8e8', text: '明天想去北边看看，你去不？' },
     { speaker: '冒险家阿风', color: '#88b8e8', text: '听说老张昨晚又喝多了，哈哈。' },
     { speaker: '冒险家阿风', color: '#88b8e8', text: '这座岛比我想象的大，还有好多地方没去过。' },
-    { speaker: '冒险家阿风', color: '#88b8e8', text: '你要是去森林，记得带够体力。' },
+    { speaker: '冒险家阿风', color: '#88b8e8', text: '你要是去后山，记得带够体力。' },
     { speaker: '冒险家阿风', color: '#88b8e8', text: '城里的星星是不是很少？' },
   ],
 };

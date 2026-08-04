@@ -159,6 +159,8 @@ export class MapScene extends Phaser.Scene {
   // 首次引导标志
   private woodcutTipShown = false;
   private mineTipShown = false;
+  // 未开放区域边界提示（P1）：靠近世界边界（非出口）轻提示一次；离开边界带后重置
+  private boundaryTipShown = false;
   // 当前选中的种子类型（R 键切换，用于播种）
   private selectedCropType: CropType = 'radish';
   // 种子类型切换冷却（防连发）
@@ -215,6 +217,8 @@ export class MapScene extends Phaser.Scene {
   private oldRobotFixed = false;
   // v0.5.3 剧情密度 E2：第一次收获反馈（一次性，内存 flag，不进存档）
   private firstHarvestShown = false;
+  // M1-3 花园清理引导：玩家靠近花园区域时首次提示（一次性，内存 flag）
+  private gardenHintShown = false;
   // 教程提示 DOM
   private tutorialHint: HTMLDivElement | null = null;
   // P1-1 桌面端快捷键提示（J 任务 / B 背包）：首次进入提示，使用一次后本局不再显示
@@ -249,6 +253,8 @@ export class MapScene extends Phaser.Scene {
     this.spawn = data?.spawn;
     this.transitioning = false;
     this.createFailed = false;
+    // 边界提示 flag 按场景重置（scene.start 会重新执行 init）
+    this.boundaryTipShown = false;
   }
 
   /** 场景停止/切换时清理挂载在 document.body 上的 DOM 残留（提示条/种子选择器等） */
@@ -260,6 +266,14 @@ export class MapScene extends Phaser.Scene {
     // 背包/任务面板跨场景清理（防止残留打开态）
     this.backpackPanel?.close();
     this.questPanel?.close();
+    // BUG-041：场景切换时若对话未结束（中途离开），reset 不触发 onComplete → vanished 未设置
+    // 在 reset 前检查：若神秘少女在当前场景且精灵可见，手动触发 setVanished
+    if (this.storyDialogue?.isOpen()) {
+      const mysteryNpc = this.npcList.find((n) => n.id === 'mystery');
+      if (mysteryNpc?.sprite?.visible) {
+        mysteryNpc.setVanished();
+      }
+    }
     // 对话残留跨场景传递会导致新场景按交互被对话拦截（reset 不触发 onComplete，安全）
     this.storyDialogue?.reset();
     // E1/E9 夏雅精灵清理（场景切换时销毁，防止残留）
@@ -614,15 +628,6 @@ export class MapScene extends Phaser.Scene {
       () => this.useManorKey(),
       () => this.updateHUD(),
       () => this.deployRobot(),
-      // 返回标题：显式 save → 停止当前场景 → 启动标题画面
-      () => {
-        save({
-          x: this.player.x, y: this.player.y,
-          scene: this.mapKey, facing: this.player.facing,
-          dailyQuest: getDailyQuestSaveData(),
-        });
-        this.scene.start('title');
-      },
     );
     // 任务面板（v0.5.3-B 任务入口化；关面板清理 J 键残留）
     this.questPanel = new QuestPanel(
@@ -795,6 +800,22 @@ export class MapScene extends Phaser.Scene {
     // 触屏摇杆拖动时覆盖键盘值（在 inputManager.update 之后、player.update 之前）
     this.touchControls.update();
 
+    // M1-3 花园清理引导：玩家靠近花园区域时首次提示（教程完成后）
+    if (this.mapKey === 'farm' && isTutorialDone() && !this.gardenHintShown && this.gardenRestore && this.gardenRestore.stage < 3) {
+      const dx = this.player.x - this.gardenRestore.pos.x;
+      const dy = this.player.y - this.gardenRestore.pos.y;
+      if (dx * dx + dy * dy < 80 * 80) {
+        this.gardenHintShown = true;
+        this.showDialogueText(this.hintText(
+          '这片旧花圃看起来可以清理一下……靠近按 [E] 试试',
+          '这片旧花圃看起来可以清理一下……靠近点「交互」试试'
+        ));
+      }
+    }
+
+    // P1 未开放区域边界提示：靠近世界边界（非出口）轻提示一次；出口排除由方法内处理
+    this.updateBoundaryTip();
+
     this.player.update();
 
     // NPC 插值移动（仅对当前场景有 sprite 的 NPC 生效）
@@ -830,7 +851,7 @@ export class MapScene extends Phaser.Scene {
         });
         this.transitioning = true;
         // 淡出过渡后切换场景，避免瞬间黑屏
-        this.cameras.main.fadeOut(250, 0, 0, 0);
+        this.cameras.main.fadeOut(300, 0, 0, 0);
         const target = ex.target;
         const spawn = ex.spawn;
         this.cameras.main.once('camerafadeoutcomplete', () => {
@@ -1532,6 +1553,35 @@ export class MapScene extends Phaser.Scene {
   /** 教程提示文案：移动端（无键盘）与桌面端差异 */
   private hintText(pc: string, mob: string): string {
     return isMobileLayout() ? mob : pc;
+  }
+
+  /** 未开放区域边界提示（P1）：靠近世界边界（非出口触发区）轻提示一次；离开边界带后重置 */
+  private updateBoundaryTip(): void {
+    // 仅开放地图生效；house 室内 / gate 车站剧情场景不提示
+    if (this.mapKey !== 'farm' && this.mapKey !== 'forest' && this.mapKey !== 'town' && this.mapKey !== 'mine') return;
+    // 教程未完成不提示（避免与教程引导抢占注意力）
+    if (!isTutorialDone()) return;
+    const wb = this.physics.world.bounds;
+    const M = 24; // 边界检测带宽度（px，约 1.5 格）
+    const x = this.player.x;
+    const y = this.player.y;
+    const nearEdge = x <= wb.x + M || x >= wb.right - M || y <= wb.y + M || y >= wb.bottom - M;
+    if (!nearEdge) {
+      // 回到地图内部 → 重置 flag，再次靠近可再提示
+      this.boundaryTipShown = false;
+      return;
+    }
+    // 排除出口触发区（出口在边界上，防误触/打断切场景）
+    const exits = MAP_EXITS[this.mapKey] ?? [];
+    for (const ex of exits) {
+      if (x >= ex.x && x <= ex.x + ex.w && y >= ex.y && y <= ex.y + ex.h) {
+        return;
+      }
+    }
+    if (!this.boundaryTipShown) {
+      this.boundaryTipShown = true;
+      this.showDialogueText('前面的区域，以后再来探索吧！');
+    }
   }
 
   /**
@@ -2490,6 +2540,12 @@ export class MapScene extends Phaser.Scene {
    */
   private spawnGardenXiya(): void {
     if (this.mapKey !== 'farm' || this.gardenXiya) return;
+    // BUG-043：先隐藏/销毁其他夏雅实例，避免同时出现两个夏雅
+    if (this.dawnXiya) { this.dawnXiya.setVisible(false); }
+    if (this.dawnXiyaLabel) { this.dawnXiyaLabel.setVisible(false); }
+    if (this.eveningXiya) { this.eveningXiya.setVisible(false); }
+    if (this.eveningXiyaLabel) { this.eveningXiyaLabel.setVisible(false); }
+    if (this.xiyaSprite) { this.xiyaSprite.setVisible(false); }
     const T = TILE_SIZE;
     const dx = 33 * T + T / 2;
     const dy = 6 * T + T / 2;
@@ -2514,6 +2570,12 @@ export class MapScene extends Phaser.Scene {
     this.gardenXiya.destroy();
     this.gardenXiya = null;
     if (this.gardenXiyaLabel) { this.gardenXiyaLabel.destroy(); this.gardenXiyaLabel = null; }
+    // BUG-043：花园见证完成后恢复其他夏雅实例可见性
+    if (this.dawnXiya) { this.dawnXiya.setVisible(true); }
+    if (this.dawnXiyaLabel) { this.dawnXiyaLabel.setVisible(true); }
+    if (this.eveningXiya) { this.eveningXiya.setVisible(true); }
+    if (this.eveningXiyaLabel) { this.eveningXiyaLabel.setVisible(true); }
+    if (this.xiyaSprite) { this.xiyaSprite.setVisible(true); }
     if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
     this.storyDialogue.play(GARDEN_RESTORED_XIYA_DIALOGUE, () => {
       this.updateHUD();
@@ -2525,6 +2587,12 @@ export class MapScene extends Phaser.Scene {
   private clearGardenXiya(): void {
     if (this.gardenXiya) { this.gardenXiya.destroy(); this.gardenXiya = null; }
     if (this.gardenXiyaLabel) { this.gardenXiyaLabel.destroy(); this.gardenXiyaLabel = null; }
+    // BUG-043：清除花园夏雅后恢复其他夏雅实例可见性
+    if (this.dawnXiya) { this.dawnXiya.setVisible(true); }
+    if (this.dawnXiyaLabel) { this.dawnXiyaLabel.setVisible(true); }
+    if (this.eveningXiya) { this.eveningXiya.setVisible(true); }
+    if (this.eveningXiyaLabel) { this.eveningXiyaLabel.setVisible(true); }
+    if (this.xiyaSprite) { this.xiyaSprite.setVisible(true); }
   }
 
   // ============ FEATURE-036 旧农业机器人（修复获得） ============

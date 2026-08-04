@@ -65,7 +65,7 @@ export function getElderDialogue(): DialogueLine[] {
       acceptQuest();
       return ELDER_QUEST_DIALOGUE;
     case 'accepted':
-      return [{ speaker: '村长', color: COLORS.elder, text: '去你爷爷以前常去的森林看看吧，孩子。' }];
+      return [{ speaker: '村长', color: COLORS.elder, text: '去你爷爷以前常去的后山看看吧，孩子。' }];
     case 'collected':
       deliverQuest();
       return SHARD_DELIVER_DIALOGUE;
@@ -84,7 +84,7 @@ export function getQuestObjective(): string {
     case 'not_started':
       return '与村长对话（农场/小镇）';
     case 'accepted':
-      return '去爷爷以前常去的森林看看';
+      return '去爷爷以前常去的后山看看';
     case 'collected':
       return '返回村长交付任务';
     case 'completed':

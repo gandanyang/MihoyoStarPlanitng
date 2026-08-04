@@ -31,7 +31,11 @@ import {
 } from '../data/Economy';
 import { addItem, getItemCount, itemIconHtml } from '../data/Inventory';
 import { play } from '../systems/AudioSystem';
+import { getRobotLevel, getUpgradeCost, getUpgradeEffect, setRobotLevel } from '../systems/AutomationSystem';
 import { showConfirmDialog } from './ConfirmDialog';
+import { panelFadeIn, panelFadeOut } from './dom-anim';
+
+const ROBOT_PRICE = 30;
 
 /** 商店商品配置 */
 interface ShopItem {
@@ -137,7 +141,8 @@ let shopFirstOpened = false;
 function closePanel(): void {
   if (!open) return;
   open = false;
-  if (panelEl) panelEl.style.display = 'none';
+  // A4 动效：面板 fadeOut
+  if (panelEl) panelFadeOut(panelEl, 150);
   onClose?.();
 }
 
@@ -185,6 +190,10 @@ function createDom(): void {
           <div style="text-align:center;font-weight:bold;margin-bottom:8px;color:#a5d6a7;">购买</div>
           <div id="shop-buy" style="font-size:13px;"></div>
         </div>
+      </div>
+      <div style="background:#2a3d4a;border:1px solid #4a8a9a;border-radius:6px;padding:10px;margin-top:12px;">
+        <div style="text-align:center;font-weight:bold;margin-bottom:8px;color:#4fc3f7;">✨ 特殊商店</div>
+        <div id="shop-special" style="font-size:13px;"></div>
       </div>
       <div style="text-align:center;margin-top:14px;">
         <button data-action="close" style="font-size:14px;padding:6px 26px;background:#8a6a45;border:none;border-radius:4px;color:#fff;cursor:pointer;">关闭 (Esc)</button>
@@ -240,6 +249,46 @@ function createDom(): void {
       }
       play(item.type === 'sell' ? 'sell' : 'buy');
       refresh();
+      return;
+    }
+    // 特殊商店：购买机器人
+    if (action === 'buy-robot') {
+      if (getItemCount('diamond') < ROBOT_PRICE) {
+        showToast(`钻石不足：需要 ${ROBOT_PRICE} 💠，当前 ${getItemCount('diamond')} 💠<br>完成每日任务可获得钻石`);
+        play('invalid');
+        return;
+      }
+      addItem('diamond', -ROBOT_PRICE);
+      addItem('auto_farmer_robot', 1);
+      play('buy');
+      refresh();
+      showToast(`已购买 自动农业机器人 ×1<br>钻石剩余：${getItemCount('diamond')} 💠<br>去背包部署吧！`);
+      onBuyCallback?.('auto_farmer_robot', 1);
+      return;
+    }
+    // 特殊商店：升级机器人
+    if (action === 'upgrade-robot') {
+      const lv = getRobotLevel();
+      const cost = getUpgradeCost();
+      if (cost === 0) {
+        showToast('机器人已满级 (Lv.3)');
+        play('invalid');
+        return;
+      }
+      if (getItemCount('diamond') < cost) {
+        showToast(`钻石不足：升级需要 ${cost} 💠，当前 ${getItemCount('diamond')} 💠<br>完成每日任务可获得钻石`);
+        play('invalid');
+        return;
+      }
+      addItem('diamond', -cost);
+      // 设置新等级（全局生效）
+      setRobotLevel(lv + 1);
+      play('levelup');
+      refresh();
+      const nextEffect = getUpgradeEffect();
+      showToast(`升级成功！机器人等级：Lv.${lv} → Lv.${lv + 1}<br>${nextEffect}`);
+      onBuyCallback?.('robot_upgrade', 1);
+      return;
     }
   });
 
@@ -301,6 +350,27 @@ function refresh(): void {
     }).join('');
   }
 
+  // 特殊商店栏
+  const specialEl = panelEl.querySelector('#shop-special');
+  if (specialEl) {
+    const diamondCount = getItemCount('diamond');
+    const lv = getRobotLevel();
+    const upgradeCost = getUpgradeCost();
+    const canBuyRobot = diamondCount >= ROBOT_PRICE;
+    const canUpgrade = upgradeCost > 0 && diamondCount >= upgradeCost;
+    specialEl.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span>${itemIconHtml('auto_farmer_robot', 16)} 自动农业机器人</span>
+        <button data-action="buy-robot" style="${canBuyRobot ? btnActive : btnDisabled}">买 ${ROBOT_PRICE} 💠</button>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span>${itemIconHtml('diamond', 16)} 升级机器人 (Lv.${lv} → Lv.${Math.min(lv + 1, 3)})</span>
+        <button data-action="upgrade-robot" style="${canUpgrade ? btnActive : btnDisabled}">${upgradeCost === 0 ? '已满级' : `升 ${upgradeCost} 💠`}</button>
+      </div>
+      <div style="font-size:11px;color:#90a4ae;margin-top:6px;">当前 Lv.${lv}：${lv === 1 ? '自动浇水+收获，范围3' : lv === 2 ? '自动播种+范围4， Lv3：作物×2+范围5' : '满级：作物×2+范围5'}</div>
+    `;
+  }
+
   onDataChange?.();
 }
 
@@ -318,7 +388,8 @@ export class ShopPanel {
     open = true;
     if (panelEl) {
       refresh();
-      panelEl.style.display = 'flex';
+      // A4 动效：面板 fadeIn
+      panelFadeIn(panelEl, 180);
       // E-01：首次打开商店引导卖作物赚钱（立即显示，玩家尚未操作，不会覆盖后续购买反馈）
       if (!shopFirstOpened) {
         shopFirstOpened = true;

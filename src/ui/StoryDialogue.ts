@@ -16,6 +16,7 @@
 import { DialogueLine } from '../systems/StorySystem';
 import { isMobileLayout } from '../config';
 import { VoiceBank } from '../audio/VoiceBank';
+import { panelFadeIn, panelFadeOut } from './dom-anim';
 
 /** 对话立绘映射（§8.5 方案 A）：说话人 → 立绘资源；无映射角色回退首字色块 */
 const PORTRAIT_MAP: Record<string, string> = {
@@ -204,13 +205,16 @@ export class StoryDialogue {
     this.index = 0;
     this.onComplete = onComplete ?? null;
     this.onChoice = onChoice ?? null;
+    // A4 动效：对话框 fadeIn（先 display 再 opacity）
     this.container.style.display = 'block';
+    this.container.style.opacity = '0';
+    panelFadeIn(this.container, 180);
     this.showLine();
   }
 
-  /** 是否正在显示 */
+  /** 是否正在显示（display 非 'none' 即视为打开：panelFadeIn 会覆盖为 'flex'，close 用 'none' 隐藏） */
   isOpen(): boolean {
-    return this.container.style.display === 'block';
+    return this.container.style.display !== 'none';
   }
 
   /** 跳过整段对话，直接触发 onComplete */
@@ -222,7 +226,7 @@ export class StoryDialogue {
     if (now - this.lastSkipAt < 300) return;
     this.lastSkipAt = now;
     this.clearOptions();
-    this.close();
+    this.close(true);
     this.onComplete?.();
   }
 
@@ -237,7 +241,7 @@ export class StoryDialogue {
     } else {
       this.index++;
       if (this.index >= this.lines.length) {
-        this.close();
+        this.close(true);
         this.onComplete?.();
       } else {
         this.showLine();
@@ -314,6 +318,11 @@ export class StoryDialogue {
     // 台词语音：按 (speaker, text) 映射播放；找不到音频静默跳过，不阻塞对话；
     // 选项行/旁白系统行在 find 内天然静默跳过
     VoiceBank.play(line.speaker, line.text, !!line.inner);
+    // BUG-039：预加载下一句语音（当前句显示期间开始加载，消除推进时的起播延迟）
+    const nextLine = this.lines[this.index + 1];
+    if (nextLine && !nextLine.options) {
+      VoiceBank.preload(nextLine.speaker, nextLine.text);
+    }
     const text = line.text;
     let charIdx = 0;
     this.typeTimer = window.setInterval(() => {
@@ -417,21 +426,26 @@ export class StoryDialogue {
 
   /** 场景切换时静默重置（不触发 onComplete/onChoice）：关闭对话框并清空状态，防止残留对话状态跨场景传递 */
   reset(): void {
-    this.close();
+    this.close(false); // 场景切换：瞬间隐藏，不播放动画
     this.lines = [];
     this.index = 0;
     this.onComplete = null;
     this.onChoice = null;
   }
 
-  private close(): void {
+  private close(animate = false): void {
     this.clearOptions();
-    this.container.style.display = 'none';
     if (this.typeTimer !== null) {
       clearInterval(this.typeTimer);
       this.typeTimer = null;
     }
     this.typing = false;
     VoiceBank.stop();
+    if (animate) {
+      // A4 动效：对话框 fadeOut
+      panelFadeOut(this.container, 150);
+    } else {
+      this.container.style.display = 'none';
+    }
   }
 }

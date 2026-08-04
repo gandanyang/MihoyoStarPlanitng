@@ -65,7 +65,7 @@ export const MAP_EXITS: Record<string, ExitZone[]> = {
 export const MAP_NAMES: Record<string, string> = {
   farm: '农场',
   town: '青禾镇',
-  forest: '森林',
+  forest: '后山',
   mine: '矿洞',
   house: '家中',
 };

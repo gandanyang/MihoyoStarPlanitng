@@ -139,11 +139,10 @@ async function run() {
     result('E2a. firstHarvestShown 初始为 false', e2init.firstHarvestShown === false, `firstHarvestShown=${e2init.firstHarvestShown}`);
 
     // 把农田格 (13,8) 直接设为 grown（含作物萝卜），玩家站在 (13,9) 面向 up 收获
-    // FarmState 模块经 Vite 动态 import 与游戏共享同一实例
-    await page.evaluate(async () => {
-      const fs = await import('/src/data/FarmState.ts');
-      fs.setTileState(13, 8, 'grown');
-      fs.setCrop(13, 8, { cropType: 'radish', plantDay: 1, watered: true });
+    // 经 window.debug.farm 钩子写入游戏真实 FarmState 实例（绕过 Vite dev 双模块问题）
+    await page.evaluate(() => {
+      window.debug.farm.setTileState(13, 8, 'grown');
+      window.debug.farm.setCrop(13, 8, { cropType: 'radish', plantDay: 1, watered: true });
     });
     await teleport(page, 'farm', 13 * 16 + 8, 9 * 16 + 8, 'up');
     await pressE(page);
@@ -161,10 +160,9 @@ async function run() {
     result('E2c. 收获后 firstHarvestShown = true', e2after.firstHarvestShown === true, `firstHarvestShown=${e2after.firstHarvestShown}`);
 
     // 第二次收获 → 不重复触发
-    await page.evaluate(async () => {
-      const fs = await import('/src/data/FarmState.ts');
-      fs.setTileState(14, 8, 'grown');
-      fs.setCrop(14, 8, { cropType: 'radish', plantDay: 1, watered: true });
+    await page.evaluate(() => {
+      window.debug.farm.setTileState(14, 8, 'grown');
+      window.debug.farm.setCrop(14, 8, { cropType: 'radish', plantDay: 1, watered: true });
     });
     await teleport(page, 'farm', 14 * 16 + 8, 9 * 16 + 8, 'up');
     await pressE(page);
@@ -223,7 +221,7 @@ async function run() {
       });
       console.log('  [diag] E5 noteDump:', JSON.stringify(noteDump));
       const noteText = noteDump.text ?? '';
-      result('E5b. 靠近按E读到爷爷笔记', /今天又捡到一片|我数了数|发光的碎片|星辰周期/.test(noteText), noteText.substring(0, 40));
+      result('E5b. 靠近按E读到爷爷笔记', /番茄|竹子|老周家|比往年亮/.test(noteText), noteText.substring(0, 40));
       await skipDialogue(page, 3);
     } else {
       result('E5b. 靠近按E读到爷爷笔记', false, '无笔记物件');

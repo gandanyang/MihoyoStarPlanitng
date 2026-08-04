@@ -15,7 +15,9 @@
 import { getCoins, addCoins, SELLABLE_ITEMS, hasSellableItems, sellAllSellable } from '../data/Economy';
 import { getNonEmptyItems, itemIconHtml, addItem, ItemType } from '../data/Inventory';
 import { play } from '../systems/AudioSystem';
+import { getRobotLevel } from '../systems/AutomationSystem';
 import { showConfirmDialog } from './ConfirmDialog';
+import { panelFadeIn, panelFadeOut } from './dom-anim';
 
 /** 关店回调 */
 type OnClose = () => void;
@@ -25,8 +27,6 @@ type OnUseKey = () => boolean;
 type OnUseRobot = () => boolean;
 /** 数据变更回调（出售物品后更新 HUD） */
 type OnDataChange = () => void;
-/** 返回标题画面回调（显式 save + scene.start） */
-type OnReturnToTitle = () => void;
 
 // ===== 模块级单例 =====
 let panelEl: HTMLDivElement | null = null;
@@ -36,13 +36,13 @@ let onClose: OnClose | null = null;
 let onUseKey: OnUseKey | null = null;
 let onUseRobot: OnUseRobot | null = null;
 let onDataChange: OnDataChange | null = null;
-let onReturnToTitle: OnReturnToTitle | null = null;
 
 /** 关闭面板（模块级，B/Esc/按钮都走这里） */
 function closePanel(): void {
   if (!open) return;
   open = false;
-  if (panelEl) panelEl.style.display = 'none';
+  // A4 动效：面板 fadeOut
+  if (panelEl) panelFadeOut(panelEl, 150);
   onClose?.();
 }
 
@@ -72,7 +72,6 @@ function createDom(): void {
       <div style="text-align:center;">
         <button data-action="sell-all" style="font-size:14px;padding:6px 20px;background:#c49a2a;border:none;border-radius:4px;color:#fff;cursor:pointer;">全部出售</button>
         <button data-action="close" style="font-size:14px;padding:6px 24px;background:#8a6a45;border:none;border-radius:4px;color:#fff;cursor:pointer;margin-left:8px;">关闭 (B/Esc)</button>
-        <button data-action="return-title" style="font-size:12px;padding:4px 14px;background:#5a4030;border:1px solid #6a5040;border-radius:4px;color:#ccc;cursor:pointer;margin-left:8px;">返回标题</button>
       </div>
     </div>
   `;
@@ -83,10 +82,6 @@ function createDom(): void {
     const target = e.target as HTMLElement;
     if (target.dataset?.action === 'close') {
       closePanel();
-    } else if (target.dataset?.action === 'return-title') {
-      // 返回标题画面：显式 save + scene.start（避免 location.reload 全页刷新）
-      closePanel();
-      onReturnToTitle?.();
     } else if (target.dataset?.action === 'use-key') {
       // 使用庄园钥匙
       if (onUseKey?.()) {
@@ -193,12 +188,13 @@ function refresh(): void {
     const sellBtn = sellPrice !== undefined
       ? `<button data-action="sell" data-item="${item}" style="margin-top:6px;font-size:12px;padding:4px 10px;background:#c49a2a;border:none;border-radius:4px;color:#fff;cursor:pointer;">卖 ${sellPrice}G</button>`
       : '';
+    const robotLv = isRobot ? `<div style="font-size:11px;color:#4fc3f7;margin-top:2px;">Lv.${getRobotLevel()}</div>` : '';
     html += `
       <div style="${cellStyle}">
         <div style="margin-bottom:4px;line-height:1;">${itemIconHtml(def.id, 28)}</div>
         <div style="font-size:13px;font-weight:bold;color:#e0d5c1;">${def.name}</div>
         <div style="font-size:12px;color:#a5d6a7;">×${count}</div>
-        ${useBtn}${sellBtn}
+        ${robotLv}${useBtn}${sellBtn}
       </div>
     `;
   }
@@ -207,12 +203,11 @@ function refresh(): void {
 }
 
 export class BackpackPanel {
-  constructor(onCloseCb?: OnClose, onUseKeyCb?: OnUseKey, onDataChangeCb?: OnDataChange, onUseRobotCb?: OnUseRobot, onReturnToTitleCb?: OnReturnToTitle) {
+  constructor(onCloseCb?: OnClose, onUseKeyCb?: OnUseKey, onDataChangeCb?: OnDataChange, onUseRobotCb?: OnUseRobot) {
     if (onCloseCb) onClose = onCloseCb;
     if (onUseKeyCb) onUseKey = onUseKeyCb;
     if (onDataChangeCb) onDataChange = onDataChangeCb;
     if (onUseRobotCb) onUseRobot = onUseRobotCb;
-    if (onReturnToTitleCb) onReturnToTitle = onReturnToTitleCb;
     if (!domCreated) createDom();
   }
 
@@ -221,7 +216,8 @@ export class BackpackPanel {
     open = true;
     if (panelEl) {
       refresh();
-      panelEl.style.display = 'flex';
+      // A4 动效：面板 fadeIn
+      panelFadeIn(panelEl, 180);
     }
   }
 

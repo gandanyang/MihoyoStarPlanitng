@@ -67,6 +67,11 @@ ROLES = {
         ref_text="十年前的那个早晨，我依然清晰记得，你穿着白衬衫的样子，那是我第一次遇见你，至今难忘。",
         cfg=2.4, steps=16, atempo=1.0, sex="male", phone_eq=True,
     ),
+    "sms": dict(  # 短信播报（手机通知两页第一句）：豆包 app 默认声参考音克隆（制作人录屏 doubao.mp4 2026-08-05）；去掉 phone_eq 保留本色声
+        ref=r"public\assets\audio\generated\豆包默认声_20260805_001.wav",
+        ref_text="因业务流程智能化调整，您的岗位职责将进行重新分配。随着智能化系统升级，公司将对部分岗位进行调整。",
+        cfg=2.4, steps=16, atempo=1.0, sex="female",
+    ),
     "miner": dict(  # 矿工老张：粗犷汉子，深沉亲切
         ref=r"public\assets\audio\generated\老张v3_20260804_001.mp3",
         ref_text="[sigh] 哎呀，俺这山里粗汉，不会说啥漂亮话。小兄弟，[laughter] 进了这山口，你就甭客气了！先干了这碗热汤暖暖身子，在这儿歇脚，保准安稳！",
@@ -89,7 +94,7 @@ ROLES = {
     ),
 }
 
-ROLE_DIRS = {"hr": "system"}
+ROLE_DIRS = {"hr": "system", "sms": "system"}
 
 
 # ========================= 台词任务清单（文本与 StorySystem.ts 精确一致） =========================
@@ -186,7 +191,7 @@ T = [
     # ---- 村长（elder）----
     ("elder", "elder_01", "你就是林澈吧？星黎庄园的新主人。"),
     ("elder", "elder_03", "我是青禾镇的镇长。你爷爷啊，年轻时候就喜欢晚上坐在那块石头上看天。"),
-    ("elder", "elder_05", "喜欢。他以前也经常往森林跑。"),
+    ("elder", "elder_05", "喜欢。他以前也经常往后山跑。"),
     ("elder", "elder_07", "他说那里有些东西，值得看看。"),
     ("elder", "shard_02", "这光泽……没错，就是星之碎片。你爷爷当年捡到第一片的时候，也是这样的光。"),
     ("elder", "shard_03", '他跟我说过，这座岛上的碎片，只有真正"想留下来"的人才能拿起来。'),
@@ -195,10 +200,10 @@ T = [
     ("elder", "shard_07", "你爷爷以前啊，总喜欢在晚上去农田后面的地方坐一会儿。他说，那里的星星很亮。"),
 
     # ---- 爷爷（grandpa：笔记/信/纸条）----
-    ("grandpa", "notes_01", "今天又捡到一片。星星……是不是也想回家？"),
-    ("grandpa", "notes_02", "我数了数，还差一些。等它们都回来了，也许就能问清楚了。"),
-    ("grandpa", "notes_03", "那些发光的碎片，醒来时像在看我。是我多心了吧。"),
-    ("grandpa", "notes_04", "今晚的星星很亮，花比往年开得早。不知道是不是这座岛在回应什么。"),
+    ("grandpa", "notes_01", "今年番茄长得很好，比去年早熟了几天。"),
+    ("grandpa", "notes_02", "后山的竹子又长高了，看来春天比往年来得早。"),
+    ("grandpa", "notes_03", "村口老周家的孩子回来了一趟，带了不少城里的东西。"),
+    ("grandpa", "notes_04", "今晚的星星，比往年亮。"),
     ("grandpa", "ending_06", "如果看到这封信，说明你终于回来了。"),
     ("grandpa", "ending_07", "小澈，你小时候总问我，为什么每天都要给花浇水。"),
     ("grandpa", "ending_08", "爷爷想了很久。后来发现，人做很多事情，不一定都是为了结果。"),
@@ -208,7 +213,11 @@ T = [
     # ---- 神秘少女（girl）----
     ("girl", "forest_08", "……它沉睡太久了。"),
 
-    # ---- HR 手机通知（system，林澈声线 + 电话感 EQ）----
+    # ---- 短信播报（sms：豆包官方音色温婉珊珊 2.0 克隆 + 电话感 EQ）----
+    # hr_station_01 = 手机通知弹窗第 1 页第一句；hr_station_03 = 第 2 页第一句（制作人 2026-08-05：两段文字各只配第一句）
+    ("sms", "hr_station_01", "因业务流程智能化调整，您的岗位职责将进行重新分配。"),
+    ("sms", "hr_station_03", "随着智能化系统升级，公司将对部分岗位进行调整。"),
+    # ---- HR 手机通知（hr：林澈声线 + 电话感 EQ）----
     ("hr", "hr_station_02", "林先生，根据评估，你完全可以加入智能生态部门。"),
 
     # ---- NPC 剧情台词（试玩-07 补齐；role 复用 girl/elder/linche 已有音色）----
@@ -250,12 +259,12 @@ T = [
     ("linche", "garden_reflect_01", '……这座岛上的事情，好像都是"总有一天"。'),
 
     # ---- 冒险家阿风（adventurer）：ADVENTURER_DIALOGUES ----
-    ("adventurer", "adv_01", "嘿！新来的庄园主！我叫阿风，这座岛的每个角落我都跑遍了。"),
-    ("adventurer", "adv_02", "告诉你个秘密——森林深处有东西在发光，镇长神神秘秘的不肯说。"),
-    ("adventurer", "adv_03", "想去探险的话，记得备足体力。森林可比看上去大得多！"),
-    ("adventurer", "adv_04", "森林深处……有些东西，最好别惊醒。"),
+    ("adventurer", "adv_01", "嘿！你就是新搬来的林澈吧？我叫阿风，这座岛的每个角落我都跑遍了。"),
+    ("adventurer", "adv_02", "告诉你个秘密——后山深处有东西在发光，镇长神神秘秘的不肯说。"),
+    ("adventurer", "adv_03", "想去探险的话，记得备足体力。后山可比看上去大得多！"),
+    ("adventurer", "adv_04", "后山深处……有些东西，最好别惊醒。"),
     ("adventurer", "adv_05", "嘿！你这小子，胆子不小啊！"),
-    ("adventurer", "adv_06", "说得对。有空来森林，我带你转转。"),
+    ("adventurer", "adv_06", "说得对。有空来后山，我带你转转。"),
 
     # ---- 商店老板（shopkeeper）：SHOPKEEPER_DIALOGUES ----
     ("shopkeeper", "shop_01", "欢迎光临星辰杂货店！"),
@@ -297,7 +306,7 @@ def story_speaker(role: str, tid: str) -> str:
         if tid == "evening_note":
             return ""  # 纸条：StorySystem 原文带（…）包裹，按文本匹配
         return "爷爷的笔记"
-    if role in ("girl", "hr"):
+    if role in ("girl", "hr", "sms"):
         return ""
     if role == "miner":
         return "矿工老张"
@@ -382,8 +391,16 @@ def post_process(path: Path, atempo: float, phone_eq: bool) -> bool:
 def gen_one(role: str, tid: str, text: str, args: argparse.Namespace) -> tuple[bool, str]:
     rc_cfg = ROLES[role]
     out = output_path(role, tid)
+    # 来源文本侧车记录：防止"文本改了但 wav 已存在"导致旧语音静默/串词（试玩-07 根因之一）
+    src_sidecar = out.with_suffix(out.suffix + ".txt")
     if out.exists() and not args.force:
-        return True, f"已存在，跳过（{out.name}）"
+        if src_sidecar.exists():
+            recorded = src_sidecar.read_text(encoding="utf-8").strip()
+            if recorded == text:
+                return True, f"已存在，跳过（{out.name}）"
+            warn(f"文本已变更但 wav 已存在（{out.name}）\n  现文本: {text}\n  旧文本: {recorded}\n  → 需重录，请加 --force 覆盖")
+            return False, f"文本已变更需重录：{out.name}（加 --force）"
+        return True, f"已存在，跳过（{out.name}，无来源记录；如需重录加 --force）"
 
     short = len(text) <= 4
     cfg = rc_cfg["cfg"] if not short else 2.6
@@ -436,6 +453,12 @@ def gen_one(role: str, tid: str, text: str, args: argparse.Namespace) -> tuple[b
     if not post_process(out, rc_cfg["atempo"], bool(rc_cfg.get("phone_eq"))):
         return False, "后处理失败"
 
+    # 记录来源文本（供下次 gen 校验文本是否变更）
+    try:
+        src_sidecar.write_text(text, encoding="utf-8")
+    except OSError as e:
+        warn(f"来源记录写入失败（{src_sidecar.name}）：{e}")
+
     return True, f"成功 → {out.name}（{out.stat().st_size:,} bytes）"
 
 
@@ -443,6 +466,7 @@ def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(description="主线剧情语音批量生成")
     p.add_argument("--dry-run", action="store_true", help="只打印任务清单")
     p.add_argument("--limit", type=int, default=0, help="只跑前 N 条")
+    p.add_argument("--only-roles", default="", help="只跑指定角色（逗号分隔，如 sms,hr）")
     p.add_argument("--force", action="store_true", help="覆盖已存在文件")
     p.add_argument("--skip-f0", action="store_true", help="跳过 F0 自检")
     p.add_argument("--emit-voicebank", metavar="OUT_TS", default="",
@@ -454,6 +478,9 @@ def main(argv: list[str] | None = None) -> None:
         return
 
     tasks = T[:args.limit] if args.limit > 0 else T
+    if args.only_roles:
+        only = set(r.strip() for r in args.only_roles.split(",") if r.strip())
+        tasks = [t for t in tasks if t[0] in only]
     log(f"批量生成启动：共 {len(tasks)} 条", f"dry-run={args.dry_run} force={args.force} skip-f0={args.skip_f0}")
 
     ok_count = 0

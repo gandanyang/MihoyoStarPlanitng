@@ -38,9 +38,41 @@ export interface AutomationReport {
 /** 默认扫描半径（瓦片）。机器人放置在农田附近，默认覆盖 2*range+1 见方 */
 export const DEFAULT_ROBOT_RANGE = 3;
 
+/** 全局等级：1/2/3 */
+const GLOBAL_LEVEL = { value: 1 };
+
 /** 机器人列表（模块级单例） */
 const robots: RobotData[] = [];
 let seq = 0;
+
+/** 获取全局机器人等级 */
+export function getRobotLevel(): number {
+  return GLOBAL_LEVEL.value;
+}
+
+/** 设置全局机器人等级 */
+export function setRobotLevel(lv: number): void {
+  GLOBAL_LEVEL.value = Math.max(1, Math.min(3, Math.floor(lv)));
+}
+
+/** 获取升级钻耗（返回 0 表示已满级） */
+export function getUpgradeCost(): number {
+  if (GLOBAL_LEVEL.value === 1) return 40;
+  if (GLOBAL_LEVEL.value === 2) return 60;
+  return 0;
+}
+
+/** 获取升级后的效果描述 */
+export function getUpgradeEffect(): string {
+  if (GLOBAL_LEVEL.value === 1) return 'Lv2：自动播种 + 范围 +1';
+  if (GLOBAL_LEVEL.value === 2) return 'Lv3：处理作物数 ×2 + 范围 +2';
+  return '已满级';
+}
+
+/** 按全局等级获取当前机器人扫描半径 */
+export function getCurrentRange(): number {
+  return DEFAULT_ROBOT_RANGE + (GLOBAL_LEVEL.value >= 3 ? 2 : GLOBAL_LEVEL.value >= 2 ? 1 : 0);
+}
 
 /** 读取所有机器人 */
 export function getRobots(): RobotData[] {
@@ -67,10 +99,10 @@ export function addRobot(col: number, row: number, range = DEFAULT_ROBOT_RANGE):
 /**
  * 每日自动化 tick（由 MapScene.trySleep 在 timeNextDay 后调用）
  *
- * 扫描每个机器人范围内的农田格：
- *   planted（已种植未浇水）→ 浇水 → watered
- *   grown（成熟）→ 收获 → 背包 +1 作物 → 自动补种（背包有种子时）
- *   tilled（已锄地，含收获后空地）→ 自动播种（背包有种子时）
+ * 按全局等级扩展：
+ *   Lv1：自动浇水 + 收获（DEFAULT_RANGE）
+ *   Lv2：自动播种 + 范围 +1
+ *   Lv3：处理作物数 ×2 + 范围 +2
  *
  * 种子优先级：radish → tomato → corn → strawberry（从低到高，用完一种换下一种）。
  * 注意：不调用 addXp / onDQ*，机器人劳作不计入玩家经验与每日任务进度。
@@ -78,12 +110,15 @@ export function addRobot(col: number, row: number, range = DEFAULT_ROBOT_RANGE):
 export function runDailyAutomation(): AutomationReport {
   const report: AutomationReport = { watered: 0, harvested: [], seeded: 0 };
   const harvestMap = new Map<CropType, number>();
+  const level = GLOBAL_LEVEL.value;
 
   for (const robot of robots) {
+    // 使用全局等级调整后的范围（但 RobotData.range 保持原始值，用于存档兼容）
+    const effectiveRange = DEFAULT_ROBOT_RANGE + (level >= 3 ? 2 : level >= 2 ? 1 : 0);
     // 第一轮：浇水 + 收获
     const tilledAfterHarvest: [number, number][] = [];
-    for (let c = robot.col - robot.range; c <= robot.col + robot.range; c++) {
-      for (let r = robot.row - robot.range; r <= robot.row + robot.range; r++) {
+    for (let c = robot.col - effectiveRange; c <= robot.col + effectiveRange; c++) {
+      for (let r = robot.row - effectiveRange; r <= robot.row + effectiveRange; r++) {
         const state = getTileState(c, r);
         if (state === 'planted') {
           setTileState(c, r, 'watered');
@@ -106,18 +141,20 @@ export function runDailyAutomation(): AutomationReport {
       if (tryAutoSeed(c, r)) report.seeded++;
     }
 
-    // 第二轮：已有空地（玩家锄地未种 / 上轮补种后的 tilled）也尝试播种
-    for (let c = robot.col - robot.range; c <= robot.col + robot.range; c++) {
-      for (let r = robot.row - robot.range; r <= robot.row + robot.range; r++) {
-        if (getTileState(c, r) === 'tilled') {
-          if (tryAutoSeed(c, r)) report.seeded++;
+    // Lv2+: 第二轮：已有空地（玩家锄地未种 / 上轮补种后的 tilled）也尝试播种
+    if (level >= 2) {
+      for (let c = robot.col - effectiveRange; c <= robot.col + effectiveRange; c++) {
+        for (let r = robot.row - effectiveRange; r <= robot.row + effectiveRange; r++) {
+          if (getTileState(c, r) === 'tilled') {
+            if (tryAutoSeed(c, r)) report.seeded++;
+          }
         }
       }
     }
 
     // 第三轮：新播种的 planted → 浇水（让它们第二天就能生长）
-    for (let c = robot.col - robot.range; c <= robot.col + robot.range; c++) {
-      for (let r = robot.row - robot.range; r <= robot.row + robot.range; r++) {
+    for (let c = robot.col - effectiveRange; c <= robot.col + effectiveRange; c++) {
+      for (let r = robot.row - effectiveRange; r <= robot.row + effectiveRange; r++) {
         if (getTileState(c, r) === 'planted') {
           const crop = getCrop(c, r);
           if (crop && !crop.watered) {
@@ -127,6 +164,13 @@ export function runDailyAutomation(): AutomationReport {
           }
         }
       }
+    }
+  }
+
+  // Lv3: 处理作物数翻倍（水+播种不翻倍，仅收获翻倍）
+  if (level >= 3) {
+    for (const [cropType, count] of harvestMap) {
+      addItem(cropType, count); // 再加一份
     }
   }
 
@@ -154,15 +198,20 @@ function tryAutoSeed(col: number, row: number): boolean {
 }
 
 /** 获取所有机器人条目（存档序列化用） */
-export function getAutomationSave(): { robots: RobotData[] } {
-  return { robots: robots.map(r => ({ ...r })) };
+export function getAutomationSave(): { level: number; robots: RobotData[] } {
+  return { level: GLOBAL_LEVEL.value, robots: robots.map(r => ({ ...r })) };
 }
 
-/** 恢复机器人状态（存档加载用，entries 缺失 → 无机器人） */
-export function restoreAutomation(data: { robots?: RobotData[] } | undefined): void {
+/** 恢复机器人状态（存档加载用，entries 缺失 → 无机器人，level 缺失 → Lv1） */
+export function restoreAutomation(data: { level?: number; robots?: RobotData[] } | undefined): void {
   robots.length = 0;
   seq = 0;
-  if (!data || !Array.isArray(data.robots)) return;
+  GLOBAL_LEVEL.value = 1;
+  if (!data) return;
+  if (typeof data.level === 'number' && data.level >= 1 && data.level <= 3) {
+    GLOBAL_LEVEL.value = Math.floor(data.level);
+  }
+  if (!Array.isArray(data.robots)) return;
   for (const r of data.robots) {
     if (!r || typeof r.col !== 'number' || typeof r.row !== 'number') continue;
     robots.push({
