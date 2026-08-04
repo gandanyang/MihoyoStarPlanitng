@@ -42,6 +42,8 @@ export class StoryDialogue {
   private onChoice: ((index: number) => void) | null = null;
   private optionsEl: HTMLDivElement | null = null;
   private optionKeyHandler: ((e: KeyboardEvent) => void) | null = null;
+  /** skip 防抖时间戳：pointerdown + click 双触发时同一物理点击只执行一次 */
+  private lastSkipAt = 0;
 
   constructor() {
     // 容器
@@ -214,6 +216,11 @@ export class StoryDialogue {
   /** 跳过整段对话，直接触发 onComplete */
   skip(): void {
     if (!this.isOpen()) return;
+    // 防抖：Skip 按钮 pointerdown + click 双绑定，同一物理点击会触发两次；
+    // 若首次 skip 的 onComplete 同步打开下一段对话，第二次会误关新对话并二次触发 onComplete。
+    const now = Date.now();
+    if (now - this.lastSkipAt < 300) return;
+    this.lastSkipAt = now;
     this.clearOptions();
     this.close();
     this.onComplete?.();

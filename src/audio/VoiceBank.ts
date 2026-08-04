@@ -67,7 +67,11 @@ export class VoiceBank {
   /** 播放台词语音；找不到音频静默跳过，不阻塞对话 */
   static play(speaker: string, text: string, inner = false): void {
     const url = VoiceBank.find(speaker, text);
-    if (!url) return;
+    if (!url) {
+      // 当前行无语音（旁白/系统行等）：停止上一句残留语音，保证语音与显示行同步
+      VoiceBank.stop();
+      return;
+    }
     VoiceBank.stop();
 
     const audio = new Audio(url);
