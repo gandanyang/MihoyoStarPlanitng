@@ -227,5 +227,7 @@ async function main(): Promise<void> {
 
 main().catch((e) => {
   console.error(`❌ ${(e as Error).message}`);
-  process.exit(1);
+  // 用 exitCode 而非 process.exit()：避免 undici 请求句柄未关闭时
+  // 强制退出触发 libuv "UV_HANDLE_CLOSING" 断言崩溃
+  process.exitCode = 1;
 });
