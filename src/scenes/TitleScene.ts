@@ -29,6 +29,7 @@ export class TitleScene extends Phaser.Scene {
   preload(): void {
     // 加载标题背景图
     this.load.image('title_bg', 'assets/images/title_bg.jpg');
+    this.load.image('logo_mark', 'assets/images/logo_mark.png');
   }
 
   create(): void {
@@ -47,7 +48,23 @@ export class TitleScene extends Phaser.Scene {
     const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.35);
     overlay.setDepth(1);
 
-    // 游戏名已包含在封面图内，不再叠加文字
+    // —— 标题 Logo（星+庄园图形标）+ 游戏名文字 ——
+    const logo = this.add.image(W / 2, 150, 'logo_mark').setDepth(2);
+    logo.setDisplaySize(140, 140);
+    logo.setAlpha(0);
+    this.tweens.add({ targets: logo, alpha: 1, duration: 1800, delay: 300, ease: 'Power2' });
+
+    const title = this.add.text(W / 2, 235, '归星物语', {
+      fontSize: '56px',
+      fontFamily: '"Microsoft YaHei", "SimHei", sans-serif',
+      color: '#ffd97a',
+      stroke: '#3a2a1a',
+      strokeThickness: 6,
+    }).setOrigin(0.5).setDepth(2);
+    title.setAlpha(0);
+    this.tweens.add({ targets: title, alpha: 1, duration: 1800, delay: 450, ease: 'Power2' });
+
+    // 游戏名文字（v0.9 独立 Logo 方案：图形标 + 文字标题，封面不再烧字）
     // ── 副标题 ──
     const subtitle = this.add.text(W / 2, 300, '星黎庄园的归乡之旅', {
       fontSize: '18px',
