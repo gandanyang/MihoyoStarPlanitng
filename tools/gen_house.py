@@ -371,14 +371,14 @@ def gen_house_map():
             "firstgid": 1,
             "image": "../tiles/house_tileset.png",
             "imageheight": T,
-            "imagewidth": 12 * T,
+    "imagewidth": 16 * T,
             "margin": 0,
             "name": "placeholder",
             "spacing": 0,
-            "tilecount": 12,
+    "tilecount": 16,
             "tileheight": T,
             "tilewidth": T,
-            "columns": 12,
+    "columns": 16,
         }],
     }
     out = os.path.join(MAP_DIR, "house.json")

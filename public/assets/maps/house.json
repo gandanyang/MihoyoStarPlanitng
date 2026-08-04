@@ -640,14 +640,14 @@
       "firstgid": 1,
       "image": "../tiles/house_tileset.png",
       "imageheight": 16,
-      "imagewidth": 192,
+      "imagewidth": 256,
       "margin": 0,
       "name": "placeholder",
       "spacing": 0,
-      "tilecount": 12,
+      "tilecount": 16,
       "tileheight": 16,
       "tilewidth": 16,
-      "columns": 12
+      "columns": 16
     }
   ]
 }
