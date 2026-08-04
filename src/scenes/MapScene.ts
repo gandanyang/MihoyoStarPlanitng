@@ -665,7 +665,7 @@ export class MapScene extends Phaser.Scene {
     document.addEventListener('visibilitychange', MapScene._visibilityHandler);
 
     // 淡入过渡（与出口切换的 fadeOut 配对，避免切图瞬间黑屏）
-    this.cameras.main.fadeIn(300, 0, 0, 0);
+    this.cameras?.main?.fadeIn(300, 0, 0, 0);
 
     // 环境音：进入地图按 mapKey + 当前小时启动氛围音（白天鸟叫/夜晚虫鸣等）
     AmbienceSystem.start(this.mapKey, getTime().hour);

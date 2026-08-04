@@ -68,7 +68,7 @@ async function run() {
     }
   });
   const pageErrors = [];
-  page.on('pageerror', e => pageErrors.push(e.message));
+  page.on('pageerror', e => pageErrors.push(e.stack || e.message));
 
   try {
     await page.goto(GAME_URL, { waitUntil: 'networkidle2' });
@@ -83,7 +83,10 @@ async function run() {
       const g = window.__game;
       const active = g.scene.getScenes(true)[0];
       if (active) g.scene.stop(active.scene.key);
-      g.scene.start('farm');
+    });
+    await sleep(600); // 停旧场景后留出引导缓冲，避免 create 竞态
+    await page.evaluate(() => {
+      window.__game.scene.start('farm');
     });
     await sleep(2000);
 
@@ -123,10 +126,9 @@ async function run() {
       urls.filter(f => f.startsWith('linche/') && f.endsWith('_0x.wav')).join(','));
     ok('9. 爷爷的笔记 → grandpa/notes_01.wav', urls.includes('grandpa/notes_01.wav'));
 
-    const sysReq = voiceReqs.some(r => r.file.includes('（收起手机）') || r.status !== 200);
-    const non200 = voiceReqs.filter(r => r.status !== 200);
-    ok('10. 全部语音资源请求 200（文件齐全）', non200.length === 0,
-      non200.length ? JSON.stringify(non200) : `${voiceReqs.length} 个请求均 200`);
+    const non200 = voiceReqs.filter(r => r.status !== 200 && r.status !== 206);
+    ok('10. 全部语音资源请求 200/206（文件齐全；206=音频 Range 流式正常）', non200.length === 0,
+      non200.length ? JSON.stringify(non200) : `${voiceReqs.length} 个请求均 200/206`);
     ok('11. 无页面 JS 错误', pageErrors.length === 0, pageErrors.slice(0, 2).join(' | '));
 
     console.log(`\n========== 结果: ✅ ${pass} 通过 / ❌ ${fail} 失败 ==========`);

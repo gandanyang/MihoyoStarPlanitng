@@ -459,7 +459,7 @@ export class StationScene extends Phaser.Scene {
       this.showTrainSoundText(() => {
         if (this.introSkipped) return;
         // 阶段2：淡入
-        this.cameras.main.fadeIn(1200, 0, 0, 0);
+        this.cameras?.main?.fadeIn(1200, 0, 0, 0);
         this.time.delayedCall(1200, () => {
           if (this.introSkipped) return;
           // 阶段3：手机通知
@@ -510,7 +510,7 @@ export class StationScene extends Phaser.Scene {
     if (skipBtn) skipBtn.remove();
 
     // 立即淡入（消除黑屏）
-    this.cameras.main.fadeIn(300, 0, 0, 0);
+    this.cameras?.main?.fadeIn(300, 0, 0, 0);
     // 进入可玩状态
     this.canMove = true;
     // 对话进行中跳过开场：静默关闭对话（reset 不触发 onComplete），

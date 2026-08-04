@@ -31,7 +31,7 @@ export class TitleScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.cameras.main.fadeIn(500, 0, 0, 0);
+    this.cameras?.main?.fadeIn(500, 0, 0, 0);
 
     const W = 800;
     const H = 600;
