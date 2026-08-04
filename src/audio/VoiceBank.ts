@@ -32,6 +32,11 @@ function normalize(text: string): string {
 }
 
 let currentAudio: HTMLAudioElement | null = null;
+let pendingAudio: HTMLAudioElement | null = null; // 正在等待 ready 的音频（BUG-039）
+let pendingTimer: ReturnType<typeof setTimeout> | null = null; // ready 超时兜底定时器
+
+/** 已确认可立即播放的音频 URL（BUG-039：二次播放同句免等加载，Android 首次加载慢后即缓存） */
+const readyCache = new Set<string>();
 
 /** 现场生成短指数衰减噪声 IR，用于内心独白轻混响（不依赖外部文件） */
 function makeImpulse(ctx: AudioContext, seconds: number, decay: number): AudioBuffer {
@@ -78,33 +83,61 @@ export class VoiceBank {
     audio.volume = 1.0;
     currentAudio = audio;
 
-    if (inner) {
-      // 内心独白：轻混响区分（dry 为主 + wet 短混响）；任何一步失败回退原音
-      try {
-        const ctx = getCtx();
-        const src = ctx.createMediaElementSource(audio);
-        const dry = ctx.createGain();
-        dry.gain.value = 0.85;
-        const wet = ctx.createGain();
-        wet.gain.value = 0.4;
-        const conv = ctx.createConvolver();
-        conv.buffer = makeImpulse(ctx, 1.2, 2.2);
-        src.connect(dry);
-        dry.connect(ctx.destination);
-        src.connect(conv);
-        conv.connect(wet);
-        wet.connect(ctx.destination);
-        audio.play().catch(() => { /* 静默失败 */ });
-        return;
-      } catch {
-        // 混响链路不可用 → 走原音播放（TODO: 后续可接入正式混响）
+    /** 音频就绪后真正起播（inner 走混响链路，失败回退原音） */
+    const tryPlay = () => {
+      if (currentAudio !== audio) return; // 已被新行/stop 替换，放弃本次播放
+      if (inner) {
+        try {
+          const ctx = getCtx();
+          const src = ctx.createMediaElementSource(audio);
+          const dry = ctx.createGain();
+          dry.gain.value = 0.85;
+          const wet = ctx.createGain();
+          wet.gain.value = 0.4;
+          const conv = ctx.createConvolver();
+          conv.buffer = makeImpulse(ctx, 1.2, 2.2);
+          src.connect(dry);
+          dry.connect(ctx.destination);
+          src.connect(conv);
+          conv.connect(wet);
+          wet.connect(ctx.destination);
+          audio.play().catch(() => { /* 静默失败 */ });
+          return;
+        } catch {
+          // 混响链路不可用 → 走原音播放（TODO: 后续可接入正式混响）
+        }
       }
+      audio.play().catch(() => { /* 静默失败：找不到/格式不支持不阻塞对话 */ });
+    };
+
+    // BUG-039：安卓 WebView 音频加载慢，立即 play() 导致起播晚于当前台词（声音错位）。
+    // 等 loadeddata 再播（本地已就绪或命中缓存则立即播），并加超时兜底防永不播放。
+    if (audio.readyState >= 2 || readyCache.has(url)) {
+      tryPlay();
+      return;
     }
-    audio.play().catch(() => { /* 静默失败：找不到/格式不支持不阻塞对话 */ });
+    pendingAudio = audio;
+    const cleanup = () => {
+      pendingAudio = null;
+      if (pendingTimer) { clearTimeout(pendingTimer); pendingTimer = null; }
+      audio.removeEventListener('loadeddata', onReady);
+      audio.removeEventListener('error', onError);
+    };
+    const onReady = () => { readyCache.add(url); cleanup(); tryPlay(); };
+    const onError = () => { cleanup(); if (currentAudio === audio) currentAudio = null; };
+    audio.addEventListener('loadeddata', onReady);
+    audio.addEventListener('error', onError);
+    // 兜底：2.5s 仍未就绪也尝试播放（慢网络不永久沉默，播放失败静默）
+    pendingTimer = setTimeout(() => { readyCache.add(url); cleanup(); tryPlay(); }, 2500);
   }
 
   /** 停止当前语音（切换台词/关闭对话/场景切换时调用） */
   static stop(): void {
+    if (pendingTimer) { clearTimeout(pendingTimer); pendingTimer = null; }
+    if (pendingAudio) {
+      try { pendingAudio.pause(); pendingAudio.src = ''; } catch { /* ignore */ }
+      pendingAudio = null;
+    }
     if (currentAudio) {
       try {
         currentAudio.pause();
