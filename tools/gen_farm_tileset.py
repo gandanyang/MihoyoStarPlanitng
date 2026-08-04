@@ -82,10 +82,32 @@ def draw_tile(img: Image.Image, idx: int, base, speck, pattern, highlight):
                 if (x + phase) % 4 < 2:
                     img.putpixel((x0 + x, y), hl)
     elif pattern == "furrow":
-        # 农田垄沟：三条水平深色垄线
+        # ?????v0.9 ???????????? + ???????????????????
+        for y in range(TILE):
+            shade = base
+            if y < 2:
+                shade = (min(255, base[0]+18), min(255, base[1]+14), min(255, base[2]+8))
+            elif y >= 14:
+                shade = (max(0, base[0]-14), max(0, base[1]-12), max(0, base[2]-8))
+            for x in range(TILE):
+                img.putpixel((x0 + x, y), shade)
+        # ???? + ??????????"???"?????
         for y in [3, 7, 11]:
             for x in range(TILE):
-                img.putpixel((x0 + x, y), hl)
+                img.putpixel((x0 + x, y), (50, 30, 14))
+                img.putpixel((x0 + x, y + 1), (120, 84, 52))
+        # ???? + ???????????
+        for x in range(TILE):
+            img.putpixel((x0 + x, 0), (104, 70, 44))
+            img.putpixel((x0 + x, 15), (46, 28, 12))
+        # ?????????? / ?????????
+        rng = random.Random(idx * 211 + 17)
+        for _ in range(10):
+            sx, sy = rng.randint(0, TILE - 1), rng.randint(0, TILE - 1)
+            if sx + sy < 14:
+                img.putpixel((x0 + sx, sy), (124, 88, 56))
+            else:
+                img.putpixel((x0 + sx, sy), (54, 32, 14))
     elif pattern == "flower":
         # 花丛：4 组 2×2 花点
         for fx, fy in [(4, 4), (11, 5), (6, 11), (12, 12)]:
