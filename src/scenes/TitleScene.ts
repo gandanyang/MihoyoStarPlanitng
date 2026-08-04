@@ -92,7 +92,7 @@ export class TitleScene extends Phaser.Scene {
 
     // ── 存档提示 ──
     if (hasSave()) {
-      this.add.text(W / 2, 300, '检测到存档，将自动继续游戏', {
+      this.add.text(W / 2, 340, '检测到存档，将自动继续游戏', {
         fontSize: '13px',
         color: '#8a8',
         stroke: '#000',

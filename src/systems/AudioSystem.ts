@@ -7,7 +7,10 @@
  * 后续可替换为真实音频文件，只需修改 play() 内部实现。
  */
 
-type SfxName = 'hoe' | 'plant' | 'water' | 'harvest' | 'buy' | 'sell' | 'levelup' | 'chop' | 'tree_fall' | 'invalid';
+type SfxName =
+  | 'hoe' | 'plant' | 'water' | 'harvest' | 'buy' | 'sell' | 'levelup' | 'chop' | 'tree_fall' | 'invalid'
+  // 演出音效（试玩-14）：列车 / 大门 / 星之碎片 / 观星夜
+  | 'train' | 'train_hiss' | 'gate_open' | 'shard' | 'stargaze';
 
 let ctx: AudioContext | null = null;
 
@@ -143,6 +146,87 @@ export function play(name: SfxName): void {
       // v0.6 制作人反馈：原 square 方波谐波刺耳，改 triangle + 略降频更低沉柔和
       tone(120, 0.1, 'triangle', 0.14);
       tone(90, 0.14, 'triangle', 0.16, 0.06);
+      break;
+
+    // ──────────── 演出音效（试玩-14，P0 发布门禁 A）────────────
+
+    case 'train':
+      // 列车：单声"哐当"（车轮过轨缝的低频金属敲击 + 车身共鸣），开场每拍调用两次
+      tone(150, 0.05, 'square', 0.10);
+      tone(120, 0.05, 'square', 0.08, 0.06);
+      tone(75, 0.1, 'triangle', 0.13, 0.05);
+      break;
+
+    case 'train_hiss':
+      // 列车到站：蒸汽"哧"声（明亮宽带噪声，慢衰减）
+      {
+        const c = getCtx();
+        const dur = 1.1;
+        const buffer = c.createBuffer(1, Math.ceil(c.sampleRate * dur), c.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+        const src = c.createBufferSource();
+        src.buffer = buffer;
+        const bp = c.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.value = 2600;
+        bp.Q.value = 0.6;
+        const g = c.createGain();
+        g.gain.setValueAtTime(0.001, c.currentTime);
+        g.gain.linearRampToValueAtTime(0.1, c.currentTime + 0.12);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
+        src.connect(bp); bp.connect(g); g.connect(c.destination);
+        src.start();
+        src.stop(c.currentTime + dur + 0.01);
+      }
+      break;
+
+    case 'gate_open':
+      // 大门开启：铰链吱呀（下滑扫频，含金属二次吱呀）+ 门体到位撞击闷响
+      {
+        const c = getCtx();
+        const t0 = c.currentTime;
+        const creak = c.createOscillator();
+        creak.type = 'sawtooth';
+        creak.frequency.setValueAtTime(90, t0);
+        creak.frequency.linearRampToValueAtTime(52, t0 + 0.95);
+        const cg = c.createGain();
+        cg.gain.setValueAtTime(0.001, t0);
+        cg.gain.linearRampToValueAtTime(0.09, t0 + 0.3);
+        cg.gain.linearRampToValueAtTime(0.001, t0 + 1.0);
+        creak.connect(cg); cg.connect(c.destination);
+        creak.start(t0); creak.stop(t0 + 1.05);
+        const creak2 = c.createOscillator();
+        creak2.type = 'square';
+        creak2.frequency.setValueAtTime(210, t0);
+        creak2.frequency.linearRampToValueAtTime(120, t0 + 0.7);
+        const cg2 = c.createGain();
+        cg2.gain.setValueAtTime(0.001, t0);
+        cg2.gain.linearRampToValueAtTime(0.035, t0 + 0.25);
+        cg2.gain.linearRampToValueAtTime(0.001, t0 + 0.75);
+        creak2.connect(cg2); cg2.connect(c.destination);
+        creak2.start(t0); creak2.stop(t0 + 0.8);
+        // 到位撞击
+        tone(70, 0.2, 'triangle', 0.24, 0.85);
+        noise(0.15, 0.12, 0.85);
+      }
+      break;
+
+    case 'shard':
+      // 星之碎片采集：上扬琶音 + 高频闪烁（魔幻拾取感）
+      tone(880, 0.09, 'sine', 0.12);
+      tone(1175, 0.09, 'sine', 0.11, 0.05);
+      tone(1568, 0.1, 'sine', 0.1, 0.1);
+      tone(2093, 0.18, 'sine', 0.07, 0.16);
+      break;
+
+    case 'stargaze':
+      // 观星夜：宁静的五声音阶琶音，极轻、长衰减（星空感）
+      tone(523, 0.5, 'sine', 0.05);
+      tone(659, 0.5, 'sine', 0.045, 0.15);
+      tone(784, 0.6, 'sine', 0.04, 0.3);
+      tone(1047, 0.7, 'sine', 0.035, 0.5);
+      tone(1319, 0.8, 'sine', 0.028, 0.75);
       break;
   }
 }

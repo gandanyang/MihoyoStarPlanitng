@@ -215,7 +215,7 @@ async function run() {
       const img = s?.storyDialogue?.portraitEl?.querySelector('img');
       return img ? img.getAttribute('src') : '';
     });
-    result('夏雅立绘头像显示', portraitSrc.includes('xiya.png'), portraitSrc || '<无立绘>');
+    result('夏雅立绘头像显示', portraitSrc.includes('xiya_ai_avatar'), portraitSrc || '<无立绘>');
 
     // 跳过 16 行（静默镜头在内），停到选项行（DEMO_ENDING_DIALOGUE 现为 17 文本行 + 选项 index=17，较原 15 行增补 3 行）
     await skipDialogue(page, 16);

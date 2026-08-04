@@ -23,6 +23,7 @@ import {
 } from '../systems/StorySystem';
 import { hasSave, load, apply } from '../systems/SaveSystem';
 import { addItem } from '../data/Inventory';
+import { play } from '../systems/AudioSystem';
 
 const W = 1120;   // 场景宽度（比屏幕宽，可滚动）
 const H = 600;
@@ -539,15 +540,30 @@ export class StationScene extends Phaser.Scene {
     overlay.appendChild(text);
     document.body.appendChild(overlay);
 
-    // 模拟列车减速
+    // 模拟列车减速（哐当节奏 + 到站蒸汽声，试玩-14 演出音效）
     let count = 0;
+    const clack = (gap = 0.25) => {
+      play('train');
+      this.time.delayedCall(gap * 1000, () => { if (!this.introSkipped) play('train'); });
+    };
     this.trainInterval = setInterval(() => {
       count++;
-      if (count === 1) text.textContent = '哐当……哐当……';
-      else if (count === 2) text.textContent = '哐当…哐当…';
-      else if (count === 3) text.textContent = '哐当..哐当..';
+      if (count === 1) {
+        text.textContent = '哐当……哐当……';
+        clack();
+      }
+      else if (count === 2) {
+        text.textContent = '哐当…哐当…';
+        clack();
+      }
+      else if (count === 3) {
+        text.textContent = '哐当..哐当..';
+        clack();
+      }
       else if (count === 4) {
         text.textContent = '—— 哧 ——';
+        clack(0.18);
+        this.time.delayedCall(500, () => { if (!this.introSkipped) play('train_hiss'); });
         if (this.trainInterval) { clearInterval(this.trainInterval); this.trainInterval = null; }
         setTimeout(() => {
           if (this.introSkipped) return;

@@ -1395,7 +1395,7 @@ export class MapScene extends Phaser.Scene {
     }
     if (this.xiyaSprite) { this.xiyaSprite.destroy(); this.xiyaSprite = null; }
     this.removeTutorialHint();
-    play('harvest');
+    play('gate_open'); // 大门开启演出音效（试玩-14，原占位 harvest 音移除）
     addItem('manor_key', -1);
     advanceStory(); // → gate_opened
 
@@ -1838,6 +1838,19 @@ export class MapScene extends Phaser.Scene {
       if (this.tryXiyaInteract()) return;
     }
 
+    // 0.35 大门交互：锁着时按 E 明确提示（制作人反馈：功能未解锁应提示，不能无反馈）
+    // 大门未打开时 gateWall 存在（使用钥匙后销毁置 null）；玩家靠近大门按 E 给出引导
+    if (this.mapKey === 'gate' && this.gateWall) {
+      const dx = this.player.x - 15 * TILE_SIZE;
+      const dy = this.player.y - 9 * TILE_SIZE;
+      if (dx * dx + dy * dy < 30 * 30) {
+        this.showDialogueText(getItemCount('manor_key') > 0
+          ? '大门锁着，打开背包选择庄园钥匙使用吧。'
+          : '大门锁着，好像需要一把钥匙……');
+        return;
+      }
+    }
+
     // v0.5.3 剧情密度 E1：清晨偶遇夏雅（教程完成后，仅清晨 06-08 时）
     if (this.mapKey === 'farm' && this.dawnXiya) {
       if (this.tryDawnXiyaInteract()) return;
@@ -2067,6 +2080,7 @@ export class MapScene extends Phaser.Scene {
     if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
     markObservatoryComplete();
     triggerTag('stargaze_night');
+    play('stargaze'); // 观星夜演出音效（试玩-14）
     showMemoryMoment('这片星空，和爷爷记忆里的一样。');
     this.storyDialogue.play(
       DEMO_ENDING_DIALOGUE,
@@ -2102,6 +2116,7 @@ export class MapScene extends Phaser.Scene {
 
   /** 采集星之碎片（森林对话结束后自动执行） */
   private doCollectShard(): void {
+    play('shard'); // 星之碎片拾取演出音效（试玩-14）
     collectShard();
     this.shardSprite?.destroy();
     this.shardSprite = null;
@@ -2912,9 +2927,16 @@ export class MapScene extends Phaser.Scene {
     }
     if (!targetPos) return false; // 附近没有可砍的树
 
-    // 斧头检查：无斧头时不吞交互（教程期玩家本无斧头，让操作落到农田交互）
+    // 斧头检查：无斧头时明确提示（制作人反馈：功能未解锁应提示，不能无反馈）
+    // 注：旧逻辑 return false 不吞交互（BUG-010），但树木均沿地图边缘、远离农田，
+    // 玩家在树旁按 E 意图即砍树，明确提示 + 消费交互比静默更符合体验。
     if (getItemCount('old_axe') <= 0) {
-      return false;
+      const cx = targetPos.col * TILE_SIZE + TILE_SIZE / 2;
+      const cy = targetPos.row * TILE_SIZE + TILE_SIZE / 2;
+      this.flashTileError(targetPos.col, targetPos.row);
+      this.showFloatText(cx, cy, '没有斧头，不能砍树', '#ff8a80');
+      this.showDialogueText('还没有斧头，先完成今天的教程任务吧。');
+      return true;
     }
 
     // 砍树引导（仅第一次触发）
@@ -3055,6 +3077,7 @@ export class MapScene extends Phaser.Scene {
       if (getItemCount('old_hoe') <= 0) {
         this.flashTileError(col, row);
         this.showFloatText(tileCenterX, tileCenterY, '没有锄头，不能锄地', '#ff8a80');
+        this.showDialogueText('还没有锄头，先打开庄园大门吧。');
         return;
       }
       setTileState(col, row, 'tilled');
