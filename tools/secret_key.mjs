@@ -25,7 +25,7 @@ function runPowershell(script) {
   return new Promise((resPromise, rejPromise) => {
     execFile(
       'powershell.exe',
-      ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', encoded],
+      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', encoded],
       { windowsHide: true, maxBuffer: 4 * 1024 * 1024, timeout: 30_000 },
       (err, stdout) => (err ? rejPromise(err) : resPromise(stdout))
     );
