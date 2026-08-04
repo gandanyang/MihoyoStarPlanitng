@@ -1,7 +1,7 @@
 /* eslint-disable */
 // ══════════════════════════════════════════════════════════════════
 // 语音映射数据 —— 由 tools/gen_mainline_voice.py --emit-voicebank 自动生成，勿手改
-// 生成时间：2026-08-04 21:39:46
+// 生成时间：2026-08-05 01:12:33
 // 说明：speaker='' 表示通配（少女/HR/纸条），text 为归一化后原文（已剥（笑）等标注）
 // ══════════════════════════════════════════════════════════════════
 export interface VoiceEntry { file: string; speaker: string; text: string }
@@ -100,10 +100,10 @@ export const VOICE_ENTRIES: VoiceEntry[] = [
   { file: 'elder/shard_04.wav', speaker: '村长', text: '你能把它带回来，说明这座岛……已经认你了。' },
   { file: 'elder/shard_06.wav', speaker: '村长', text: '那就够了。有时候，不是人找到东西，是东西找到人。' },
   { file: 'elder/shard_07.wav', speaker: '村长', text: '你爷爷以前啊，总喜欢在晚上去农田后面的地方坐一会儿。他说，那里的星星很亮。' },
-  { file: 'grandpa/notes_01.wav', speaker: '爷爷的笔记', text: '今年番茄长得很好，比去年早熟了几天。' },
-  { file: 'grandpa/notes_02.wav', speaker: '爷爷的笔记', text: '后山的竹子又长高了，看来春天比往年来得早。' },
-  { file: 'grandpa/notes_03.wav', speaker: '爷爷的笔记', text: '村口老周家的孩子回来了一趟，带了不少城里的东西。' },
-  { file: 'grandpa/notes_04.wav', speaker: '爷爷的笔记', text: '今晚的星星，比往年亮。' },
+  { file: 'grandpa/notes_01.wav', speaker: '爷爷的笔记', text: '今天又捡到一片。星星……是不是也想回家？' },
+  { file: 'grandpa/notes_02.wav', speaker: '爷爷的笔记', text: '我数了数，还差一些。等它们都回来了，也许就能问清楚了。' },
+  { file: 'grandpa/notes_03.wav', speaker: '爷爷的笔记', text: '那些发光的碎片，醒来时像在看我。是我多心了吧。' },
+  { file: 'grandpa/notes_04.wav', speaker: '爷爷的笔记', text: '今晚的星星很亮，花比往年开得早。不知道是不是这座岛在回应什么。' },
   { file: 'grandpa/ending_06.wav', speaker: '信', text: '如果看到这封信，说明你终于回来了。' },
   { file: 'grandpa/ending_07.wav', speaker: '信', text: '小澈，你小时候总问我，为什么每天都要给花浇水。' },
   { file: 'grandpa/ending_08.wav', speaker: '信', text: '爷爷想了很久。后来发现，人做很多事情，不一定都是为了结果。' },
@@ -135,7 +135,9 @@ export const VOICE_ENTRIES: VoiceEntry[] = [
   { file: 'gardener/garden_05.wav', speaker: '花匠小梅', text: '这花不是卖的，是有人托我种的。' },
   { file: 'gardener/garden_06.wav', speaker: '花匠小梅', text: '不知道。但那个人说，总有一天会有人来收。' },
   { file: 'gardener/garden_07.wav', speaker: '花匠小梅', text: '（笑）你也感觉到了？' },
-  { file: 'adventurer/adv_01.wav', speaker: '冒险家阿风', text: '嘿！你就是新搬来的林澈吧？我叫阿风，这座岛的每个角落我都跑遍了。' },
+  { file: 'linche/garden_answer_01.wav', speaker: '林澈', text: '托给谁？' },
+  { file: 'linche/garden_reflect_01.wav', speaker: '林澈', text: '……这座岛上的事情，好像都是"总有一天"。' },
+  { file: 'adventurer/adv_01.wav', speaker: '冒险家阿风', text: '嘿！新来的庄园主！我叫阿风，这座岛的每个角落我都跑遍了。' },
   { file: 'adventurer/adv_02.wav', speaker: '冒险家阿风', text: '告诉你个秘密——森林深处有东西在发光，镇长神神秘秘的不肯说。' },
   { file: 'adventurer/adv_03.wav', speaker: '冒险家阿风', text: '想去探险的话，记得备足体力。森林可比看上去大得多！' },
   { file: 'adventurer/adv_04.wav', speaker: '冒险家阿风', text: '森林深处……有些东西，最好别惊醒。' },

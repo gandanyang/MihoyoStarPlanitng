@@ -245,6 +245,10 @@ T = [
     ("gardener", "garden_06", "不知道。但那个人说，总有一天会有人来收。"),
     ("gardener", "garden_07", "（笑）你也感觉到了？"),
 
+    # ---- 小梅对话中主角台词 ----
+    ("linche", "garden_answer_01", "托给谁？"),
+    ("linche", "garden_reflect_01", '……这座岛上的事情，好像都是"总有一天"。'),
+
     # ---- 冒险家阿风（adventurer）：ADVENTURER_DIALOGUES ----
     ("adventurer", "adv_01", "嘿！新来的庄园主！我叫阿风，这座岛的每个角落我都跑遍了。"),
     ("adventurer", "adv_02", "告诉你个秘密——森林深处有东西在发光，镇长神神秘秘的不肯说。"),
