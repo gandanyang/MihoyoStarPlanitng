@@ -37,6 +37,10 @@ G_BED = 9
 G_TABLE = 10
 G_RUG = 11
 G_SHELF = 12
+G_STOVE = 13
+G_CHAIR = 14
+G_CRATE = 15
+G_PLANT = 16
 
 MAP_W = 20
 MAP_H = 15
@@ -49,7 +53,7 @@ def gen_tileset():
     # 基础 8 块宽度
     base_w = 8 * T
 
-    new_img = Image.new("RGB", (12 * T, T), (0, 0, 0))
+    new_img = Image.new("RGB", (16 * T, T), (0, 0, 0))
     new_img.paste(base.crop((0, 0, base_w, T)), (0, 0))
 
     # --- Tile 9: 床（红色被褥 + 白色枕头） ---
@@ -118,7 +122,7 @@ def gen_tileset():
     upgrade_house_tiles(new_img)
     out = os.path.join(TILE_DIR, "house_tileset.png")
     new_img.save(out)
-    print(f"[OK] tileset -> {out}  (192x16)")
+    print(f"[OK] tileset -> {out}  (16*T x T)")
 
 
 
@@ -235,6 +239,67 @@ def upgrade_house_tiles(img):
         img.putpixel((x5 + 11, y), (150, 100, 50))
         img.putpixel((x5 + 12, y), (150, 100, 50))
     img.putpixel((x5 + 11, 6), (120, 80, 40)); img.putpixel((x5 + 12, 6), (120, 80, 40))
+    # stove gid13 (tile 12)
+    x6 = 12 * T
+    for y in range(T):
+        for x in range(T):
+            img.putpixel((x6 + x, y), (104, 100, 108))
+    for x in range(T):
+        img.putpixel((x6 + x, 3), (70, 68, 76))
+        img.putpixel((x6 + x, 4), (70, 68, 76))
+    for cx in (4, 11):
+        for yy in range(6, 13):
+            for xx in range(cx, cx + 2):
+                img.putpixel((x6 + xx, yy), (52, 50, 58))
+        img.putpixel((x6 + cx, 5), (130, 128, 136))
+    for yy in range(13, T):
+        for x in range(T):
+            img.putpixel((x6 + x, yy), (70, 68, 76))
+    # chair gid14 (tile 13)
+    x7 = 13 * T
+    for y in range(T):
+        for x in range(T):
+            img.putpixel((x7 + x, y), (150, 110, 70))
+    for x in (2, 13):
+        for y in range(2, 9):
+            img.putpixel((x7 + x, y), (110, 75, 40))
+    img.putpixel((x7 + 3, 2), (110, 75, 40)); img.putpixel((x7 + 12, 2), (110, 75, 40))
+    for x in range(3, 13):
+        for y in range(9, 11):
+            img.putpixel((x7 + x, y), (110, 75, 40))
+    for x in (3, 12):
+        for y in range(11, 15):
+            img.putpixel((x7 + x, y), (80, 52, 28))
+    # crate gid15 (tile 14)
+    x8 = 14 * T
+    for y in range(T):
+        for x in range(T):
+            img.putpixel((x8 + x, y), (130, 92, 55))
+    for x in range(T):
+        img.putpixel((x8 + x, 2), (96, 64, 36))
+        img.putpixel((x8 + x, 13), (96, 64, 36))
+    for y in range(T):
+        img.putpixel((x8, y), (96, 64, 36))
+        img.putpixel((x8 + 15, y), (96, 64, 36))
+    for x in range(4, 13):
+        img.putpixel((x8 + x, 6), (96, 64, 36))
+        img.putpixel((x8 + x, 9), (96, 64, 36))
+    # plant gid16 (tile 15)
+    x9 = 15 * T
+    for y in range(T):
+        for x in range(T):
+            img.putpixel((x9 + x, y), (150, 100, 50))
+    for y in range(11, 15):
+        for x in range(4, 12):
+            img.putpixel((x9 + x, y), (168, 108, 58))
+    for x in range(4, 12):
+        img.putpixel((x9 + x, 10), (135, 84, 44))
+    for x in range(4, 12):
+        for y in range(5, 11):
+            img.putpixel((x9 + x, y), (74, 132, 66))
+    for x in range(6, 10):
+        for y in range(2, 5):
+            img.putpixel((x9 + x, y), (88, 150, 78))
     return img
 
 def new_layer(fill=0):
@@ -261,9 +326,15 @@ def gen_house_map():
     # 桌子（右上角 cols 13-14, rows 2-3）
     fill_rect(ground, 13, 2, 14, 3, G_TABLE)
     # 地毯（中央 cols 5-12, rows 6-7）
-    fill_rect(ground, 5, 6, 12, 7, G_RUG)
+    fill_rect(ground, 5, 6, 12, 8, G_RUG)
     # 书架（左下角 cols 2-3, rows 11-12）
     fill_rect(ground, 2, 11, 3, 12, G_SHELF)
+    set_cell(ground, 4, 2, G_PLANT)
+    set_cell(ground, 17, 2, G_PLANT)
+    set_cell(ground, 15, 3, G_CHAIR)
+    set_cell(ground, 12, 3, G_CHAIR)
+    fill_rect(ground, 14, 11, 15, 12, G_STOVE)
+    fill_rect(ground, 16, 11, 16, 12, G_CRATE)
 
     # Walls 层：石墙边界，底部 cols 9-10 留门洞
     walls = new_layer(0)
