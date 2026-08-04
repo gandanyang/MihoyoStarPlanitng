@@ -1,7 +1,14 @@
 # 任务卡：OpenCode 施工批次（序章 v0.7 + 第一章 v0.8）
 
 > 立项：制作人 2026-08-03 ｜ 执行：**OpenCode** ｜ 验证：**Trae** ｜ 方案：**Codex（已完成，不改代码）**
-> 状态：✅ 已完成（批次 A/B 均已落地并回归通过，待 Trae 验证）
+> 状态：✅ 已完成（批次 A/B 落地 + 回归通过 + **Trae 验证完成**）
+
+### Trae 验证记录（2026-08-04）
+
+- ✅ 序章 v0.7：两页通知（z-index=600 DOM 轮询）+ 车站对白 9 行 —— probe-prologue-walkthrough 走查取证 0 错误
+- ✅ 第一章 v0.8：村长拆信息（ELDER_QUEST 10 行）+ 青禾镇改名（HUD 区域名）+ HUD 目标文案 —— probe-ch1-walkthrough 走查取证 0 错误
+- ✅ 回归合并验证（2026-08-04 测试轮次 01 批 1）：tsc 0 错 + 14 探针全绿（test-tutorial / elder-portrait / ch1-story 24 / density 10 / garden-xiya 10 / farm-restore 25 / ambience 9 / first-hour 15 / mobile 4 探针 / bug030-034 13 / rotate-hint 3）
+- 结论：**验证通过，无回归问题**
 
 ---
 
