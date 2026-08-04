@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tts": "node tools/fish_tts.ts"
+    "tts": "node tools/tts.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.0",
