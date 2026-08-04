@@ -224,7 +224,7 @@ const GARDENER_DIALOGUES: DialogueLine[] = [
 
 /** 冒险家阿风：冒险与森林提示 */
 const ADVENTURER_DIALOGUES: DialogueLine[] = [
-  { speaker: '冒险家阿风', color: '#88b8e8', text: '嘿！新来的庄园主！我叫阿风，这座岛的每个角落我都跑遍了。' },
+  { speaker: '冒险家阿风', color: '#88b8e8', text: '嘿！你就是新搬来的林澈吧？我叫阿风，这座岛的每个角落我都跑遍了。' },
   { speaker: '冒险家阿风', color: '#88b8e8', text: '告诉你个秘密——森林深处有东西在发光，镇长神神秘秘的不肯说。' },
   { speaker: '冒险家阿风', color: '#88b8e8', text: '想去探险的话，记得备足体力。森林可比看上去大得多！' },
   { speaker: '冒险家阿风', color: '#88b8e8', text: '森林深处……有些东西，最好别惊醒。' },

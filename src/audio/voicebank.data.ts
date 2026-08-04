@@ -135,7 +135,7 @@ export const VOICE_ENTRIES: VoiceEntry[] = [
   { file: 'gardener/garden_05.wav', speaker: '花匠小梅', text: '这花不是卖的，是有人托我种的。' },
   { file: 'gardener/garden_06.wav', speaker: '花匠小梅', text: '不知道。但那个人说，总有一天会有人来收。' },
   { file: 'gardener/garden_07.wav', speaker: '花匠小梅', text: '（笑）你也感觉到了？' },
-  { file: 'adventurer/adv_01.wav', speaker: '冒险家阿风', text: '嘿！新来的庄园主！我叫阿风，这座岛的每个角落我都跑遍了。' },
+  { file: 'adventurer/adv_01.wav', speaker: '冒险家阿风', text: '嘿！你就是新搬来的林澈吧？我叫阿风，这座岛的每个角落我都跑遍了。' },
   { file: 'adventurer/adv_02.wav', speaker: '冒险家阿风', text: '告诉你个秘密——森林深处有东西在发光，镇长神神秘秘的不肯说。' },
   { file: 'adventurer/adv_03.wav', speaker: '冒险家阿风', text: '想去探险的话，记得备足体力。森林可比看上去大得多！' },
   { file: 'adventurer/adv_04.wav', speaker: '冒险家阿风', text: '森林深处……有些东西，最好别惊醒。' },
