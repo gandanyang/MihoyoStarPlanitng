@@ -614,6 +614,15 @@ export class MapScene extends Phaser.Scene {
       () => this.useManorKey(),
       () => this.updateHUD(),
       () => this.deployRobot(),
+      // 返回标题：显式 save → 停止当前场景 → 启动标题画面
+      () => {
+        save({
+          x: this.player.x, y: this.player.y,
+          scene: this.mapKey, facing: this.player.facing,
+          dailyQuest: getDailyQuestSaveData(),
+        });
+        this.scene.start('title');
+      },
     );
     // 任务面板（v0.5.3-B 任务入口化；关面板清理 J 键残留）
     this.questPanel = new QuestPanel(

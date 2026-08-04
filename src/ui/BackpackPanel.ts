@@ -25,6 +25,8 @@ type OnUseKey = () => boolean;
 type OnUseRobot = () => boolean;
 /** 数据变更回调（出售物品后更新 HUD） */
 type OnDataChange = () => void;
+/** 返回标题画面回调（显式 save + scene.start） */
+type OnReturnToTitle = () => void;
 
 // ===== 模块级单例 =====
 let panelEl: HTMLDivElement | null = null;
@@ -34,6 +36,7 @@ let onClose: OnClose | null = null;
 let onUseKey: OnUseKey | null = null;
 let onUseRobot: OnUseRobot | null = null;
 let onDataChange: OnDataChange | null = null;
+let onReturnToTitle: OnReturnToTitle | null = null;
 
 /** 关闭面板（模块级，B/Esc/按钮都走这里） */
 function closePanel(): void {
@@ -81,10 +84,9 @@ function createDom(): void {
     if (target.dataset?.action === 'close') {
       closePanel();
     } else if (target.dataset?.action === 'return-title') {
-      // 返回标题画面（标题画面有删档/重置存档按钮）
-      // reload 会触发 beforeunload/pagehide 自动存档，重载后标题画面 hasSave()=true 显示删档按钮
+      // 返回标题画面：显式 save + scene.start（避免 location.reload 全页刷新）
       closePanel();
-      location.reload();
+      onReturnToTitle?.();
     } else if (target.dataset?.action === 'use-key') {
       // 使用庄园钥匙
       if (onUseKey?.()) {
@@ -205,11 +207,12 @@ function refresh(): void {
 }
 
 export class BackpackPanel {
-  constructor(onCloseCb?: OnClose, onUseKeyCb?: OnUseKey, onDataChangeCb?: OnDataChange, onUseRobotCb?: OnUseRobot) {
+  constructor(onCloseCb?: OnClose, onUseKeyCb?: OnUseKey, onDataChangeCb?: OnDataChange, onUseRobotCb?: OnUseRobot, onReturnToTitleCb?: OnReturnToTitle) {
     if (onCloseCb) onClose = onCloseCb;
     if (onUseKeyCb) onUseKey = onUseKeyCb;
     if (onDataChangeCb) onDataChange = onDataChangeCb;
     if (onUseRobotCb) onUseRobot = onUseRobotCb;
+    if (onReturnToTitleCb) onReturnToTitle = onReturnToTitleCb;
     if (!domCreated) createDom();
   }
 
