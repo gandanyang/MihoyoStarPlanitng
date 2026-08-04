@@ -190,7 +190,7 @@ async function run() {
     await teleport(page, 'town', 216, 184, 'up');
     await pressE(page);
     await diag(page, 'town2-after-e');
-    await waitAndSkipDialogue(page, 9); // SHARD_DELIVER_DIALOGUE 9 行（P1 观星引导 +1） → completed
+    await waitAndSkipDialogue(page, 10); // SHARD_DELIVER_DIALOGUE 10 行（村长爷爷观星引导） → completed
 
     // ---------- 夜晚 → 农场观星点 ----------
     await page.evaluate(() => window.debug.setTime(21, 0));

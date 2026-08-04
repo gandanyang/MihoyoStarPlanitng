@@ -185,6 +185,7 @@ const MYSTERY_AFTER_OBSERVATORY_DIALOGUE: DialogueLine[] = [
   { speaker: '神秘少女', color: '#b8a0e8', text: '你捡到的那片……它也认识你了。' },
   { speaker: '林澈', color: COLORS.linche, text: '你也捡到过？' },
   { speaker: '神秘少女', color: '#b8a0e8', text: '（没有回答，只是看着天空）……快归位了。' },
+  { speaker: '神秘少女', color: '#b8a0e8', text: '原来……它真的回来了。' },
 ];
 
 /** 矿工老张：挖矿引导 */
@@ -263,6 +264,7 @@ const NPC_DAILY_LINES: Record<string, DialogueLine[]> = {
     { speaker: '矿工老张', color: '#d8a050', text: '矿洞里头凉快，来坐坐？' },
     { speaker: '矿工老张', color: '#d8a050', text: '挖矿这活儿，年轻时觉得苦，现在倒觉得踏实。' },
     { speaker: '矿工老张', color: '#d8a050', text: '你要是缺石头，矿里多的是。' },
+    { speaker: '矿工老张', color: '#d8a050', text: '年轻人，晚上别老盯手机，有时候抬头看看天。' },
   ],
   gardener: [
     { speaker: '花匠小梅', color: '#a0d888', text: '今天这花开得比昨天好。' },
@@ -271,6 +273,7 @@ const NPC_DAILY_LINES: Record<string, DialogueLine[]> = {
     { speaker: '花匠小梅', color: '#a0d888', text: '这株花啊，是我爷爷种的。' },
     { speaker: '花匠小梅', color: '#a0d888', text: '你庄园里的土地，养得越来越好了。' },
     { speaker: '花匠小梅', color: '#a0d888', text: '种花和种菜一样，都得用心。' },
+    { speaker: '花匠小梅', color: '#a0d888', text: '以前爷爷经常带我们去看星星。' },
   ],
   adventurer: [
     { speaker: '冒险家阿风', color: '#88b8e8', text: '森林最近有奇怪的声音，我可没说谎。' },
@@ -279,6 +282,7 @@ const NPC_DAILY_LINES: Record<string, DialogueLine[]> = {
     { speaker: '冒险家阿风', color: '#88b8e8', text: '听说老张昨晚又喝多了，哈哈。' },
     { speaker: '冒险家阿风', color: '#88b8e8', text: '这座岛比我想象的大，还有好多地方没去过。' },
     { speaker: '冒险家阿风', color: '#88b8e8', text: '你要是去森林，记得带够体力。' },
+    { speaker: '冒险家阿风', color: '#88b8e8', text: '城里的星星是不是很少？' },
   ],
 };
 

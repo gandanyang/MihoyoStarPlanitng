@@ -1,7 +1,7 @@
 /* eslint-disable */
 // ══════════════════════════════════════════════════════════════════
 // 语音映射数据 —— 由 tools/gen_mainline_voice.py --emit-voicebank 自动生成，勿手改
-// 生成时间：2026-08-04 20:01:59
+// 生成时间：2026-08-04 21:39:46
 // 说明：speaker='' 表示通配（少女/HR/纸条），text 为归一化后原文（已剥（笑）等标注）
 // ══════════════════════════════════════════════════════════════════
 export interface VoiceEntry { file: string; speaker: string; text: string }
@@ -111,4 +111,37 @@ export const VOICE_ENTRIES: VoiceEntry[] = [
   { file: 'grandpa/evening_note.wav', speaker: '', text: '今年番茄长得很好。植物似乎会记住照顾它的人。' },
   { file: 'girl/forest_08.wav', speaker: '', text: '……它沉睡太久了。' },
   { file: 'system/hr_station_02.wav', speaker: '', text: '林先生，根据评估，你完全可以加入智能生态部门。' },
+  { file: 'girl/mystery_talk_01.wav', speaker: '', text: '……你来了。' },
+  { file: 'girl/mystery_talk_02.wav', speaker: '', text: '不认识。……只是觉得，你应该会来。' },
+  { file: 'girl/mystery_talk_03.wav', speaker: '', text: '你身上……有那颗星的味道。' },
+  { file: 'girl/mystery_talk_04.wav', speaker: '', text: '你捡起的那块碎片……我也捡到过。' },
+  { file: 'girl/mystery_after_01.wav', speaker: '', text: '你捡到的那片……它也认识你了。' },
+  { file: 'girl/mystery_after_02.wav', speaker: '', text: '……快归位了。' },
+  { file: 'girl/mystery_after_03.wav', speaker: '', text: '原来……它真的回来了。' },
+  { file: 'linche/mystery_answered_01.wav', speaker: '林澈', text: '你也捡到过？' },
+  { file: 'elder/town_elope_01.wav', speaker: '村长', text: '青禾镇是个好地方。多和镇上的人聊聊吧。' },
+  { file: 'miner/miner_01.wav', speaker: '矿工老张', text: '哟，新来的小伙子！我是老张，矿洞这片归我管。' },
+  { file: 'miner/miner_02.wav', speaker: '矿工老张', text: '这矿里挖出来的东西，比你见过的所有代码都老。' },
+  { file: 'miner/miner_03.wav', speaker: '矿工老张', text: '矿洞里能挖到石头、铜矿、铁矿。拿到镇上卖了能换钱。' },
+  { file: 'miner/miner_04.wav', speaker: '矿工老张', text: '不过挖矿费体力，别把自个儿累趴下咯。' },
+  { file: 'miner/miner_05.wav', speaker: '矿工老张', text: '年轻的时候，我也想离开这里。' },
+  { file: 'miner/miner_06.wav', speaker: '矿工老张', text: '（笑）……走不动了。路太长。' },
+  { file: 'miner/miner_07.wav', speaker: '矿工老张', text: '……说起来，这矿里有些老旧的机器，镇上没人会弄。' },
+  { file: 'miner/miner_08.wav', speaker: '矿工老张', text: '哦？那你可帮大忙了。' },
+  { file: 'gardener/garden_01.wav', speaker: '花匠小梅', text: '你好呀，我叫小梅。这些花都是我亲手种的，漂亮吧？' },
+  { file: 'gardener/garden_02.wav', speaker: '花匠小梅', text: '你爷爷以前每天下午都会来闻这株花的味道。他说这和城市的空气不一样。' },
+  { file: 'gardener/garden_03.wav', speaker: '花匠小梅', text: '种东西啊，没什么秘诀。每天来看看它们，浇水、除草……' },
+  { file: 'gardener/garden_04.wav', speaker: '花匠小梅', text: '只要用心，土地就会用丰收回报你。你的庄园也会一样的。' },
+  { file: 'gardener/garden_05.wav', speaker: '花匠小梅', text: '这花不是卖的，是有人托我种的。' },
+  { file: 'gardener/garden_06.wav', speaker: '花匠小梅', text: '不知道。但那个人说，总有一天会有人来收。' },
+  { file: 'gardener/garden_07.wav', speaker: '花匠小梅', text: '（笑）你也感觉到了？' },
+  { file: 'adventurer/adv_01.wav', speaker: '冒险家阿风', text: '嘿！新来的庄园主！我叫阿风，这座岛的每个角落我都跑遍了。' },
+  { file: 'adventurer/adv_02.wav', speaker: '冒险家阿风', text: '告诉你个秘密——森林深处有东西在发光，镇长神神秘秘的不肯说。' },
+  { file: 'adventurer/adv_03.wav', speaker: '冒险家阿风', text: '想去探险的话，记得备足体力。森林可比看上去大得多！' },
+  { file: 'adventurer/adv_04.wav', speaker: '冒险家阿风', text: '森林深处……有些东西，最好别惊醒。' },
+  { file: 'adventurer/adv_05.wav', speaker: '冒险家阿风', text: '嘿！你这小子，胆子不小啊！' },
+  { file: 'adventurer/adv_06.wav', speaker: '冒险家阿风', text: '说得对。有空来森林，我带你转转。' },
+  { file: 'shopkeeper/shop_01.wav', speaker: '商店老板', text: '欢迎光临星辰杂货店！' },
+  { file: 'shopkeeper/shop_02.wav', speaker: '商店老板', text: '收获的作物、挖到的矿石都可以卖给我换金币。种子和工具也有卖。' },
+  { file: 'shopkeeper/shop_03.wav', speaker: '商店老板', text: '需要什么随便看。钱货两清，童叟无欺。' },
 ];

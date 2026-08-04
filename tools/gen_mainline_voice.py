@@ -67,6 +67,26 @@ ROLES = {
         ref_text="十年前的那个早晨，我依然清晰记得，你穿着白衬衫的样子，那是我第一次遇见你，至今难忘。",
         cfg=2.4, steps=16, atempo=1.0, sex="male", phone_eq=True,
     ),
+    "miner": dict(  # 矿工老张：粗犷汉子，深沉亲切
+        ref=r"public\assets\audio\generated\老张v3_20260804_001.mp3",
+        ref_text="[sigh] 哎呀，俺这山里粗汉，不会说啥漂亮话。小兄弟，[laughter] 进了这山口，你就甭客气了！先干了这碗热汤暖暖身子，在这儿歇脚，保准安稳！",
+        cfg=2.4, steps=16, atempo=1.0, sex="male",
+    ),
+    "gardener": dict(  # 花匠小梅：少女，温柔明亮
+        ref=r"public\assets\audio\generated\小梅_20260804_001.mp3",
+        ref_text="顺我者昌，逆我者亡，我上网就是来当皇帝的，谁能找出我的抖音号我给10块",
+        cfg=2.4, steps=16, atempo=1.0, sex="female",
+    ),
+    "adventurer": dict(  # 冒险家阿风：青年男，爽朗
+        ref=r"public\assets\audio\generated\阿风_20260804_001.mp3",
+        ref_text="我被自己的青梅竹马表白了。说心里话，我是喜欢她的，但至今为止，我已经拒绝过了她很多次告白。",
+        cfg=2.4, steps=16, atempo=1.0, sex="male",
+    ),
+    "shopkeeper": dict(  # 商店老板：中年男，沉稳
+        ref=r"public\assets\audio\generated\商店老板_20260804_001.mp3",
+        ref_text="最近天气变化大，我跟你说啊，一定要注意身体。年轻时不当回事，现在才知道健康最重要。早上起来喝杯温水，晚上少熬夜，平时多运动，这都是我这些年总结出来的经验。",
+        cfg=2.4, steps=16, atempo=1.0, sex="male",
+    ),
 }
 
 ROLE_DIRS = {"hr": "system"}
@@ -190,6 +210,53 @@ T = [
 
     # ---- HR 手机通知（system，林澈声线 + 电话感 EQ）----
     ("hr", "hr_station_02", "林先生，根据评估，你完全可以加入智能生态部门。"),
+
+    # ---- NPC 剧情台词（试玩-07 补齐；role 复用 girl/elder/linche 已有音色）----
+    # 神秘少女 MYSTERY_DIALOGUES
+    ("girl", "mystery_talk_01", "……你来了。"),
+    ("girl", "mystery_talk_02", "不认识。……只是觉得，你应该会来。"),
+    ("girl", "mystery_talk_03", "你身上……有那颗星的味道。"),
+    ("girl", "mystery_talk_04", "你捡起的那块碎片……我也捡到过。"),
+    # 神秘少女 MYSTERY_AFTER_OBSERVATORY_DIALOGUE（观星后）
+    ("girl", "mystery_after_01", "你捡到的那片……它也认识你了。"),
+    ("girl", "mystery_after_02", "……快归位了。"),
+    ("girl", "mystery_after_03", "原来……它真的回来了。"),
+    # 林澈：神秘少女对话中缺少的台词
+    ("linche", "mystery_answered_01", "你也捡到过？"),
+    # 村长 ELDER_DIALOGUES 兜底
+    ("elder", "town_elope_01", "青禾镇是个好地方。多和镇上的人聊聊吧。"),
+
+    # ---- 矿工老张（miner）：MINER_DIALOGUES ----
+    ("miner", "miner_01", "哟，新来的小伙子！我是老张，矿洞这片归我管。"),
+    ("miner", "miner_02", "这矿里挖出来的东西，比你见过的所有代码都老。"),
+    ("miner", "miner_03", "矿洞里能挖到石头、铜矿、铁矿。拿到镇上卖了能换钱。"),
+    ("miner", "miner_04", "不过挖矿费体力，别把自个儿累趴下咯。"),
+    ("miner", "miner_05", "年轻的时候，我也想离开这里。"),
+    ("miner", "miner_06", "（笑）……走不动了。路太长。"),
+    ("miner", "miner_07", "……说起来，这矿里有些老旧的机器，镇上没人会弄。"),
+    ("miner", "miner_08", "哦？那你可帮大忙了。"),
+
+    # ---- 花匠小梅（gardener）：GARDENER_DIALOGUES ----
+    ("gardener", "garden_01", "你好呀，我叫小梅。这些花都是我亲手种的，漂亮吧？"),
+    ("gardener", "garden_02", "你爷爷以前每天下午都会来闻这株花的味道。他说这和城市的空气不一样。"),
+    ("gardener", "garden_03", "种东西啊，没什么秘诀。每天来看看它们，浇水、除草……"),
+    ("gardener", "garden_04", "只要用心，土地就会用丰收回报你。你的庄园也会一样的。"),
+    ("gardener", "garden_05", "这花不是卖的，是有人托我种的。"),
+    ("gardener", "garden_06", "不知道。但那个人说，总有一天会有人来收。"),
+    ("gardener", "garden_07", "（笑）你也感觉到了？"),
+
+    # ---- 冒险家阿风（adventurer）：ADVENTURER_DIALOGUES ----
+    ("adventurer", "adv_01", "嘿！新来的庄园主！我叫阿风，这座岛的每个角落我都跑遍了。"),
+    ("adventurer", "adv_02", "告诉你个秘密——森林深处有东西在发光，镇长神神秘秘的不肯说。"),
+    ("adventurer", "adv_03", "想去探险的话，记得备足体力。森林可比看上去大得多！"),
+    ("adventurer", "adv_04", "森林深处……有些东西，最好别惊醒。"),
+    ("adventurer", "adv_05", "嘿！你这小子，胆子不小啊！"),
+    ("adventurer", "adv_06", "说得对。有空来森林，我带你转转。"),
+
+    # ---- 商店老板（shopkeeper）：SHOPKEEPER_DIALOGUES ----
+    ("shopkeeper", "shop_01", "欢迎光临星辰杂货店！"),
+    ("shopkeeper", "shop_02", "收获的作物、挖到的矿石都可以卖给我换金币。种子和工具也有卖。"),
+    ("shopkeeper", "shop_03", "需要什么随便看。钱货两清，童叟无欺。"),
 ]
 
 
@@ -228,6 +295,14 @@ def story_speaker(role: str, tid: str) -> str:
         return "爷爷的笔记"
     if role in ("girl", "hr"):
         return ""
+    if role == "miner":
+        return "矿工老张"
+    if role == "gardener":
+        return "花匠小梅"
+    if role == "adventurer":
+        return "冒险家阿风"
+    if role == "shopkeeper":
+        return "商店老板"
     return ""
 
 
