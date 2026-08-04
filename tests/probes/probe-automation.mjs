@@ -104,7 +104,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     // radish growthDays=1。day2 时：14,10 未浇水 → 机器人浇水；16,10 watered=true 且 plantDay+1<=2 → grown → 机器人收获
     await bootFarm({
       version: '0.5', savedAt: '自动化探针', timestamp: Date.now(),
-      player: { x: 240, y: 96, scene: 'farm', facing: 'down', inventory: {} },
+      player: { x: 240, y: 96, scene: 'farm', facing: 'down', inventory: { radish_seed: 5 } },
       world: { day: 1, hour: 9, minute: 0, coins: 100, level: 1, xp: 0, stamina: 100, minedOres: [], questState: 'not_started' },
       farm: {
         tiles: [
@@ -154,7 +154,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     check('机器人部署 count=1', d.robotCount === 1, `实际=${d.robotCount}`);
     check('机器人视觉已创建', d.robotVisuals === 1, `实际=${d.robotVisuals}`);
 
-    // 跨天：day1→day2，机器人自动浇水 14,10 + 收获 16,10（成熟萝卜进背包）
+    // 跨天：day1→day2，机器人自动浇水 14,10 + 收获 16,10（成熟萝卜进背包）+ 补种
     await evalFarm(() => window.debug.nextDay());
     await sleep(500);
     d = await evalFarm(() => {
@@ -162,22 +162,17 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       const t1410 = s.tileRects.get('14,10');
       const t1610 = s.tileRects.get('16,10');
       return {
-        // 新结构 {plot, crop}：watered → plot frame 2；tilled → plot frame 0
         plot1410: t1410 ? t1410.plot.frame.name : -1,
-        frame1410: t1410 ? t1410.crop.frame.name : -1, // watered 萝卜 frame=1
-        frame1610: t1610 ? t1610.crop.frame.name : -1, // 收获后 tilled 无作物 visible=false
+        frame1410: t1410 ? t1410.crop.frame.name : -1,
+        // 收获后自动补种：作物仍可见（新种子），地块帧 1（planted）
+        frame1610: t1610 ? t1610.crop.frame.name : -1,
         crop1610visible: t1610 ? t1610.crop.visible : null,
+        plot1610: t1610 ? t1610.plot.frame.name : -1,
       };
     });
     check('机器人浇水 14,10 → watered(地块帧2+作物帧1)', d.plot1410 === 2 && d.frame1410 === 1, `实际=plot帧${d.plot1410} 作物帧${d.frame1410}`);
-    check('机器人收获 16,10 → 作物消失', d.crop1610visible === false, `实际=frame${d.frame1610} visible=${d.crop1610visible}`);
-    // 收获萝卜进背包：16,10 变为 tilled（地块帧 0）
-    const harvested = await evalFarm(() => {
-      const s = window.__game.scene.getScene('farm');
-      const t = s.tileRects.get('16,10');
-      return t ? { visible: t.plot.visible, frame: t.plot.frame.name } : null;
-    });
-    check('16,10 收获后变 tilled（地块可见+帧0）', !!harvested && harvested.visible && harvested.frame === 0, `实际=${JSON.stringify(harvested)}`);
+    check('机器人收获 16,10 → 自动补种（作物可见）', d.crop1610visible === true, `实际=frame${d.frame1610} visible=${d.crop1610visible}`);
+    check('16,10 收获后补种+浇水 → watered（地块帧2）', d.plot1610 === 2, `实际=plot帧${d.plot1610}`);
 
     // ============ 3. 存档重进：机器人仍存在 ============
     console.log('\n--- 3. 存档保存重进：机器人仍存在 ---');

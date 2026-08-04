@@ -3,19 +3,20 @@
  *
  * 庄园设备"自动农业机器人"：
  *   放置：在农场使用机器人道具（auto_farmer_robot）→ 部署在农田附近
- *   每日清晨：扫描机器人范围内农田 → 自动浇水 / 自动收获
+ *   每日清晨：扫描机器人范围内农田 → 自动浇水 / 自动收获 / 自动补种
  *
  * 设计约束（制作人验收）：
  *   - 不修改 SaveSystem 核心结构（存档用可选字段 farm.automation，旧档无此字段正常运行）
  *   - 不修改 CropSystem 核心逻辑 / Map 数据 / 输入系统
- *   - 不复制种植逻辑：浇水/收获复用 FarmState.setTileState/setCrop + Inventory.addItem
+ *   - 不复制种植逻辑：浇水/收获/播种复用 FarmState.setTileState/setCrop + Inventory.addItem/removeItem
  *   - 不触发玩家经验/每日任务（机器人劳作 ≠ 玩家劳作，避免刷经验/刷任务）
  *
  * 存档序列化：getAutomationSave / restoreAutomation（与 FarmRestore 同模式）
  */
 
-import { addItem } from '../data/Inventory';
-import { getCrop, getTileState, setCrop, setTileState, CropType } from '../data/FarmState';
+import { addItem, getItemCount, type ItemType } from '../data/Inventory';
+import { getCrop, getTileState, setCrop, setTileState, CropType, CROP_DEFS, CROP_TYPES } from '../data/FarmState';
+import { getTime } from '../data/TimeSystem';
 
 /** 机器人状态 */
 export interface RobotData {
@@ -31,6 +32,7 @@ export interface RobotData {
 export interface AutomationReport {
   watered: number;
   harvested: { cropType: CropType; count: number }[];
+  seeded: number;
 }
 
 /** 默认扫描半径（瓦片）。机器人放置在农田附近，默认覆盖 2*range+1 见方 */
@@ -67,32 +69,62 @@ export function addRobot(col: number, row: number, range = DEFAULT_ROBOT_RANGE):
  *
  * 扫描每个机器人范围内的农田格：
  *   planted（已种植未浇水）→ 浇水 → watered
- *   grown（成熟）→ 收获 → 背包 +1 作物
+ *   grown（成熟）→ 收获 → 背包 +1 作物 → 自动补种（背包有种子时）
+ *   tilled（已锄地，含收获后空地）→ 自动播种（背包有种子时）
  *
+ * 种子优先级：radish → tomato → corn → strawberry（从低到高，用完一种换下一种）。
  * 注意：不调用 addXp / onDQ*，机器人劳作不计入玩家经验与每日任务进度。
  */
 export function runDailyAutomation(): AutomationReport {
-  const report: AutomationReport = { watered: 0, harvested: [] };
+  const report: AutomationReport = { watered: 0, harvested: [], seeded: 0 };
   const harvestMap = new Map<CropType, number>();
 
   for (const robot of robots) {
+    // 第一轮：浇水 + 收获
+    const tilledAfterHarvest: [number, number][] = [];
     for (let c = robot.col - robot.range; c <= robot.col + robot.range; c++) {
       for (let r = robot.row - robot.range; r <= robot.row + robot.range; r++) {
         const state = getTileState(c, r);
         if (state === 'planted') {
-          // 已种植未浇水 → 自动浇水
           setTileState(c, r, 'watered');
           const crop = getCrop(c, r);
           if (crop) setCrop(c, r, { ...crop, watered: true });
           report.watered++;
         } else if (state === 'grown') {
-          // 成熟 → 自动收获（复用玩家收获逻辑的数据层）
           const crop = getCrop(c, r);
           const cropType = crop?.cropType ?? 'radish';
           setTileState(c, r, 'tilled');
           setCrop(c, r, undefined);
           addItem(cropType, 1);
           harvestMap.set(cropType, (harvestMap.get(cropType) ?? 0) + 1);
+          tilledAfterHarvest.push([c, r]);
+        }
+      }
+    }
+    // 收获后的空地立刻尝试补种
+    for (const [c, r] of tilledAfterHarvest) {
+      if (tryAutoSeed(c, r)) report.seeded++;
+    }
+
+    // 第二轮：已有空地（玩家锄地未种 / 上轮补种后的 tilled）也尝试播种
+    for (let c = robot.col - robot.range; c <= robot.col + robot.range; c++) {
+      for (let r = robot.row - robot.range; r <= robot.row + robot.range; r++) {
+        if (getTileState(c, r) === 'tilled') {
+          if (tryAutoSeed(c, r)) report.seeded++;
+        }
+      }
+    }
+
+    // 第三轮：新播种的 planted → 浇水（让它们第二天就能生长）
+    for (let c = robot.col - robot.range; c <= robot.col + robot.range; c++) {
+      for (let r = robot.row - robot.range; r <= robot.row + robot.range; r++) {
+        if (getTileState(c, r) === 'planted') {
+          const crop = getCrop(c, r);
+          if (crop && !crop.watered) {
+            setTileState(c, r, 'watered');
+            setCrop(c, r, { ...crop, watered: true });
+            report.watered++;
+          }
         }
       }
     }
@@ -102,6 +134,23 @@ export function runDailyAutomation(): AutomationReport {
     report.harvested.push({ cropType, count });
   }
   return report;
+}
+
+/**
+ * 自动播种：在指定格子种背包里最便宜的可用种子。
+ * 优先级 radish → tomato → corn → strawberry。成功消耗 1 颗种子，返回 true。
+ */
+function tryAutoSeed(col: number, row: number): boolean {
+  for (const ct of CROP_TYPES) {
+    const seedItem = CROP_DEFS[ct].seedItem as ItemType;
+    if (getItemCount(seedItem) > 0) {
+      addItem(seedItem, -1);
+      setTileState(col, row, 'planted');
+      setCrop(col, row, { cropType: ct, plantDay: getTime().day, watered: false });
+      return true;
+    }
+  }
+  return false;
 }
 
 /** 获取所有机器人条目（存档序列化用） */

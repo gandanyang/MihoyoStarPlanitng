@@ -2726,14 +2726,14 @@ export class MapScene extends Phaser.Scene {
   }
 
   /**
-   * 每日清晨自动化：扫描机器人范围内农田 → 浇水 / 收获
+   * 每日清晨自动化：扫描机器人范围内农田 → 浇水 / 收获 / 补种
    * 由 trySleep（timeNextDay 之后）调用；仅在有机器人时生效
    */
   private runRobotsDaily(): void {
     if (this.mapKey !== 'farm' || getRobotCount() === 0) return;
     const report = runDailyAutomation();
     const totalHarvest = report.harvested.reduce((s, h) => s + h.count, 0);
-    if (report.watered === 0 && totalHarvest === 0) return;
+    if (report.watered === 0 && totalHarvest === 0 && report.seeded === 0) return;
     // 工作反馈：机器人闪一下 + 浮字报告
     for (const [, c] of this.robotVisuals) {
       this.tweens.add({ targets: c, angle: { from: -8, to: 8 }, duration: 120, yoyo: true, repeat: 1 });
@@ -2741,9 +2741,13 @@ export class MapScene extends Phaser.Scene {
     const harvestDesc = report.harvested
       .map(h => `${CROP_DEFS[h.cropType].name}×${h.count}`)
       .join('、');
-    const msg = `🤖 今日农业任务完成：浇水 ${report.watered} 块，收获 ${harvestDesc || totalHarvest + ' 个作物'}。`;
+    const parts: string[] = [];
+    if (report.watered > 0) parts.push(`浇水 ${report.watered} 块`);
+    if (totalHarvest > 0) parts.push(`收获 ${harvestDesc || totalHarvest + ' 个作物'}`);
+    if (report.seeded > 0) parts.push(`补种 ${report.seeded} 块`);
+    const msg = `🤖 今日农业任务完成：${parts.join('，')}。`;
     this.showDialogueText(msg);
-    // 刷新农田视觉（浇水/收获改变了格子状态）
+    // 刷新农田视觉（浇水/收获/播种改变了格子状态）
     this.refreshFarmVisual();
     // 每日任务面板同步（收获进背包不影响面板，仅刷新 HUD）
     this.updateHUD();
