@@ -52,6 +52,7 @@ tmp/
 
 # 自动配音生成目录（Fish Audio TTS 试听/批量产物；正式定稿后选择性入库）
 public/assets/audio/generated/
+tools/voice_gen_log.txt
 
 # Capacitor/Android 构建产物
 android/app/build/

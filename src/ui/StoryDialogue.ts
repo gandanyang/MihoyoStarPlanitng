@@ -15,12 +15,16 @@
 
 import { DialogueLine } from '../systems/StorySystem';
 import { isMobileLayout } from '../config';
+import { VoiceBank } from '../audio/VoiceBank';
 
 /** 对话立绘映射（§8.5 方案 A）：说话人 → 立绘资源；无映射角色回退首字色块 */
 const PORTRAIT_MAP: Record<string, string> = {
   林澈: 'assets/portraits/linchen_ai.png',
-  夏雅: 'assets/portraits/xiya.png',
+  夏雅: 'assets/portraits/xiya_ai_avatar.png',
  村长: 'assets/portraits/elder_ai.png',
+  爷爷的笔记: 'assets/portraits/grandpa_ai.png',
+  爷爷: 'assets/portraits/grandpa_ai.png',
+  信: 'assets/portraits/grandpa_ai.png',
 };
 
 export class StoryDialogue {
@@ -300,6 +304,9 @@ export class StoryDialogue {
     this.textEl.textContent = '';
     this.typing = true;
     this.hintEl.style.opacity = '0';
+    // 台词语音：按 (speaker, text) 映射播放；找不到音频静默跳过，不阻塞对话；
+    // 选项行/旁白系统行在 find 内天然静默跳过
+    VoiceBank.play(line.speaker, line.text, !!line.inner);
     const text = line.text;
     let charIdx = 0;
     this.typeTimer = window.setInterval(() => {
@@ -418,5 +425,6 @@ export class StoryDialogue {
       this.typeTimer = null;
     }
     this.typing = false;
+    VoiceBank.stop();
   }
 }

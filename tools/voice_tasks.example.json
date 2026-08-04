@@ -1,0 +1,177 @@
+{
+  "_comment": "【复制本文件为 tools/voice_tasks.json 再编辑】本文件仅供示例，入库不入库；实际编辑的 voice_tasks.json 已在 .gitignore，避免 E/F 盘绝对路径污染同事环境。所有路径 Windows 下用双反斜杠 \\\\。== 双引擎说明 == 每条任务可选 \"engine\": \"voxcpm\"（本地离线推理，免费吃显卡）或 \"engine\": \"mimo\"（调用 F 盘 MiMo 服务，生成快，需先双击 start.bat）。批量模式下 CLI 传 --engine mimo 可强制所有任务走 mimo；传 auto 按任务 engine 字段。",
+  "defaults": {
+    "cfg": 2.0,
+    "steps": 10,
+    "enhance": true,
+    "voxcpm_root": "E:\\BINGdown\\VoxCPM",
+    "mimo_root": "F:\\MiMo-TTS-Win-v1.1.2\\MiMo-TTS-Win",
+    "mimo_port": 4000,
+    "speed": 1.0,
+    "user_message": "以自然的口语化语气朗读，不要播音腔",
+    "_engine_hint": "engine 可写在 defaults 里统一指定，也可每条任务单独写。可选值：voxcpm / mimo"
+  },
+  "tasks": [
+    {
+      "id": "linche_intro_v01",
+      "role_en": "linche",
+      "text": "大家好，我是林澈，今天刚回到归星村。五年没回来，麦田的味道还是和小时候一模一样。",
+      "ref_audio": "E:\\BINGdown\\VoxCPM\\examples\\林远.mp3",
+      "ref_text": "",
+      "cfg": 2.1,
+      "steps": 12,
+      "output": "public/audio/voice/linche/intro_v01.wav"
+    },
+    {
+      "id": "linche_homesick_v01",
+      "role_en": "linche",
+      "text": "城市的节奏太快了，快到我都忘了怎么慢慢呼吸。还是这里好，一抬头就能看见星星。",
+      "ref_audio": "E:\\BINGdown\\VoxCPM\\examples\\林远.mp3",
+      "ref_text": "",
+      "output": "public/audio/voice/linche/homesick_v01.wav"
+    },
+    {
+      "id": "xiya_greeting_v01",
+      "role_en": "xiya",
+      "text": "你回来啦，爷爷种的麦子又长高了呢。走，我带你去看看你以前最爱爬的那棵老树。",
+      "ref_audio": "E:\\BINGdown\\VoxCPM\\examples\\夏荷.MP3",
+      "ref_text": "",
+      "cfg": 1.8,
+      "output": "public/audio/voice/xiya/greeting_v01.wav"
+    },
+    {
+      "id": "xiya_tease_v01",
+      "role_en": "xiya",
+      "text": "哼，你还记得我呀。我还以为你在城里成了大人物，把我们这些乡下朋友都忘了呢。",
+      "ref_audio": "E:\\BINGdown\\VoxCPM\\examples\\夏荷.MP3",
+      "ref_text": "",
+      "output": "public/audio/voice/xiya/tease_v01.wav"
+    },
+    {
+      "id": "grandpa_wheat_v01",
+      "role_en": "grandpa",
+      "text": "小澈啊，麦子这东西和人一样，你给它一点阳光一点水，它就慢慢长起来了。急不得，急不得哦。",
+      "ref_audio": "E:\\BINGdown\\VoxCPM\\examples\\老爷爷1.MP3",
+      "ref_text": "",
+      "cfg": 2.3,
+      "steps": 14,
+      "output": "public/audio/voice/grandpa/wheat_v01.wav"
+    },
+    {
+      "id": "grandma_cook_v01",
+      "role_en": "grandma",
+      "text": "哟，我们小澈瘦啦。晚饭想吃啥？奶奶给你包韭菜鸡蛋饺子，就你小时候那口，啊？",
+      "ref_audio": "E:\\BINGdown\\VoxCPM\\examples\\老奶奶1.mp3",
+      "ref_text": "",
+      "cfg": 2.1,
+      "steps": 12,
+      "output": "public/audio/voice/grandma/cook_v01.wav"
+    },
+    {
+      "id": "girl_keli_like_v01",
+      "role_en": "xiaoli",
+      "text": "哥哥哥哥！你从城里回来呀？城里有烤红薯吗？有蹦蹦床吗？有会飞的气球吗？",
+      "ref_audio": "E:\\BINGdown\\VoxCPM\\examples\\萝莉1.MP3",
+      "ref_text": "",
+      "cfg": 1.9,
+      "steps": 12,
+      "output": "public/audio/voice/xiaoli/curious_v01.wav"
+    },
+    {
+      "id": "boy_xiaogang_v01",
+      "role_en": "xiaogang",
+      "text": "林澈哥，听说你以前读书很厉害？教教我这道题怎么做呗，不然我娘要打我屁股啦。",
+      "ref_audio": "E:\\BINGdown\\VoxCPM\\examples\\小男孩5.mp3",
+      "ref_text": "",
+      "output": "public/audio/voice/xiaogang/homework_v01.wav"
+    },
+    {
+      "id": "narrator_intro_v01",
+      "role_en": "narrator",
+      "text": "2026 年的夏天，经历了城市里的一番辗转，林澈终于回到了阔别五年的故乡——归星村。这是一个被麦田环抱的小地方，也是他心中最后一片柔软的土地。",
+      "ref_audio": "E:\\BINGdown\\VoxCPM\\examples\\旁白.mp3",
+      "ref_text": "",
+      "cfg": 2.0,
+      "output": "public/audio/voice/narrator/intro_v01.wav"
+    },
+    {
+      "id": "system_save_v01",
+      "role_en": "system",
+      "text": "游戏已保存。进度：序章·归乡的列车。",
+      "ref_audio": "E:\\BINGdown\\VoxCPM\\examples\\系统.wav",
+      "ref_text": "",
+      "cfg": 2.1,
+      "steps": 10,
+      "output": "public/audio/voice/system/save_v01.wav"
+    },
+    {
+      "id": "mayor_lq_v01",
+      "role_en": "elder",
+      "text": "小澈回来了就好，多住几天嘛。归星村这几年变化大，但老理儿没变——有朋友来，酒是不会少的。",
+      "ref_audio": "E:\\BINGdown\\VoxCPM\\examples\\老大爷1.mp3",
+      "ref_text": "",
+      "cfg": 2.2,
+      "steps": 12,
+      "output": "public/audio/voice/elder/welcome_v01.wav"
+    },
+    {
+      "id": "shopkeeper_v01",
+      "role_en": "shopkeeper",
+      "text": "林澈啊，要点啥？种子、化肥、锄头柄都有。都是老熟人，给你打九折！",
+      "ref_audio": "E:\\BINGdown\\VoxCPM\\examples\\老人6.mp3",
+      "ref_text": "",
+      "output": "public/audio/voice/shopkeeper/greeting_v01.wav"
+    },
+    {
+      "_comment": "===== 以下为 MiMo-TTS 引擎示例：需先启动 F:\\MiMo-TTS-Win-v1.1.2\\MiMo-TTS-Win\\start.bat，端口 4000 =====",
+      "id": "linche_intro_mimo_v01",
+      "role_en": "linche",
+      "engine": "mimo",
+      "text": "大家好，我是林澈，今天刚回到归星村。五年没回来，麦田的味道还是和小时候一模一样。",
+      "ref_audio": "E:\\BINGdown\\VoxCPM\\examples\\林远.mp3",
+      "speed": 1.05,
+      "user_message": "青年男声，语气放松，带一点回到家乡的怀念感",
+      "output": "public/audio/voice/linche/intro_mimo_v01.mp3"
+    },
+    {
+      "id": "xiya_tease_mimo_v01",
+      "role_en": "xiya",
+      "engine": "mimo",
+      "text": "哼，你还记得我呀。我还以为你在城里成了大人物，把我们这些乡下朋友都忘了呢。",
+      "ref_audio": "E:\\BINGdown\\VoxCPM\\examples\\夏荷.MP3",
+      "speed": 1.08,
+      "user_message": "年轻女孩的声音，带一点撒娇和嗔怪的语气，语气明快",
+      "output": "public/audio/voice/xiya/tease_mimo_v01.mp3"
+    },
+    {
+      "id": "grandpa_wheat_mimo_v01",
+      "role_en": "grandpa",
+      "engine": "mimo",
+      "text": "小澈啊，麦子这东西和人一样，你给它一点阳光一点水，它就慢慢长起来了。急不得，急不得哦。",
+      "ref_audio": "E:\\BINGdown\\VoxCPM\\examples\\老爷爷1.MP3",
+      "speed": 0.95,
+      "user_message": "老年男性，声音沉稳缓慢，语气温和有耐心",
+      "output": "public/audio/voice/grandpa/wheat_mimo_v01.mp3"
+    },
+    {
+      "_comment": "===== 混合引擎示例：同样一条文本，可以同时用 voxcpm + mimo 各生成一条方便对比音质 =====",
+      "id": "system_save_voxcpm_compare",
+      "role_en": "system",
+      "engine": "voxcpm",
+      "text": "游戏已保存。进度：序章·归乡的列车。",
+      "ref_audio": "E:\\BINGdown\\VoxCPM\\examples\\系统.wav",
+      "cfg": 2.1,
+      "output": "public/audio/voice/system/save_voxcpm.wav"
+    },
+    {
+      "id": "system_save_mimo_compare",
+      "role_en": "system",
+      "engine": "mimo",
+      "text": "游戏已保存。进度：序章·归乡的列车。",
+      "ref_audio": "E:\\BINGdown\\VoxCPM\\examples\\系统.wav",
+      "speed": 1.0,
+      "user_message": "中性系统提示音，清晰平稳，无感情色彩",
+      "output": "public/audio/voice/system/save_mimo.mp3"
+    }
+  ]
+}
