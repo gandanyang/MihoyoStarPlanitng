@@ -192,12 +192,25 @@ async function run() {
     return (s && s.dialogueText && s.dialogueText.text) || '';
   });
   let hint = '';
-  for (let attempt = 0; attempt < 2 && !hint.includes('晚上来坐坐'); attempt++) {
+  for (let attempt = 0; attempt < 3 && !hint.includes('晚上来坐坐'); attempt++) {
     await page.keyboard.press('KeyE');
     const tH = Date.now();
-    while (Date.now() - tH < 1800 && !hint.includes('晚上来坐坐')) {
-      await sleep(200);
+    while (Date.now() - tH < 2000 && !hint.includes('晚上来坐坐')) {
+      await sleep(150);
       hint = await readHint();
+    }
+    if (!hint.includes('晚上来坐坐')) {
+      const dbg = await page.evaluate(() => {
+        const s = window.__game?.scene.getScenes(true)[0];
+        return {
+          mapKey: s?.mapKey ?? s?.scene?.key ?? 'none',
+          playerX: Math.round(s?.player?.x ?? -1), playerY: Math.round(s?.player?.y ?? -1),
+          dt: s?.dialogueText ? (s.dialogueText.text || '').slice(0, 40) : null,
+          teaAsked: s?.sideElderTeaAsked,
+          starDone: s?.sideElderStarDone,
+        };
+      });
+      console.log(`  [B2 debug] attempt=${attempt} ${JSON.stringify(dbg)}`);
     }
   }
   check('B2 白天仅提示', hint.includes('晚上来坐坐'), `hint=${hint.slice(0, 30)}`);

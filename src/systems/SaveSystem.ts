@@ -38,6 +38,7 @@ import { getAutomationSave, restoreAutomation, type RobotData } from './Automati
 import { getStoryStep, setStoryStep, isCh1TownIntroDone, markCh1TownIntroDone, STORY_STEPS, type StoryStep } from '../systems/StorySystem';
 import { getQuestState, setQuestState, type QuestState } from '../systems/QuestSystem';
 import { getDailyQuestSaveData, restoreDailyQuests, type DailyQuestSaveData } from '../systems/DailyQuestSystem';
+import { getGameEventSaveData, restoreGameEventSaveData, type GameEventSaveData } from './EventManager';
 import { MapScene, setPendingMapFlags } from '../scenes/MapScene';
 import type { MapSceneFlags } from '../scenes/MapScene';
 
@@ -96,6 +97,8 @@ export interface SaveData {
   mapFlags?: MapSceneFlags;
   /** 归星录·相簿：已解锁照片 ID（可选，旧档无此字段视为空，v0.1） */
   album?: string[];
+  /** 一次性事件状态（可选，旧档无此字段视为空；统一"只触发一次"机制，2026-08-06） */
+  gameState?: GameEventSaveData;
 }
 
 /** 上一次加载时遇到的不匹配版本号（用于 UI 提示） */
@@ -158,6 +161,7 @@ export function save(player: {
     },
     album: getAlbumSaveData(),
     mapFlags: MapScene.getCurrentFlags() ?? undefined,
+    gameState: getGameEventSaveData(),
   };
 
   try {
@@ -272,6 +276,12 @@ function sanitize(data: SaveData): void {
       if (r && typeof r.row === 'number' && Number.isFinite(r.row)) r.row = Math.max(0, Math.floor(r.row));
     }
   }
+  // 一次性事件状态：缺失/非法 → 空对象（旧档兼容，不触发任何历史事件）
+  if (!data.gameState || typeof data.gameState !== 'object') {
+    data.gameState = { triggeredEvents: {} };
+  } else if (!data.gameState.triggeredEvents || typeof data.gameState.triggeredEvents !== 'object') {
+    data.gameState.triggeredEvents = {};
+  }
 }
 
 /**
@@ -313,6 +323,8 @@ export function apply(data: SaveData): void {
   restoreLockedItems(data.player.lockedItems ?? []);
   // 归星录·相簿：恢复已解锁照片（旧档无 album 字段默认空）
   restoreAlbumSaveData(data.album ?? []);
+  // 一次性事件状态：恢复已触发事件（旧档无 gameState 字段默认空）
+  restoreGameEventSaveData(data.gameState);
   // 玩家位置（由 MapScene 读取后设置 spawn）
 }
 

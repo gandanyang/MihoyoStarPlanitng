@@ -16,6 +16,8 @@ import { initAndroidBackHandler, initPcEscapeHandler } from './systems/AndroidBa
 import { addItem } from './data/Inventory';
 import { getRobotCount, runDailyAutomation } from './systems/AutomationSystem';
 import { setTileState as farmSetTile, setCrop as farmSetCrop, getTileState as farmGetTile } from './data/FarmState';
+import { unlockPhoto as albumUnlock, PHOTO_DATABASE } from './data/PhotoAlbum';
+import { triggerOnce, hasTriggered, markTriggered, getGameEventSaveData, type GameEventSaveData } from './systems/EventManager';
 import { isTouchDevice } from './config';
 
 // 桌面端标记：禁用竖屏提示层（避免开发者工具窄窗口误触发）
@@ -123,7 +125,15 @@ syncGameContainer();
 //   window.debug.getStoryStep()     获取当前教程步骤
 //   window.debug.getQuestState()     获取任务状态
 //   window.debug.setQuestState(s)    设置任务状态
-(window as unknown as { debug: { nextDay: () => number; setTime: (h: number, m: number) => void; advanceStory: () => void; setStoryStep: (s: string) => void; getStoryStep: () => string; getQuestState: () => string; setQuestState: (s: string) => void; getObservatoryComplete: () => boolean; getTimeStr: () => string; giveRobot: (n?: number) => void; robotCount: () => number; giveItem: (item: string, count: number) => void; farm: { setTileState: (col: number, row: number, state: string) => void; setCrop: (col: number, row: number, crop: { cropType: string; plantDay: number; watered: boolean } | undefined) => void; getTileState: (col: number, row: number) => string } } }).debug = {
+(window as unknown as { debug: { nextDay: () => number; setTime: (h: number, m: number) => void; advanceStory: () => void; setStoryStep: (s: string) => void; getStoryStep: () => string; getQuestState: () => string; setQuestState: (s: string) => void; getObservatoryComplete: () => boolean; getTimeStr: () => string; giveRobot: (n?: number) => void; robotCount: () => number; giveItem: (item: string, count: number) => void; farm: { setTileState: (col: number, row: number, state: string) => void; setCrop: (col: number, row: number, crop: { cropType: string; plantDay: number; watered: boolean } | undefined) => void; getTileState: (col: number, row: number) => string }; unlockPhoto: (id: string) => void; getPhotoTotal: () => number; events: { triggerOnce: (id: string, fn: () => void) => boolean; hasTriggered: (id: string) => boolean; markTriggered: (id: string) => void; getSaveData: () => GameEventSaveData } } }).debug = {
+  events: {
+    triggerOnce,
+    hasTriggered,
+    markTriggered,
+    getSaveData: getGameEventSaveData,
+  },
+  unlockPhoto: albumUnlock,
+  getPhotoTotal: () => PHOTO_DATABASE.length,
   nextDay: () => {
     // Phase 4 起统一走 TimeSystem.nextDay，它内调 FarmState.advanceDay
     const newDay = timeNextDay();
@@ -215,6 +225,9 @@ syncGameContainer();
       return farmGetTile(col, row);
     },
   },
+  // 相簿 debug 挂钩（指向游戏真实实例，供探针/测试驱动解锁，绕过 dev 双模块问题——同 dailyQuest 模式）
+  unlockPhoto: (id: string) => albumUnlock(id),
+  getPhotoTotal: () => PHOTO_DATABASE.length,
 };
 
 // 每日任务 debug 挂载（指向游戏真实实例，供自动化测试驱动红点生命周期，绕过 dev 双模块问题）
