@@ -47,6 +47,20 @@ export const PHOTO_DATABASE: Photo[] = [
     description: '这个地方，适合冒险结束以后坐一会。风会把烦恼带走。',
     source: '完成「后山老树」',
   },
+  {
+    id: 'xiya_garden',
+    title: '有人照顾的院子',
+    image: 'assets/photos/album/xiya_garden.webp',
+    description: '小时候这里总有人坐在藤架下面喝茶。后来院子慢慢荒了。但现在，好像又有人回来了。',
+    source: '完成夏雅「院子有人照顾」',
+  },
+  {
+    id: 'elder_star',
+    title: '青禾镇的星空',
+    image: 'assets/photos/album/elder_star.webp',
+    description: '很多人觉得这里什么都没有。但有些东西，只有慢下来才看得到。',
+    source: '完成村长「看星星的地方」',
+  },
 ];
 
 /** 已解锁照片 ID（模块级 Set，存档恢复后重新填充） */
