@@ -294,6 +294,17 @@ export const ELDER_WHY_FARM_DIALOGUE: DialogueLine[] = [
   { speaker: '村长', color: COLORS.elder, text: '你知道它什么时候种下去，什么时候长出来，也知道这一口是怎么来的。' },
 ];
 
+/** 夏雅「为什么小事会改变这里」：花园恢复见证对白（GARDEN_RESTORED_XIYA_DIALOGUE）后追加
+ *  制作人 2026-08-06 定稿第一版（价值观但不演讲；不否定大事，只肯定小事价值；与玩家行为直接对应） */
+export const XIYA_SMALL_THINGS_DIALOGUE: DialogueLine[] = [
+  { speaker: '夏雅', color: COLORS.xiya, text: '你有没有发现，最近青禾镇好像比以前热闹了一点？' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '其实也没发生什么特别大的事情。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '就是有人把院子收拾了一下，有人种了些花，田里的菜也慢慢长起来了。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '以前我总觉得，要让这里变回来，得做一件很厉害的事情。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '后来才发现，好像不是这样。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '这些小事情多起来了，这里也就慢慢有了人生活的感觉。' },
+];
+
 // ============ 支线试点（2026-08-06 制作人拍板方案 A） ============
 // 夏雅「院子有人照顾」：花园恢复后，旧藤架修复事件（交付木材×3 → 记忆卡收尾）
 /** 支线入口：夏雅请林澈一起修旧藤架 */

@@ -83,7 +83,7 @@ import {
   WATER_CROPS_DIALOGUE, EVENING_DIALOGUE, TOWN_INTRO_DIALOGUE,
   FOREST_SHARD_DIALOGUE, DEMO_ENDING_DIALOGUE, DEMO_ENDING_BRANCHES, DEMO_ENDING_FINALE,
   WOODCUT_TIP_DIALOGUE, MINE_TIP_DIALOGUE, XIYA_DAWN_DIALOGUE, XIYA_EVENING_DIALOGUE, XIYA_EVENING_OBS_DIALOGUE, getGrandpaNote,
-  GARDEN_RESTORED_XIYA_DIALOGUE,
+  GARDEN_RESTORED_XIYA_DIALOGUE, XIYA_SMALL_THINGS_DIALOGUE,
   OLD_HOUSE_RESTORED_DIALOGUE, FOREST_ROAD_RESTORED_DIALOGUE,
   XIYA_GARDEN_TRELLIS_DIALOGUE, XIYA_GARDEN_TRELLIS_NEED_DIALOGUE, XIYA_GARDEN_TRELLIS_DONE_DIALOGUE,
   ELDER_TEA_QUEST_DIALOGUE, ELDER_STAR_SITE_DIALOGUE,
@@ -4600,7 +4600,10 @@ export class MapScene extends Phaser.Scene {
     if (this.xiyaSprite) { this.xiyaSprite.setVisible(true); }
     if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
     this.storyDialogue.play(GARDEN_RESTORED_XIYA_DIALOGUE, () => {
-      this.updateHUD();
+      // T2 改动 2：花园见证后连播夏雅「为什么小事会改变这里」（制作人 2026-08-06 定稿）
+      this.storyDialogue!.play(XIYA_SMALL_THINGS_DIALOGUE, () => {
+        this.updateHUD();
+      });
     });
     return true;
   }
