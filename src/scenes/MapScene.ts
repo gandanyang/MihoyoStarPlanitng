@@ -73,6 +73,8 @@ import { openWaitPanel, closeWaitPanel, isWaitPanelOpen } from '../ui/WaitPanel'
 import { StoryDialogue } from '../ui/StoryDialogue';
 import { EndingPanel } from '../ui/EndingPanel';
 import { PhotoAlbumPanel } from '../ui/PhotoAlbumPanel';
+import { ResidentBoardPanel } from '../ui/ResidentBoardPanel';
+import { getRequestById } from '../systems/ResidentRequestSystem';
 import {
   getStoryStep, setStoryStep, advanceStory, isTutorialDone,
   isCh1TownIntroDone, markCh1TownIntroDone,
@@ -239,6 +241,10 @@ export class MapScene extends Phaser.Scene {
   private townWindows: Phaser.GameObjects.Ellipse[] = [];
   /** 青禾镇生活化升级：装饰/小动物/晨雾/萤火虫计数（验收探针读取，纯统计无逻辑） */
   public townLife = { decor: 0, wildlife: 0, fog: 0, fireflies: 0 };
+  // 2026-08-07 前景遮挡层计数（并入 decor）；猫事件反馈：靠近过的猫集合（幂等，防止反复触发）
+  private townCatReacted = new Set<string>();
+  /** 镇上的猫（靠近触发尾巴摆动事件，update 轮询） */
+  private townCats: Array<Phaser.GameObjects.Container & { _catKey: string }> = [];
   // 森林碎片对话已播放（首次交互先播对话，结束后自动采集）
   private shardDialoguePlayed = false;
   // 睡觉判定格集合：house 场景为真实床铺（Ground gid 9）；farm 场景为木屋地板（Walls gid 6）
@@ -270,8 +276,17 @@ export class MapScene extends Phaser.Scene {
   private tapFlashUntil = 0;
   // 剧情对话 UI
   private storyDialogue: StoryDialogue | null = null;
+  // FEATURE-038 居民需求板（小镇广场右侧信息板交互物 + DOM 面板）
+  private residentBoardMark: Phaser.GameObjects.Container | null = null;
+  private residentBoardPanel: ResidentBoardPanel | null = null;
   // 教程：大门墙壁（物理矩形，钥匙使用后销毁）
   private gateWall: Phaser.GameObjects.Rectangle | null = null;
+  // gate 美术升级：叠加在大门物理墙上的像素风双扇木门视觉（随 gateWall 一起销毁）
+  private gateDoorVisual: Phaser.GameObjects.Container | null = null;
+  // gate 美术升级：夜间门柱暖光（复用 town 窗灯模式）
+  private gateLampGlows: Phaser.GameObjects.Ellipse[] = [];
+  /** gate 美术升级：生活杂物/小动物/门灯计数（验收探针读取，纯统计无逻辑） */
+  public gateLife = { decor: 0, wildlife: 0, lamp: 0 };
   // 教程：夏雅精灵
   private xiyaSprite: Phaser.GameObjects.Sprite | null = null;
   // v0.5.3 剧情密度 E1：清晨偶遇的夏雅（教程完成后，清晨 06-08 时在农场出现）
@@ -477,6 +492,8 @@ export class MapScene extends Phaser.Scene {
     // 背包/任务面板跨场景清理（防止残留打开态）
     this.backpackPanel?.close();
     this.questPanel?.close();
+    // FEATURE-038 需求板跨场景清理（防止残留打开态）
+    this.residentBoardPanel?.close();
     // BUG-041：场景切换时若对话未结束（中途离开），reset 不触发 onComplete → vanished 未设置
     // 在 reset 前检查：若神秘少女在当前场景且精灵可见，手动触发 setVanished
     if (this.storyDialogue?.isOpen()) {
@@ -790,6 +807,13 @@ export class MapScene extends Phaser.Scene {
       this.setupTownAmbience();
       // T3 小梅「小梅花」：小镇花圃种花互动点（一次性，读档恢复已开花视觉）
       this.setupGardenerPlum();
+      // FEATURE-038 居民需求板（小镇广场右侧信息板交互物）
+      this.setupResidentBoard();
+    }
+
+    // gate 庄园大门美术升级（生活杂物/小动物/夜间门灯，零资源纯代码；教程逻辑零触碰）
+    if (this.mapKey === 'gate') {
+      this.setupGateDecorations();
     }
 
     // M1-3 爷爷旧花园恢复点（玩家清理荒废角落 → 环境变化 + 存档持久化）
@@ -998,6 +1022,15 @@ export class MapScene extends Phaser.Scene {
       return;
     }
 
+    // FEATURE-038 需求板打开：冻结玩家移动/交互，只响应关闭（E 或 Esc）
+    if (this.residentBoardPanel?.isOpen()) {
+      this.player.setVelocity(0, 0);
+      if (this.inputManager.consumeAction()) {
+        this.residentBoardPanel.close();
+      }
+      return;
+    }
+
     // 商店打开：冻结时间/玩家移动/NPC/交互，只响应关闭
     // 关闭方式：E/空格/回车（consumeAction）或 Esc（ShopPanel DOM 监听）
     if (this.shopPanel.isOpen()) {
@@ -1130,6 +1163,28 @@ export class MapScene extends Phaser.Scene {
           '这片旧花圃看起来可以清理一下……靠近按 [E] 试试',
           '这片旧花圃看起来可以清理一下……靠近点「交互」试试'
         ));
+      }
+    }
+
+    // 2026-08-07 GPT 诊断落地 P1-3：猫靠近反馈（一次性，尾巴摆动 + 起身）
+    if (this.mapKey === 'town' && this.townCats.length > 0) {
+      for (const cat of this.townCats) {
+        if (this.townCatReacted.has(cat._catKey)) continue;
+        const dx = this.player.x - cat.x;
+        const dy = this.player.y - cat.y;
+        if (dx * dx + dy * dy < 42 * 42) {
+          this.townCatReacted.add(cat._catKey);
+          // 尾巴快速摆动两下 + 轻微起身（tween 链，幂等）
+          this.tweens.add({
+            targets: cat,
+            angle: { from: -2, to: 2 },
+            duration: 120, yoyo: true, repeat: 3, ease: 'Sine.InOut',
+          });
+          this.tweens.add({
+            targets: cat, y: cat.y - 2,
+            duration: 180, yoyo: true, repeat: 1, ease: 'Sine.InOut',
+          });
+        }
       }
     }
 
@@ -1313,6 +1368,93 @@ export class MapScene extends Phaser.Scene {
       this.scene.start('elder_house', { spawn: { x: 5 * TILE_SIZE, y: 8 * TILE_SIZE } });
     });
     return true;
+  }
+
+  /**
+   * FEATURE-038 居民需求板：小镇广场右侧信息板交互物。
+   * 位置 (22,8)：已验证 Walls 层 gid=0 可走，距所有 NPC 站位 >48px，无交互冲突。
+   * 视觉：木牌 + 📌 顶钉 + 下方「需求板」标签 + 呼吸动画（参照 setupElderHouseHint 模式）。
+   */
+  private setupResidentBoard(): void {
+    if (this.mapKey !== 'town') return;
+    const T = TILE_SIZE;
+    const bx = 22 * T + T / 2;
+    const by = 8 * T + T / 2;
+    const board = this.add.container(bx, by).setDepth(4);
+
+    // 木牌主体（深棕木板 + 浅色板面 + 顶钉 + 两条腿）
+    const g = this.add.graphics();
+    g.fillStyle(0x8a6a45, 1);
+    g.fillRoundedRect(-11, -8, 22, 15, 2);
+    g.fillStyle(0xa8835a, 1);
+    g.fillRect(-9, -6, 18, 11);
+    g.fillStyle(0x6e5633, 1);
+    g.fillRect(-2, -10, 4, 2);
+    g.fillRect(-8, 7, 3, 5);
+    g.fillRect(5, 7, 3, 5);
+    board.add(g);
+
+    // 顶钉（呼吸动画吸引注意）
+    const pin = this.add.text(0, -12, '📌', { fontSize: '12px' }).setOrigin(0.5);
+    board.add(pin);
+    this.tweens.add({
+      targets: pin,
+      alpha: { from: 0.7, to: 1 },
+      duration: 1000,
+      yoyo: true,
+      repeat: -1,
+    });
+
+    // 「需求板」标签
+    const label = this.add.text(0, 13, '需求板', {
+      fontSize: '10px',
+      color: '#e8d8a8',
+      stroke: '#000000',
+      strokeThickness: 2,
+    }).setOrigin(0.5);
+    board.add(label);
+
+    this.residentBoardMark = board;
+  }
+
+  /**
+   * 与居民需求板交互（靠近按 E 打开面板）
+   */
+  private tryResidentBoardInteract(): boolean {
+    if (!this.residentBoardMark || !this.residentBoardMark.visible) return false;
+    const dx = this.player.x - this.residentBoardMark.x;
+    const dy = this.player.y - this.residentBoardMark.y;
+    if (dx * dx + dy * dy > 48 * 48) return false;
+
+    if (!this.residentBoardPanel) {
+      this.residentBoardPanel = new ResidentBoardPanel((reqId) => this.onResidentDeliver(reqId));
+    }
+    this.inputManager.clearAction();
+    this.residentBoardPanel.open();
+    return true;
+  }
+
+  /**
+   * 需求交付成功回调（面板内点「交付」→ 扣资源并标记完成后调用）：
+   * 触发归星记录 help_resident 标签 → 播放 NPC 反馈对白 → 存档。
+   */
+  private onResidentDeliver(reqId: string): void {
+    const req = getRequestById(reqId);
+    if (!req) return;
+    // 交付成功：关闭需求板，再播反馈对白（面板淡出与对白淡入可并行）
+    this.residentBoardPanel?.close();
+    triggerTag('help_resident');
+    if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+    this.storyDialogue.play(
+      [{ speaker: req.npcName, color: req.npcColor, text: req.rewardDialogue }],
+      () => {
+        save({
+          x: this.player.x, y: this.player.y,
+          scene: this.mapKey, facing: this.player.facing,
+          dailyQuest: getDailyQuestSaveData(),
+        });
+      },
+    );
   }
 
   /**
@@ -2223,17 +2365,18 @@ export class MapScene extends Phaser.Scene {
     const t = getTime();
 
     // ---- 1) 生活杂物层（深度 3，位于角色之下）----
+    // 2026-08-07 GPT 诊断落地 P0-1：木柴/晾衣架/水桶为核心大锚点，放大 1.5~2x 提升视觉权重
     const woodpile = (c: number, r: number): void => {
       const [x, y] = px(c, r);
       const g = this.add.graphics();
       g.fillStyle(0x8a6a45, 1);
-      g.fillRoundedRect(x - 6, y + 1, 12, 3, 1);
-      g.fillRoundedRect(x - 5, y - 2, 10, 3, 1);
-      g.fillRoundedRect(x - 4, y - 5, 8, 3, 1);
+      g.fillRoundedRect(x - 9, y + 2, 18, 5, 1.5);
+      g.fillRoundedRect(x - 7, y - 3, 15, 5, 1.5);
+      g.fillRoundedRect(x - 5, y - 8, 12, 5, 1.5);
       g.fillStyle(0xa8835a, 1);
-      g.fillCircle(x - 3, y - 5, 1.3);
-      g.fillCircle(x + 2, y - 2, 1.3);
-      g.fillCircle(x + 4, y + 1, 1.3);
+      g.fillCircle(x - 4, y - 7, 2);
+      g.fillCircle(x + 3, y - 3, 2);
+      g.fillCircle(x + 6, y + 2, 2);
       g.setDepth(3);
       this.townLife.decor++;
     };
@@ -2256,11 +2399,11 @@ export class MapScene extends Phaser.Scene {
       const [x, y] = px(c, r);
       const g = this.add.graphics();
       g.fillStyle(0x5a6a78, 1);
-      g.fillRect(x - 3, y - 2, 6, 5);
+      g.fillRect(x - 4, y - 3, 8, 7);
       g.lineStyle(1, 0x8a9aa8, 1);
-      g.strokeRect(x - 3, y - 2, 6, 5);
-      g.lineBetween(x - 3, y - 2, x, y - 6);
-      g.lineBetween(x + 3, y - 2, x, y - 6);
+      g.strokeRect(x - 4, y - 3, 8, 7);
+      g.lineBetween(x - 4, y - 3, x, y - 8);
+      g.lineBetween(x + 4, y - 3, x, y - 8);
       g.setDepth(3);
       this.townLife.decor++;
     };
@@ -2295,14 +2438,16 @@ export class MapScene extends Phaser.Scene {
       const [x, y] = px(c, r);
       const g = this.add.graphics();
       g.fillStyle(0x6e5633, 1);
-      g.fillRect(x - T - 1, y - 6, 2, 8);
-      g.fillRect(x + T - 1, y - 6, 2, 8);
-      g.lineStyle(1, 0x555555, 1);
-      g.lineBetween(x - T, y - 5, x + T, y - 4);
+      g.fillRect(x - T - 1, y - 9, 3, 12);
+      g.fillRect(x + T - 1, y - 9, 3, 12);
+      g.lineStyle(1.5, 0x555555, 1);
+      g.lineBetween(x - T, y - 7, x + T, y - 6);
       g.fillStyle(0xcfe0e8, 1);
-      g.fillRect(x - T + 4, y - 6, 6, 5);
+      g.fillRect(x - T + 5, y - 9, 8, 7);
       g.fillStyle(0xe8a0a0, 1);
-      g.fillRect(x + T - 8, y - 5, 5, 6);
+      g.fillRect(x - 6, y - 8, 6, 7);
+      g.fillStyle(0xd0e8a0, 1);
+      g.fillRect(x + T - 10, y - 7, 5, 8);
       g.setDepth(3);
       this.townLife.decor++;
     };
@@ -2360,8 +2505,9 @@ export class MapScene extends Phaser.Scene {
     grass(1, 10, 0x4a8a30); grass(11, 9, 0x5a9a3a); grass(17, 9, 0x4a8a30);
     grass(7, 18, 0x5a9a3a); grass(13, 19, 0x4a8a30); grass(25, 18, 0x5a9a3a); // 草丛 ×6
 
-    // ---- 2) 小动物：2 只小鸟固定小范围活动（深度 4，与角色同层）----
-    const bird = (x: number, y: number, seed: number): void => {
+    // ---- 2) 小动物（2026-08-07 GPT 诊断落地 P1-3：一次性事件 > 持续低频动画）----
+    // 鸟：从树冠飞起 → 落到屋顶（一次性飞落，进图即发生，比无限 hover 更易被注意到）
+    const birdFly = (fromX: number, fromY: number, toX: number, toY: number, delay: number): void => {
       const b = this.add.graphics();
       b.fillStyle(0x5a6a78, 1);
       b.fillEllipse(0, 0, 8, 6);
@@ -2373,15 +2519,82 @@ export class MapScene extends Phaser.Scene {
       b.fillCircle(-3.5, -0.5, 0.6);
       b.fillStyle(0x6e7a88, 1);
       b.fillEllipse(2, 1, 5, 3);
-      const c = this.add.container(x, y, [b]);
+      const c = this.add.container(fromX, fromY, [b]);
       c.setDepth(4);
-      this.tweens.add({ targets: b, scaleY: { from: 1, to: 0.7 }, duration: 140, yoyo: true, repeat: -1 });
-      this.tweens.add({ targets: c, y: y - 5, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut', delay: seed });
-      this.tweens.add({ targets: c, x: x + 6, duration: 2400, yoyo: true, repeat: -1, ease: 'Sine.InOut', delay: seed + 350 });
+      // 原地扑翼 0.8s（起飞前），再弧线飞落到屋顶，落定后低频扑翼
+      this.tweens.add({ targets: b, scaleY: { from: 1, to: 0.6 }, duration: 130, yoyo: true, repeat: -1, delay });
+      this.tweens.add({
+        targets: c, x: toX, y: toY,
+        duration: 1600, delay: delay + 800, ease: 'Quad.easeOut',
+        onComplete: () => {
+          // 落定后低频扑翼（不再移动，成为"栖息"状态）
+          this.tweens.add({ targets: b, scaleY: { from: 1, to: 0.7 }, duration: 200, yoyo: true, repeat: -1, delay: 1200 });
+        },
+      });
       this.townLife.wildlife++;
     };
-    bird(12 * T + 8, 6 * T + 8, 0);      // 顶部行道树旁
-    bird(16 * T + 8, 16 * T + 8, 600);   // 下方广场南侧空地
+    // 顶部树 → 左上屋顶；广场南树 → 左下屋顶
+    birdFly(12 * T + 8, 3 * T + 8, 6 * T + 8, 2.5 * T + 8, 0);
+    birdFly(16 * T + 8, 3 * T + 8, 22 * T + 8, 2.5 * T + 8, 900);
+
+    // 猫：屋角静坐，玩家靠近（≤40px）触发尾巴摆动 + 起身（一次性事件，幂等）
+    const cat = (c: number, r: number, key: string): void => {
+      const [x, y] = px(c, r);
+      const g = this.add.graphics();
+      // 身体（坐姿）
+      g.fillStyle(0x6a5a48, 1);
+      g.fillEllipse(0, 2, 10, 8);
+      // 头
+      g.fillCircle(0, -4, 4.5);
+      // 耳
+      g.fillTriangle(-4, -8, -3, -11, -1, -8);
+      g.fillTriangle(4, -8, 3, -11, 1, -8);
+      // 眼（两点）
+      g.fillStyle(0xd8e8c0, 1);
+      g.fillCircle(-1.5, -4.5, 0.9);
+      g.fillCircle(1.5, -4.5, 0.9);
+      // 尾（垂在身侧，可摆）
+      g.lineStyle(1.5, 0x6a5a48, 1);
+      g.lineBetween(6, 4, 9, 0);
+      const c2 = this.add.container(x, y, [g]);
+      c2.setDepth(4);
+      this.townLife.wildlife++;
+      // 玩家靠近检测（update 中轮询，见 update()）
+      (c2 as unknown as { _catKey: string })._catKey = key;
+      this.townCats.push(c2 as unknown as Phaser.GameObjects.Container & { _catKey: string });
+    };
+    cat(7, 6, 'c1');   // 左上屋墙角
+    cat(25, 14, 'c2'); // 右下屋墙角
+
+    // ---- 2.5) 前景遮挡层（2026-08-07 GPT 诊断落地 P0-2）----
+    // 前景草丛/杂物盖住角色脚部，制造"被环境包围"的遮挡感（depth 6 > 角色 5）。
+    // 这是像素游戏"高级感"的主要来源：不是素材多，而是遮挡关系。
+    const fgGrass = (c: number, r: number, tone: number): void => {
+      const [x, y] = px(c, r);
+      const g = this.add.graphics();
+      for (let i = -3; i <= 3; i += 2) {
+        g.lineStyle(2, tone, 1);
+        g.lineBetween(x + i - 1, y + 3, x + i, y - 1);
+        g.lineBetween(x + i + 1, y + 3, x + i, y - 1);
+      }
+      g.setDepth(6); // 前景：盖住角色
+      this.townLife.decor++;
+    };
+    const fgRock = (c: number, r: number, s: number): void => {
+      const [x, y] = px(c, r);
+      const g = this.add.graphics();
+      g.fillStyle(0x8a8a92, 1);
+      g.fillCircle(x, y + 2, s);
+      g.fillStyle(0xa8a8b0, 0.6);
+      g.fillCircle(x - s * 0.3, y + 1, s * 0.4);
+      g.setDepth(6);
+      this.townLife.decor++;
+    };
+    // 放置：道路两侧 + 出口附近的遮挡（避开 NPC 站位与交互点）
+    fgGrass(3, 12, 0x3a7a28); fgGrass(20, 12, 0x4a8a30);
+    fgGrass(10, 13, 0x3a7a28); fgGrass(24, 6, 0x4a8a30);
+    fgGrass(1, 11, 0x3a7a28); fgGrass(27, 15, 0x4a8a30); // 出口附近
+    fgRock(4, 11, 2.5); fgRock(25, 12, 2);
 
     // ---- 3) 晨雾（06-09 时）：低透明度雾带缓慢横移，白天零创建 ----
     if (t.hour >= 6 && t.hour < 9) {
@@ -2633,6 +2846,9 @@ export class MapScene extends Phaser.Scene {
       this.add.text(gateX, gateY, '🔒', {
         fontSize: '12px',
       }).setOrigin(0.5).setDepth(5);
+      // gate 美术升级：在物理墙上方叠加像素风双扇木门视觉（随 gateWall 一起销毁）
+      this.gateDoorVisual = this.createGateDoorVisual(gateX, gateY);
+      this.gateDoorVisual.setDepth(4);
     }
 
     // 夏雅 NPC（开门前显示在门南侧，row 11-12）
@@ -2658,6 +2874,197 @@ export class MapScene extends Phaser.Scene {
       get_key: this.hintText('→ 按 [B] 键打开背包，选择钥匙使用', '→ 点按右下角「背包」按钮，选择钥匙使用'),
     };
     if (hints[step]) this.showTutorialHint(hints[step]!);
+  }
+
+  /**
+   * gate 美术升级：像素风双扇木门视觉（叠加在物理墙上方，随 gateWall 一起销毁）。
+   * 纯视觉：不参与物理碰撞；开门时随物理墙一起销毁，配合 gate_open 音效。
+   */
+  private createGateDoorVisual(gateX: number, gateY: number): Phaser.GameObjects.Container {
+    const g = this.add.graphics();
+    // 门框（深棕外框，嵌入门柱间）
+    g.fillStyle(0x4a3220, 1);
+    g.fillRect(-16, -17, 32, 32);
+    // 左扇门板
+    g.fillStyle(0x6e4a2e, 1);
+    g.fillRect(-14, -14, 13, 28);
+    // 右扇门板
+    g.fillRect(1, -14, 13, 28);
+    // 门缝（中缝深色线）
+    g.fillStyle(0x3a2818, 1);
+    g.fillRect(-0.5, -14, 1, 28);
+    // 门板横纹（木板拼缝）
+    g.fillStyle(0x5a3c24, 1);
+    g.fillRect(-14, -8, 13, 1);
+    g.fillRect(-14, 0, 13, 1);
+    g.fillRect(-14, 8, 13, 1);
+    g.fillRect(1, -8, 13, 1);
+    g.fillRect(1, 0, 13, 1);
+    g.fillRect(1, 8, 13, 1);
+    // 门环（左右扇各一，金色）
+    g.fillStyle(0xd8b060, 1);
+    g.fillCircle(-7.5, -3, 2.2);
+    g.fillCircle(7.5, -3, 2.2);
+    g.fillStyle(0x4a3220, 1);
+    g.fillCircle(-7.5, -3, 0.8);
+    g.fillCircle(7.5, -3, 0.8);
+    // 门楣（门上方横梁）
+    g.fillStyle(0x5a3c24, 1);
+    g.fillRect(-17, -18, 34, 3);
+    return this.add.container(gateX, gateY, [g]);
+  }
+
+  /**
+   * gate 庄园大门美术升级（零资源纯代码，视觉方案 v0.10+ 简单升级）。
+   * 1) 生活杂物层：花盆×2 / 木柴堆 / 石凳 / 水桶 / 木箱 / 路边石×3 / 草丛×4
+   * 2) 小动物：1 只小鸟固定小范围活动（复用 town 模式）
+   * 3) 夜间门柱暖光（≥18 时或 <6 时，复用 town 窗灯模式）
+   * 坐标已核对 gate Ground/Walls 层（30x20）+ 教程交互点 + 出口：
+   *   出口（cols14-15, rows0-2 路径）、大门（cols14-15, rows8-9）、夏雅站位（col15, rows11-12）、
+   *   emoji 交互点（12,10 / 13,9 / 17,9 / 13,12 / 17,12 / 14,13 / 14,8 / 16,8 / 16,12）均避开。
+   * 纯视觉装饰：不触碰碰撞/存档/出口/教程逻辑；场景 shutdown 自动销毁。
+   */
+  private setupGateDecorations(): void {
+    const T = TILE_SIZE;
+    const px = (c: number, r: number): [number, number] => [c * T + T / 2, r * T + T / 2];
+    const t = getTime();
+
+    // ---- 1) 生活杂物层（深度 3，位于角色之下）----
+    const woodpile = (c: number, r: number): void => {
+      const [x, y] = px(c, r);
+      const g = this.add.graphics();
+      g.fillStyle(0x8a6a45, 1);
+      g.fillRoundedRect(x - 6, y + 1, 12, 3, 1);
+      g.fillRoundedRect(x - 5, y - 2, 10, 3, 1);
+      g.fillRoundedRect(x - 4, y - 5, 8, 3, 1);
+      g.fillStyle(0xa8835a, 1);
+      g.fillCircle(x - 3, y - 5, 1.3);
+      g.fillCircle(x + 2, y - 2, 1.3);
+      g.fillCircle(x + 4, y + 1, 1.3);
+      g.setDepth(3);
+      this.gateLife.decor++;
+    };
+    const pot = (c: number, r: number, color: number): void => {
+      const [x, y] = px(c, r);
+      const g = this.add.graphics();
+      g.fillStyle(0x8c5a3c, 1);
+      g.fillRect(x - 3, y - 1, 6, 4);
+      g.fillRect(x - 4, y - 2, 8, 2);
+      g.fillStyle(0x3a6a20, 1);
+      g.fillRect(x - 0.5, y - 4, 1, 3);
+      g.fillStyle(color, 1);
+      g.fillCircle(x - 2, y - 4, 1.8);
+      g.fillCircle(x + 2, y - 5, 1.8);
+      g.fillCircle(x, y - 6, 1.6);
+      g.setDepth(3);
+      this.gateLife.decor++;
+    };
+    const bucket = (c: number, r: number): void => {
+      const [x, y] = px(c, r);
+      const g = this.add.graphics();
+      g.fillStyle(0x5a6a78, 1);
+      g.fillRect(x - 3, y - 2, 6, 5);
+      g.lineStyle(1, 0x8a9aa8, 1);
+      g.strokeRect(x - 3, y - 2, 6, 5);
+      g.lineBetween(x - 3, y - 2, x, y - 6);
+      g.lineBetween(x + 3, y - 2, x, y - 6);
+      g.setDepth(3);
+      this.gateLife.decor++;
+    };
+    const crate = (c: number, r: number): void => {
+      const [x, y] = px(c, r);
+      const g = this.add.graphics();
+      g.fillStyle(0x9a7a4a, 1);
+      g.fillRect(x - 5, y - 4, 10, 8);
+      g.lineStyle(1, 0x6e5633, 1);
+      g.strokeRect(x - 5, y - 4, 10, 8);
+      g.lineBetween(x - 5, y - 4, x + 5, y + 4);
+      g.lineBetween(x + 5, y - 4, x - 5, y + 4);
+      g.setDepth(3);
+      this.gateLife.decor++;
+    };
+    const stool = (c: number, r: number): void => {
+      const [x, y] = px(c, r);
+      const g = this.add.graphics();
+      g.fillStyle(0x8a6a45, 1);
+      g.fillRect(x - 4, y - 1, 8, 2);
+      g.fillRect(x - 3, y + 1, 1.5, 4);
+      g.fillRect(x + 1.5, y + 1, 1.5, 4);
+      g.setDepth(3);
+      this.gateLife.decor++;
+    };
+    const stone = (c: number, r: number, s: number): void => {
+      const [x, y] = px(c, r);
+      const g = this.add.graphics();
+      g.fillStyle(0x9a9aa2, 1);
+      g.fillCircle(x, y, s);
+      g.fillStyle(0xb8b8c0, 0.6);
+      g.fillCircle(x - s * 0.3, y - s * 0.3, s * 0.4);
+      g.setDepth(3);
+      this.gateLife.decor++;
+    };
+    const grass = (c: number, r: number, tone: number): void => {
+      const [x, y] = px(c, r);
+      const g = this.add.graphics();
+      for (let i = -2; i <= 2; i += 2) {
+        g.lineStyle(1, tone, 0.9);
+        g.lineBetween(x + i - 1, y + 2, x + i, y - 2);
+        g.lineBetween(x + i + 1, y + 2, x + i, y - 2);
+      }
+      g.setDepth(3);
+      this.gateLife.decor++;
+    };
+
+    pot(10, 10, 0xf0d080); pot(18, 10, 0xe8a0a0);   // 花盆 ×2（大门两侧前院）
+    woodpile(20, 12);                                // 木柴堆（右侧空地）
+    stool(3, 12);                                    // 石凳（左侧树荫下）
+    bucket(25, 9);                                   // 水桶（右院墙脚）
+    crate(20, 10);                                   // 木箱（右院）
+    stone(2, 12, 2.5); stone(23, 9, 2); stone(27, 12, 2.5); // 路边石 ×3
+    grass(9, 13, 0x4a8a30); grass(19, 13, 0x5a9a3a);
+    grass(18, 14, 0x4a8a30); grass(5, 10, 0x5a9a3a); // 草丛 ×4
+
+    // ---- 2) 小动物：1 只小鸟固定小范围活动（深度 4，与角色同层）----
+    const bird = (x: number, y: number, seed: number): void => {
+      const b = this.add.graphics();
+      b.fillStyle(0x5a6a78, 1);
+      b.fillEllipse(0, 0, 8, 6);
+      b.fillStyle(0x8a9aa8, 1);
+      b.fillCircle(-3, 0, 2);
+      b.fillStyle(0xe8a030, 1);
+      b.fillTriangle(-4.5, -1.5, -6.5, 0.5, -4.5, 1.5);
+      b.fillStyle(0x202020, 0.9);
+      b.fillCircle(-3.5, -0.5, 0.6);
+      b.fillStyle(0x6e7a88, 1);
+      b.fillEllipse(2, 1, 5, 3);
+      const c = this.add.container(x, y, [b]);
+      c.setDepth(4);
+      this.tweens.add({ targets: b, scaleY: { from: 1, to: 0.7 }, duration: 140, yoyo: true, repeat: -1 });
+      this.tweens.add({ targets: c, y: y - 5, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut', delay: seed });
+      this.tweens.add({ targets: c, x: x + 6, duration: 2400, yoyo: true, repeat: -1, ease: 'Sine.InOut', delay: seed + 350 });
+      this.gateLife.wildlife++;
+    };
+    bird(18 * T + 8, 6 * T + 8, 0);   // 右侧树梢旁
+
+    // ---- 3) 夜间门柱暖光（≥18 时或 <6 时）：门柱两侧灯笼光晕，白天零创建 ----
+    if (t.hour >= 18 || t.hour < 6) {
+      const lampSpots: Array<[number, number]> = [[14, 8], [16, 8]]; // 与现有 🏮 灯笼重叠
+      lampSpots.forEach(([c, r]) => {
+        const w = this.add.ellipse(c * T + T / 2, r * T + T / 2, 20, 20, 0xffcc88, 0.14);
+        w.setDepth(2);
+        this.tweens.add({
+          targets: w,
+          scale: 1.18,
+          alpha: 0.08,
+          duration: 1300 + Math.random() * 400,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+        this.gateLampGlows.push(w);
+      });
+    }
+    this.gateLife.lamp = this.gateLampGlows.length;
   }
 
   /** 农场教程：锄地/播种/浇水/睡觉 */
@@ -2798,10 +3205,14 @@ export class MapScene extends Phaser.Scene {
       return false;
     }
 
-    // 销毁大门物理墙
+    // 销毁大门物理墙 + 木门视觉（gate 美术升级：视觉随门一起销毁）
     if (this.gateWall) {
       this.gateWall.destroy();
       this.gateWall = null;
+    }
+    if (this.gateDoorVisual) {
+      this.gateDoorVisual.destroy();
+      this.gateDoorVisual = null;
     }
     if (this.xiyaSprite) { this.xiyaSprite.destroy(); this.xiyaSprite = null; }
     this.removeTutorialHint();
@@ -3443,6 +3854,9 @@ export class MapScene extends Phaser.Scene {
       if (this.trySideGardenerPlum()) return;
     }
 
+    // FEATURE-038 居民需求板（小镇广场右侧信息板，靠近按 E 打开面板）
+    if (this.mapKey === 'town' && this.residentBoardMark) {
+      if (this.tryResidentBoardInteract()) return;
     }
 
     // v0.5.3 剧情密度 E9：傍晚关心夏雅（教程完成后，仅傍晚 18-20 时）
