@@ -305,6 +305,66 @@ export const XIYA_SMALL_THINGS_DIALOGUE: DialogueLine[] = [
   { speaker: '夏雅', color: COLORS.xiya, text: '这些小事情多起来了，这里也就慢慢有了人生活的感觉。' },
 ];
 
+// ============ T3 NPC 生活事件（制作人 2026-08-07 定稿微调） ============
+// 三条：夏雅「整理旧照片」（过去有人生活过）/ 老张「矿灯」（曾经有人努力过）/ 小梅「小梅花」（未来还会继续生长）。
+// 夏雅：老屋修复完成后，老屋门口互动 → 无实物交付 → 相簿新照片 + 记忆卡。
+// 老张：矿洞独立点灯点，交付铜矿×2 → 点亮矿灯；无记忆卡（避免记忆卡变成任务奖励，制作人拍板）。
+// 小梅：小镇花圃互动 → 种下梅花 → 花圃长出梅花（环境变化）；无实物交付。
+
+/** T3 夏雅「整理旧照片」：老屋修复后，老屋门口入口对白 */
+export const XIYA_PHOTO_ENTRY_DIALOGUE: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（老屋修好后，夏雅站在门口，怀里抱着一个落灰的木盒。）' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '这些照片，是爷爷以前留下的。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '我整理东西的时候才发现，已经落灰这么久了。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '要是不嫌弃……陪我一起整理整理？' },
+  { speaker: '林澈', color: COLORS.linche, text: '（点头）好。' },
+];
+
+/** T3 夏雅「整理旧照片」：整理完成对白（解锁相簿 + 记忆卡） */
+export const XIYA_PHOTO_DONE_DIALOGUE: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（两个人把照片一张张擦干净、摆开。）' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '你看这张，是你爷爷年轻的时候，站在这片田里。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '原来以前的青禾镇，是这个样子的啊……' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '感觉离我们好近。' },
+  { speaker: '林澈', color: COLORS.linche, text: '（看了看手里的照片，没说话）' },
+];
+
+/** T3 老张「矿灯」：矿洞入口对白（交付铜矿×2） */
+export const MINER_LAMP_ENTRY_DIALOGUE: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（矿洞深处的墙上，挂着一盏锈迹斑斑的旧矿灯。）' },
+  { speaker: '矿工老张', color: COLORS.miner, text: '这盏灯，我年轻时点过。' },
+  { speaker: '矿工老张', color: COLORS.miner, text: '灯芯还能用，就差两块铜矿修一修灯座。' },
+];
+
+/** T3 老张「矿灯」：铜矿不足提示（可重复触发） */
+export const MINER_LAMP_NEED_DIALOGUE: DialogueLine[] = [
+  { speaker: '矿工老张', color: COLORS.miner, text: '灯座还缺两块铜矿。你挖矿的时候帮我留意着点。' },
+];
+
+/** T3 老张「矿灯」：铜矿×2 交付，点亮矿灯 */
+export const MINER_LAMP_DONE_DIALOGUE: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（你递过铜矿。老张拾掇一阵，"啪"的一声，灯亮了起来。）' },
+  { speaker: '矿工老张', color: COLORS.miner, text: '这灯还能亮，就说明这地方还没废。' },
+  { speaker: '矿工老张', color: COLORS.miner, text: '以前我们就是靠它干活的。' },
+  { speaker: '矿工老张', color: COLORS.miner, text: '（拍拍你的肩）谢了，小子。' },
+];
+
+/** T3 小梅「小梅花」：小镇花圃入口对白 */
+export const GARDENER_PLUM_ENTRY_DIALOGUE: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（小镇花圃边，小梅正对着一小块空地发愁。）' },
+  { speaker: '花匠小梅', color: COLORS.gardener, text: '花圃东边那块地，我留了好久。' },
+  { speaker: '花匠小梅', color: COLORS.gardener, text: '一直没想好种什么……你能帮我种一株梅花吗？' },
+  { speaker: '林澈', color: COLORS.linche, text: '种梅花？' },
+  { speaker: '花匠小梅', color: COLORS.gardener, text: '嗯。等它开花的时候，冬天也不会那么冷清了。' },
+];
+
+/** T3 小梅「小梅花」：种下完成对白（花圃长出梅花，环境变化） */
+export const GARDENER_PLUM_DONE_DIALOGUE: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（花种入土。小梅小心地覆上土，又浇了一点水。）' },
+  { speaker: '花匠小梅', color: COLORS.gardener, text: '你看，只要有人照顾，它还是会开花的。' },
+  { speaker: '花匠小梅', color: COLORS.gardener, text: '到时候你来看，它会长得很好的。' },
+];
+
 // ============ 支线试点（2026-08-06 制作人拍板方案 A） ============
 // 夏雅「院子有人照顾」：花园恢复后，旧藤架修复事件（交付木材×3 → 记忆卡收尾）
 /** 支线入口：夏雅请林澈一起修旧藤架 */

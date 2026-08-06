@@ -65,7 +65,7 @@ import { unlockPhoto, isPhotoUnlocked, PHOTO_DATABASE } from '../data/PhotoAlbum
 import { TouchControls, setActionButtonLabel, setWaitHandler } from '../systems/TouchControls';
 import { showMemoryMoment } from '../ui/MemoryMoment';
 import { playMemoryFlashback } from '../ui/MemoryFlashback';
-import { getShardFlashback, SHARD_PROGRESS_LINES, XIYA_LAMP_FLASHBACK, XIYA_GARDEN_FLASHBACK, ELDER_STAR_FLASHBACK } from '../data/MemoryFlashbacks';
+import { getShardFlashback, SHARD_PROGRESS_LINES, XIYA_LAMP_FLASHBACK, XIYA_GARDEN_FLASHBACK, ELDER_STAR_FLASHBACK, XIYA_PHOTO_FLASHBACK, PLUM_BLOOM_FLASHBACK } from '../data/MemoryFlashbacks';
 import { ShopPanel } from '../ui/ShopPanel';
 import { BackpackPanel } from '../ui/BackpackPanel';
 import { QuestPanel } from '../ui/QuestPanel';
@@ -87,6 +87,9 @@ import {
   OLD_HOUSE_RESTORED_DIALOGUE, FOREST_ROAD_RESTORED_DIALOGUE,
   XIYA_GARDEN_TRELLIS_DIALOGUE, XIYA_GARDEN_TRELLIS_NEED_DIALOGUE, XIYA_GARDEN_TRELLIS_DONE_DIALOGUE,
   ELDER_TEA_QUEST_DIALOGUE, ELDER_STAR_SITE_DIALOGUE,
+  XIYA_PHOTO_ENTRY_DIALOGUE, XIYA_PHOTO_DONE_DIALOGUE,
+  MINER_LAMP_ENTRY_DIALOGUE, MINER_LAMP_NEED_DIALOGUE, MINER_LAMP_DONE_DIALOGUE,
+  GARDENER_PLUM_ENTRY_DIALOGUE, GARDENER_PLUM_DONE_DIALOGUE,
   FIRST_HARVEST_DIALOGUE,
   OLD_ROBOT_DIALOGUE,
 } from '../systems/StorySystem';
@@ -122,6 +125,15 @@ export interface MapSceneFlags {
   /** E1/E9 每日偶遇：当天是否已触发（持久化，刷新不重复；存档审查 2026-08-06） */
   dawnXiyaDay?: number;
   eveningXiyaDay?: number;
+  /** T3 夏雅「整理旧照片」：老屋修复后，老屋门口事件（一次性入档） */
+  sideXiyaPhotoAsked?: boolean;
+  sideXiyaPhotoDone?: boolean;
+  /** T3 老张「矿灯」：矿洞独立点灯点（铜矿×2，一次性入档） */
+  sideMinerLampAsked?: boolean;
+  sideMinerLampDone?: boolean;
+  /** T3 小梅「小梅花」：小镇花圃种花（环境变化，一次性入档） */
+  sideGardenerPlumAsked?: boolean;
+  sideGardenerPlumDone?: boolean;
 }
 
 /** 存档中保存的 MapScene flag（模块级暂存，apply 时写入，MapScene.create 时消费） */
@@ -338,6 +350,17 @@ export class MapScene extends Phaser.Scene {
   private sideXiyaGardenDone = false;
   private sideElderTeaAsked = false;
   private sideElderStarDone = false;
+  // T3 NPC 生活事件 flags（随 mapFlags 存档，读档不重复触发）
+  private sideXiyaPhotoAsked = false;
+  private sideXiyaPhotoDone = false;
+  private sideMinerLampAsked = false;
+  private sideMinerLampDone = false;
+  private sideGardenerPlumAsked = false;
+  private sideGardenerPlumDone = false;
+  // T3 互动点视觉（场景级，destroy 时清理）
+  private xiyaPhotoMark: Phaser.GameObjects.Text | null = null;
+  private minerLampGroup: Phaser.GameObjects.Container | null = null;
+  private plumMark: Phaser.GameObjects.Text | null = null;
   // 教程进度计数（锄地/播种/浇水各需3次）
   private tutorialProgress = 0;
   private readonly TUTORIAL_TARGET = 3;
@@ -401,6 +424,12 @@ export class MapScene extends Phaser.Scene {
       sideXiyaGardenDone: inst.sideXiyaGardenDone,
       sideElderTeaAsked: inst.sideElderTeaAsked,
       sideElderStarDone: inst.sideElderStarDone,
+      sideXiyaPhotoAsked: inst.sideXiyaPhotoAsked,
+      sideXiyaPhotoDone: inst.sideXiyaPhotoDone,
+      sideMinerLampAsked: inst.sideMinerLampAsked,
+      sideMinerLampDone: inst.sideMinerLampDone,
+      sideGardenerPlumAsked: inst.sideGardenerPlumAsked,
+      sideGardenerPlumDone: inst.sideGardenerPlumDone,
       dawnXiyaDay: inst.dawnXiyaDay,
       eveningXiyaDay: inst.eveningXiyaDay,
     };
@@ -428,6 +457,12 @@ export class MapScene extends Phaser.Scene {
       this.sideXiyaGardenDone = saved.sideXiyaGardenDone ?? false;
       this.sideElderTeaAsked = saved.sideElderTeaAsked ?? false;
       this.sideElderStarDone = saved.sideElderStarDone ?? false;
+      this.sideXiyaPhotoAsked = saved.sideXiyaPhotoAsked ?? false;
+      this.sideXiyaPhotoDone = saved.sideXiyaPhotoDone ?? false;
+      this.sideMinerLampAsked = saved.sideMinerLampAsked ?? false;
+      this.sideMinerLampDone = saved.sideMinerLampDone ?? false;
+      this.sideGardenerPlumAsked = saved.sideGardenerPlumAsked ?? false;
+      this.sideGardenerPlumDone = saved.sideGardenerPlumDone ?? false;
       this.dawnXiyaDay = saved.dawnXiyaDay ?? 0;
       this.eveningXiyaDay = saved.eveningXiyaDay ?? 0;
     }
@@ -753,6 +788,8 @@ export class MapScene extends Phaser.Scene {
     // 青禾镇氛围（炊烟/窗灯/落叶，零资源纯代码）
     if (this.mapKey === 'town') {
       this.setupTownAmbience();
+      // T3 小梅「小梅花」：小镇花圃种花互动点（一次性，读档恢复已开花视觉）
+      this.setupGardenerPlum();
     }
 
     // M1-3 爷爷旧花园恢复点（玩家清理荒废角落 → 环境变化 + 存档持久化）
@@ -763,6 +800,8 @@ export class MapScene extends Phaser.Scene {
     // FEATURE-037 老屋修复（farm 左下角木屋，资源交付 → 外观替换 + 存档持久化）
     if (this.mapKey === 'farm') {
       this.setupOldHouseRestore();
+      // T3 夏雅「整理旧照片」：老屋门口互动点（一次性，读档恢复已完成态）
+      this.setupXiyaPhoto();
     }
 
     // 农场商店摊位（靠近按 E 打开 ShopPanel，买种子不用跑小镇）
@@ -804,6 +843,8 @@ export class MapScene extends Phaser.Scene {
     // 矿洞场景：创建矿脉精灵
     if (this.mapKey === 'mine') {
       this.setupOres();
+      // T3 老张「矿灯」：矿洞独立点灯点（一次性，读档恢复已点亮视觉）
+      this.setupMinerLamp();
     }
 
     // 教程设置（大门地图 + 农场）
@@ -3397,6 +3438,13 @@ export class MapScene extends Phaser.Scene {
       if (this.tryElderHouseHintInteract()) return;
     }
 
+    // T3 小梅「小梅花」：小镇花圃种花（一次性事件）
+    if (this.mapKey === 'town') {
+      if (this.trySideGardenerPlum()) return;
+    }
+
+    }
+
     // v0.5.3 剧情密度 E9：傍晚关心夏雅（教程完成后，仅傍晚 18-20 时）
     if (this.mapKey === 'farm' && this.eveningXiya) {
       if (this.tryEveningXiyaInteract()) return;
@@ -3420,6 +3468,11 @@ export class MapScene extends Phaser.Scene {
     // FEATURE-037 老屋修复（未恢复时靠近按 E：资源交付一次完成）
     if (this.mapKey === 'farm' && this.oldHouseRestore && !this.oldHouseRestore.restored) {
       if (this.tryOldHouseRestoreInteract()) return;
+    }
+
+    // T3 夏雅「整理旧照片」（老屋修复后，老屋门口事件）
+    if (this.mapKey === 'farm' && isRestored('oldHouse')) {
+      if (this.trySideXiyaPhoto()) return;
     }
 
     // FEATURE-037 后山道路修复（未恢复时靠近按 E：资源交付一次完成）
@@ -3513,6 +3566,11 @@ export class MapScene extends Phaser.Scene {
         }
         return;
       }
+    }
+
+    // T3 老张「矿灯」：矿洞独立点灯点（优先于挖矿，靠近旧矿灯时触发）
+    if (this.mapKey === 'mine') {
+      if (this.trySideMinerLamp()) return;
     }
 
     // 0.6 矿洞挖矿：靠近矿脉 E 键开采
@@ -4710,6 +4768,274 @@ export class MapScene extends Phaser.Scene {
       });
     });
     return true;
+  }
+
+  // ============ T3 NPC 生活事件（2026-08-07 制作人定稿） ============
+  // 三条：夏雅「整理旧照片」/ 老张「矿灯」/ 小梅「小梅花」。
+  // 复用支线试点模式：MapSceneFlags 一次性标记 + StoryDialogue + flashback/moment + save。
+  // 锚点：夏雅=老屋 pos(11,20)；老张=矿洞老张位置(12,10)；小梅=小镇(14,12)。
+
+  /**
+   * 夏雅「整理旧照片」：老屋修复完成后，老屋门口互动。
+   * 流程：靠近按 E → 入口对白（sideXiyaPhotoAsked）→ 再次靠近 → 整理完成（相簿照片 + 记忆卡，一次性入档）。
+   * 无实物交付（记忆/相簿为奖励，制作人拍板）；锚点复用老屋 pos (11,20)。
+   */
+  private trySideXiyaPhoto(): boolean {
+    if (this.mapKey !== 'farm') return false;
+    if (this.sideXiyaPhotoDone) return false;
+    if (!isRestored('oldHouse')) return false;
+    const g = this.oldHouseRestore;
+    if (!g) return false;
+    const dx = this.player.x - g.pos.x;
+    const dy = this.player.y - g.pos.y;
+    if (dx * dx + dy * dy > 48 * 48) return false;
+
+    if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+    if (!this.sideXiyaPhotoAsked) {
+      this.sideXiyaPhotoAsked = true;
+      this.storyDialogue.play(XIYA_PHOTO_ENTRY_DIALOGUE, () => this.updateHUD());
+      save({
+        x: this.player.x, y: this.player.y,
+        scene: this.mapKey, facing: this.player.facing,
+        dailyQuest: getDailyQuestSaveData(),
+      } as any);
+      return true;
+    }
+
+    this.sideXiyaPhotoDone = true;
+    if (this.xiyaPhotoMark) { this.xiyaPhotoMark.destroy(); this.xiyaPhotoMark = null; }
+    if (!isPhotoUnlocked('xiya_old_photo')) {
+      unlockPhoto('xiya_old_photo');
+      this.notifyPhotoUnlocked('xiya_old_photo');
+    }
+    this.storyDialogue.play(XIYA_PHOTO_DONE_DIALOGUE, () => {
+      playMemoryFlashback(XIYA_PHOTO_FLASHBACK, () => {
+        showMemoryMoment('那张泛黄的照片，一直有人收着。');
+        this.updateHUD();
+        save({
+          x: this.player.x, y: this.player.y,
+          scene: this.mapKey, facing: this.player.facing,
+          dailyQuest: getDailyQuestSaveData(),
+        } as any);
+      });
+    });
+    return true;
+  }
+
+  /**
+   * 老张「矿灯」：矿洞独立点灯点。
+   * 流程：靠近按 E → 入口对白（sideMinerLampAsked）→ 交付铜矿×2 → 点亮矿灯（视觉变化）+ 完成对白。
+   * 无记忆卡（制作人拍板：避免记忆卡变成任务奖励）；铜矿不足可重复触发提示。
+   * 锚点：矿洞老张位置 (12,10) 旁的墙边。
+   */
+  private trySideMinerLamp(): boolean {
+    if (this.mapKey !== 'mine') return false;
+    if (this.sideMinerLampDone) return false;
+    const T = TILE_SIZE;
+    const lx = 12 * T + T / 2;
+    const ly = 8 * T + T / 2;
+    const dx = this.player.x - lx;
+    const dy = this.player.y - ly;
+    if (dx * dx + dy * dy > 44 * 44) return false;
+
+    if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+    if (!this.sideMinerLampAsked) {
+      this.sideMinerLampAsked = true;
+      this.storyDialogue.play(MINER_LAMP_ENTRY_DIALOGUE, () => this.updateHUD());
+      save({
+        x: this.player.x, y: this.player.y,
+        scene: this.mapKey, facing: this.player.facing,
+        dailyQuest: getDailyQuestSaveData(),
+      } as any);
+      return true;
+    }
+
+    const copper = getItemCount('copper');
+    if (copper < 2) {
+      this.storyDialogue.play(MINER_LAMP_NEED_DIALOGUE, () => this.updateHUD());
+      return true;
+    }
+
+    addItem('copper', -2);
+    this.sideMinerLampDone = true;
+    this.buildMinerLampLit();
+    this.storyDialogue.play(MINER_LAMP_DONE_DIALOGUE, () => {
+      this.updateHUD();
+      save({
+        x: this.player.x, y: this.player.y,
+        scene: this.mapKey, facing: this.player.facing,
+        dailyQuest: getDailyQuestSaveData(),
+      } as any);
+    });
+    return true;
+  }
+
+  /**
+   * 小梅「小梅花」：小镇花圃种花。
+   * 流程：靠近按 E → 入口对白（sideGardenerPlumAsked）→ 再次靠近 → 种下梅花（花圃长花视觉变化）+ 完成对白 + 记忆卡。
+   * 无实物交付（环境变化为奖励，制作人拍板）；锚点：小镇 (17,9) 小梅旁花圃。
+   */
+  private trySideGardenerPlum(): boolean {
+    if (this.mapKey !== 'town') return false;
+    if (this.sideGardenerPlumDone) return false;
+    const T = TILE_SIZE;
+    const px = 17 * T + T / 2;
+    const py = 9 * T + T / 2;
+    const dx = this.player.x - px;
+    const dy = this.player.y - py;
+    if (dx * dx + dy * dy > 48 * 48) return false;
+
+    if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+    if (!this.sideGardenerPlumAsked) {
+      this.sideGardenerPlumAsked = true;
+      this.storyDialogue.play(GARDENER_PLUM_ENTRY_DIALOGUE, () => this.updateHUD());
+      save({
+        x: this.player.x, y: this.player.y,
+        scene: this.mapKey, facing: this.player.facing,
+        dailyQuest: getDailyQuestSaveData(),
+      } as any);
+      return true;
+    }
+
+    this.sideGardenerPlumDone = true;
+    if (this.plumMark) { this.plumMark.destroy(); this.plumMark = null; }
+    this.buildPlumBlossom();
+    this.storyDialogue.play(GARDENER_PLUM_DONE_DIALOGUE, () => {
+      playMemoryFlashback(PLUM_BLOOM_FLASHBACK, () => {
+        showMemoryMoment('花圃边上，多了一株小梅花。');
+        this.updateHUD();
+        save({
+          x: this.player.x, y: this.player.y,
+          scene: this.mapKey, facing: this.player.facing,
+          dailyQuest: getDailyQuestSaveData(),
+        } as any);
+      });
+    });
+    return true;
+  }
+
+  /**
+   * 夏雅「整理旧照片」：老屋修复后，老屋门口出现互动提示标记。
+   * 读档恢复：已完成则不显示标记；未完成且已 asked 显示"再靠近整理"。
+   */
+  private setupXiyaPhoto(): void {
+    if (this.mapKey !== 'farm') return;
+    if (this.sideXiyaPhotoDone) return;
+    if (!isRestored('oldHouse')) return;
+    const g = this.oldHouseRestore;
+    if (!g) return;
+    const mark = this.add.text(g.pos.x, g.pos.y - 14, this.sideXiyaPhotoAsked ? '木盒' : '？', {
+      fontFamily: 'Arial', fontSize: '10px', color: this.sideXiyaPhotoAsked ? '#e8d8a8' : '#c8d8a8',
+    }).setOrigin(0.5).setDepth(4);
+    this.xiyaPhotoMark = mark;
+  }
+
+  /**
+   * 老张「矿灯」：矿洞点灯点视觉。
+   * 未点亮：墙面一盏暗灯（Graphics）；已点亮：暖光 + 光晕。
+   * 读档恢复：sideMinerLampDone 为 true 时直接显示点亮态。
+   */
+  private setupMinerLamp(): void {
+    if (this.mapKey !== 'mine') return;
+    const T = TILE_SIZE;
+    const lx = 12 * T + T / 2;
+    const ly = 8 * T + T / 2;
+    this.minerLampGroup = this.add.container(lx, ly).setDepth(3);
+    if (this.sideMinerLampDone) {
+      this.buildMinerLampLit();
+    } else {
+      this.buildMinerLampDark();
+    }
+  }
+
+  /** 矿灯未点亮态：墙面一盏灰暗旧灯（灯体 + 灯罩，无光） */
+  private buildMinerLampDark(): void {
+    const g = this.minerLampGroup;
+    if (!g) return;
+    const lamp = this.add.graphics();
+    lamp.fillStyle(0x5a4a3a, 1);
+    lamp.fillRoundedRect(-3, -6, 6, 12, 2);
+    lamp.fillStyle(0x7a6a4a, 1);
+    lamp.fillRect(-5, -4, 10, 3);
+    lamp.fillStyle(0x8a7a5a, 1);
+    lamp.fillRect(-4, 4, 8, 3);
+    lamp.setDepth(3);
+    g.add(lamp);
+  }
+
+  /** 矿灯点亮态：暖光灯芯 + 光晕（替换暗灯视觉） */
+  private buildMinerLampLit(): void {
+    const g = this.minerLampGroup;
+    if (!g) return;
+    g.removeAll(true);
+    const glow = this.add.circle(0, 0, 14, 0xffd166, 0.35);
+    glow.setDepth(2);
+    g.add(glow);
+    const lamp = this.add.graphics();
+    lamp.fillStyle(0x5a4a3a, 1);
+    lamp.fillRoundedRect(-3, -6, 6, 12, 2);
+    lamp.fillStyle(0xffd166, 1);
+    lamp.fillRect(-5, -4, 10, 3);
+    lamp.fillStyle(0x8a7a5a, 1);
+    lamp.fillRect(-4, 4, 8, 3);
+    lamp.setDepth(3);
+    g.add(lamp);
+    this.tweens.add({
+      targets: glow,
+      alpha: { from: 0.35, to: 0.15 },
+      duration: 1200,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+  }
+
+  /**
+   * 小梅「小梅花」：小镇花圃种花点视觉。
+   * 未种：花圃空地 + 提示标记；已种：一株小梅花（枝干 + 粉白花）。
+   * 读档恢复：sideGardenerPlumDone 为 true 时直接显示花开态。
+   */
+  private setupGardenerPlum(): void {
+    if (this.mapKey !== 'town') return;
+    if (this.sideGardenerPlumDone) {
+      this.buildPlumBlossom();
+    } else {
+      const T = TILE_SIZE;
+      const px = 17 * T + T / 2;
+      const py = 9 * T + T / 2;
+      const mark = this.add.text(px, py - 14, this.sideGardenerPlumAsked ? '花种' : '？', {
+        fontFamily: 'Arial', fontSize: '10px', color: this.sideGardenerPlumAsked ? '#e8d8a8' : '#c8d8a8',
+      }).setOrigin(0.5).setDepth(4);
+      this.plumMark = mark;
+    }
+  }
+
+  /** 小梅花视觉：枝干 + 粉白花瓣（零资源 Graphics） */
+  private buildPlumBlossom(): void {
+    const T = TILE_SIZE;
+    const px = 17 * T + T / 2;
+    const py = 9 * T + T / 2;
+    const plum = this.add.container(px, py + 6).setDepth(3);
+    const branch = this.add.graphics();
+    branch.lineStyle(1.5, 0x7a5a3a, 1);
+    branch.lineBetween(-4, 0, 0, -8);
+    branch.lineBetween(0, -8, 4, -2);
+    branch.setDepth(3);
+    plum.add(branch);
+    const bloom = (x: number, y: number) => {
+      const flower = this.add.graphics();
+      flower.fillStyle(0xf5c6d0, 1);
+      flower.fillCircle(0, 0, 2);
+      flower.fillStyle(0xffe9ef, 1);
+      flower.fillCircle(0, 0, 1);
+      flower.setPosition(x, y);
+      flower.setDepth(3);
+      return flower;
+    };
+    plum.add(bloom(-3, -4));
+    plum.add(bloom(2, -7));
+    plum.add(bloom(4, -1));
+    plum.add(bloom(0, 0));
   }
 
   // ============ FEATURE-036 旧农业机器人（修复获得） ============

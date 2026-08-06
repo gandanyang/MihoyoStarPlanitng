@@ -275,3 +275,41 @@ export const ELDER_STAR_FLASHBACK: DialogueLine[] = [
     text: '「那里安静，能看见很远的星星。」',
   },
 ];
+
+/** T3 夏雅「整理旧照片」：记忆闪回（木盒里那张泛黄照片的画面） */
+export const XIYA_PHOTO_FLASHBACK: DialogueLine[] = [
+  {
+    speaker: '',
+    color: MEM_COLORS.scene,
+    text: '（木盒最底下，压着一张泛黄的照片：田埂上两个人，肩并着肩。）',
+  },
+  {
+    speaker: '',
+    color: MEM_COLORS.scene,
+    text: '年轻的爷爷正扶着锄头，身旁站着另一个年轻人，笑得眼睛都弯了。',
+  },
+  {
+    speaker: '爷爷',
+    color: MEM_COLORS.grandpa,
+    text: '「这片田啊，能养活人，也能留住人。」',
+  },
+];
+
+/** T3 小梅「小梅花」：记忆闪回（花开那天的画面） */
+export const PLUM_BLOOM_FLASHBACK: DialogueLine[] = [
+  {
+    speaker: '',
+    color: MEM_COLORS.scene,
+    text: '（记忆里，老屋墙角的一株梅花开了，粉白的花瓣落了一地。）',
+  },
+  {
+    speaker: '',
+    color: MEM_COLORS.scene,
+    text: '爷爷蹲在花前，看得很慢，像在数每一个花苞。',
+  },
+  {
+    speaker: '爷爷',
+    color: MEM_COLORS.grandpa,
+    text: '「花要人照顾，才会开得长久。」',
+  },
+];

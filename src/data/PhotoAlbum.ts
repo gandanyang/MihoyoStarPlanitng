@@ -61,6 +61,13 @@ export const PHOTO_DATABASE: Photo[] = [
     description: '很多人觉得这里什么都没有。但有些东西，只有慢下来才看得到。',
     source: '完成村长「看星星的地方」',
   },
+  {
+    id: 'xiya_old_photo',
+    title: '泛黄的照片',
+    image: 'assets/photos/album/xiya_old_photo.webp',
+    description: '田埂上两个人，肩并着肩。原来以前的青禾镇，是这个样子的。',
+    source: '完成夏雅「整理旧照片」',
+  },
 ];
 
 /** 已解锁照片 ID（模块级 Set，存档恢复后重新填充） */
