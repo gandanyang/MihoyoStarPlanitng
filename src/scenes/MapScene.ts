@@ -742,10 +742,15 @@ export class MapScene extends Phaser.Scene {
     albumBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
     this.hudDom.appendChild(albumBtn);
 
-    // 右上：任务目标
+    // 任务追踪卡（原神风格：左侧竖条 + 图标 + 标题 + 当前目标）
+    // PC 端完整卡片；移动端紧凑单行（屏幕窄，右侧已有触屏任务按钮）
     this.hudQuestDom = document.createElement('div');
+    this.hudQuestDom.id = 'quest-track-card';
     this.hudQuestDom.style.cssText =
-      'position:absolute;top:4px;right:8px;color:#ffe082;font-size:12px;text-shadow:1px 1px 0 #000;text-align:right';
+      'position:absolute;left:8px;top:104px;pointer-events:none;' +
+      'background:rgba(16,20,34,0.72);border:1px solid rgba(255,224,130,0.35);' +
+      'border-left:3px solid #ffd700;border-radius:6px;padding:6px 10px;' +
+      'font-family:Arial,sans-serif;max-width:260px;box-shadow:0 2px 8px rgba(0,0,0,0.4);';
     this.hudDom.appendChild(this.hudQuestDom);
 
     this.updateHUD();
@@ -3319,10 +3324,35 @@ export class MapScene extends Phaser.Scene {
   }
 
   /**
-   * 刷新任务目标 HUD（右上角）
+   * 刷新任务追踪卡 HUD（左侧，原神风格）
+   * 标题：主线任务·星之碎片（教程期=教程引导）；目标：getQuestObjective()
+   * PC 端完整卡片；移动端紧凑单行
    */
   updateQuestHUD(): void {
-    this.hudQuestDom.textContent = `任务：${getQuestObjective()}`;
+    const state = getQuestState();
+    // 主线完成且观星夜也完成：任务全部结束，隐藏追踪卡
+    if (state === 'completed' && isObservatoryComplete()) {
+      this.hudQuestDom.style.display = 'none';
+      return;
+    }
+    this.hudQuestDom.style.display = 'block';
+    const obj = getQuestObjective();
+    const pc = !isMobileLayout();
+    const title = pc
+      ? (isTutorialDone() ? '主线任务 · 星之碎片' : '新手引导')
+      : (isTutorialDone() ? '✦ 星之碎片' : '✦ 引导');
+    const stateColor = pc
+      ? (state === 'completed' ? '#7ecb8e' : state === 'collected' ? '#8fd6ff' : state === 'accepted' ? '#ffd700' : '#ffd700')
+      : '#ffd700';
+    this.hudQuestDom.style.borderLeftColor = stateColor;
+    // 目标文本中插入目标图标（金币/物品 emoji 已含 HTML，直接 innerHTML）
+    this.hudQuestDom.innerHTML = pc
+      ? `<div style="display:flex;align-items:center;gap:6px;">
+           <span style="font-size:13px;color:#ffd700;text-shadow:1px 1px 0 #000;">✦</span>
+           <span style="font-size:13px;font-weight:bold;color:#ffe082;text-shadow:1px 1px 0 #000;white-space:nowrap;">${title}</span>
+         </div>
+         <div style="font-size:12px;color:#e8e0d0;margin-top:2px;text-shadow:1px 1px 0 #000;line-height:1.35;">${obj}</div>`
+      : `<span style="font-size:12px;color:#ffe082;text-shadow:1px 1px 0 #000;white-space:nowrap;">✦ ${title}：${obj}</span>`;
   }
 
   /** 触屏背包按钮：对话/面板/切图期间不响应（对应键盘 B） */
