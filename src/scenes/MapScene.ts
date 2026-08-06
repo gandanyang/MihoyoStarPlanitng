@@ -5280,6 +5280,7 @@ export class MapScene extends Phaser.Scene {
     if (this.shopPanel.isOpen()) return;
     if (this.backpackPanel.isOpen()) return;
     if (this.endingPanel?.isOpen()) return;
+    if (this.photoAlbumPanel?.isOpen()) return;
     if (this.seedSelectorEl) return;
     if (this.cropPickerEl) return;
     const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);

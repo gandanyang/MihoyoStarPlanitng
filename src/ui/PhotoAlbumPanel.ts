@@ -78,7 +78,7 @@ function createDom(): void {
 function renderCard(p: { id: string; title: string; image: string; description: string; source: string; unlocked: boolean }): string {
   if (p.unlocked) {
     return `
-      <div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:12px;border-left:3px solid #7eb8da;">
+      <div class="pa-card" data-id="${p.id}" data-unlocked="1" style="background:rgba(255,255,255,0.03);border-radius:10px;padding:12px;border-left:3px solid #7eb8da;">
         <div style="font-size:15px;font-weight:bold;color:#dde4ff;margin-bottom:6px;">《${p.title}》</div>
         <img src="${p.image}" alt="${p.title}"
           style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;display:block;border:1px solid rgba(255,255,255,0.15);">
@@ -89,7 +89,7 @@ function renderCard(p: { id: string; title: string; image: string; description: 
   }
   // 未解锁：剪影占位（不剧透画面，仅提示来源）
   return `
-    <div style="background:rgba(255,255,255,0.02);border-radius:10px;padding:12px;border-left:3px solid #5a4a3a;opacity:0.75;">
+    <div class="pa-card" data-id="${p.id}" data-unlocked="0" style="background:rgba(255,255,255,0.02);border-radius:10px;padding:12px;border-left:3px solid #5a4a3a;opacity:0.75;">
       <div style="font-size:15px;font-weight:bold;color:#9a8a72;margin-bottom:6px;">《？？？》</div>
       <div style="width:100%;aspect-ratio:16/9;border-radius:8px;display:flex;align-items:center;justify-content:center;
         background:repeating-linear-gradient(45deg,#2a2438,#2a2438 10px,#241f30 10px,#241f30 20px);border:1px dashed rgba(255,255,255,0.15);">

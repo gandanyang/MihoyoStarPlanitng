@@ -65,20 +65,24 @@ async function run() {
     const albumState = await page.evaluate(() => {
       const el = document.getElementById('photo-album-panel');
       const list = el?.querySelector('#pa-list');
-      const cards = list?.querySelectorAll('div[style*="border-radius"]') ?? [];
+      const cards = list?.querySelectorAll('.pa-card') ?? [];
+      const lockedCards = list?.querySelectorAll('.pa-card[data-unlocked="0"]') ?? [];
+      const unlockedCards = list?.querySelectorAll('.pa-card[data-unlocked="1"]') ?? [];
       const imgs = list?.querySelectorAll('img') ?? [];
       return {
         open: !!el && el.style.display !== 'none' && el.style.display !== '',
         cardCount: cards.length,
+        lockedCount: lockedCards.length,
+        unlockedCount: unlockedCards.length,
         lockedIcons: (list?.textContent ?? '').split('🔒').length - 1,
         unlockedImgs: imgs.length,
         text: list?.textContent ?? '',
       };
     });
     check('2. 点击后相簿面板打开', albumState.open === true);
-    check('3. 3 张照片卡片渲染', albumState.cardCount >= 3, `cards=${albumState.cardCount}`);
-    check('4. 默认全部未解锁（3 个锁图标 + 0 张图）', albumState.lockedIcons === 3 && albumState.unlockedImgs === 0,
-      `locks=${albumState.lockedIcons} imgs=${albumState.unlockedImgs}`);
+    check('3. 3 张照片卡片渲染（精确 .pa-card）', albumState.cardCount === 3, `cards=${albumState.cardCount}`);
+    check('4. 默认全部未解锁（3 锁卡 + 0 图）', albumState.lockedCount === 3 && albumState.unlockedCount === 0 && albumState.unlockedImgs === 0,
+      `locked=${albumState.lockedCount} unlocked=${albumState.unlockedCount} imgs=${albumState.unlockedImgs}`);
     check('5. 未解锁卡片显示获得方式', albumState.text.includes('获得方式：完成「整理旧花园」') &&
       albumState.text.includes('获得方式：完成「矿洞探险」') &&
       albumState.text.includes('获得方式：完成「后山老树」'), '');
@@ -103,15 +107,19 @@ async function run() {
       const el = document.getElementById('photo-album-panel');
       const list = el?.querySelector('#pa-list');
       const imgs = [...(list?.querySelectorAll('img') ?? [])].map(i => i.getAttribute('src'));
+      const gardenCard = list?.querySelector('.pa-card[data-id="summer_garden"]');
       return {
         open: !!el && el.style.display !== 'none',
         imgs,
         hasSummerGarden: imgs.some(s => s?.includes('summer_garden')),
+        gardenUnlocked: gardenCard?.getAttribute('data-unlocked') === '1',
+        unlockedCount: list?.querySelectorAll('.pa-card[data-unlocked="1"]').length ?? 0,
         text: list?.textContent ?? '',
       };
     });
     check('6. 解锁《夏日花园》后显示图片', unlockedState.open && unlockedState.hasSummerGarden === true,
       unlockedState.imgs.join(','));
+    check('6b. 夏日花园卡片标记为已解锁', unlockedState.gardenUnlocked === true, `unlocked=${unlockedState.unlockedCount}`);
     check('7. 解锁后标题/描述/来源渲染', unlockedState.text.includes('夏日花园') &&
       unlockedState.text.includes('夏雅说，她小时候经常来这里'), '');
 
