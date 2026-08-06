@@ -5500,6 +5500,8 @@ export class MapScene extends Phaser.Scene {
     if (!getTriggeredTags().has('first_plant')) {
       triggerTag('first_plant');
       showMemoryMoment('城市里的人已经很久没有亲手种下一颗种子了。');
+      // T2-1 Day1 引导链：播种 → 成长 → 出售 → 修复（底部提示条，4 秒自动消失，不打断）
+      this.showDialogueText('种下了……等它长大，收成能换钱修镇上的旧东西。');
     }
     onDQPlant();
     this.checkTutorialProgress('sow');
@@ -5536,10 +5538,10 @@ export class MapScene extends Phaser.Scene {
       showMemoryMoment('小时候爷爷告诉我，土地不会辜负认真照料它的人。');
       if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
       this.storyDialogue.play(FIRST_HARVEST_DIALOGUE, () => {
-        // E-01：首次收获后引导赚钱闭环（底部提示条，3 秒自动消失，不打断）
+        // T2-1 Day1 引导链：收获 → 出售 → 修复（底部提示条，3 秒自动消失，不打断）
         this.showDialogueText(this.hintText(
-          '收获的作物可以拿到农田右下角的商店卖掉换金币！',
-          '收获的作物可以拿到农田右下角的商店卖掉换金币！'));
+          '收获的作物可以拿到农田右下角的商店卖掉换金币！这些收成，是镇上老房子的建材费。',
+          '收获的作物可以拿到农田右下角的商店卖掉换金币！这些收成，是镇上老房子的建材费。'));
         this.updateHUD();
       });
     }

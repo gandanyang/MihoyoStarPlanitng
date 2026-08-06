@@ -47,6 +47,7 @@ function createDom(): void {
       <div id="ss-coins" style="text-align:center;font-size:16px;margin-bottom:12px;color:#ffe082;"></div>
       <div id="ss-sold" style="margin-bottom:10px;"></div>
       <div id="ss-skipped" style="margin-bottom:12px;"></div>
+      <div id="ss-world-line" style="text-align:center;font-size:13px;margin-bottom:12px;color:#a5d6a7;display:none;"></div>
       <div style="display:flex;gap:12px;justify-content:center;">
         <button data-action="confirm" style="font-size:14px;padding:6px 24px;background:#c49a2a;border:none;border-radius:4px;color:#fff;cursor:pointer;">确认出售</button>
         <button data-action="cancel" style="font-size:14px;padding:6px 24px;background:#8a6a45;border:none;border-radius:4px;color:#fff;cursor:pointer;">取消</button>
@@ -117,6 +118,17 @@ function refresh(): void {
         </div>`).join('');
     } else {
       skippedEl.innerHTML = '';
+    }
+  }
+
+  // T2-3 出售反馈世界化：有可卖物品时展示副文案，让人感到钱在修复青禾镇（纯文案，不改经济公式）
+  const worldLineEl = panelEl.querySelector('#ss-world-line') as HTMLElement | null;
+  if (worldLineEl) {
+    if (preview.totalCoins > 0) {
+      worldLineEl.style.display = 'block';
+      worldLineEl.innerHTML = '▸ 这些钱会用来修复岛上的旧设施';
+    } else {
+      worldLineEl.style.display = 'none';
     }
   }
 

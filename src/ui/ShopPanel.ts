@@ -288,7 +288,8 @@ function createDom(): void {
           refresh();
           if (result.sold.length > 0) {
             const detail = result.sold.map(s => `${s.name}×${s.count}`).join('、');
-            showToast(`卖出获得 ${result.totalCoins}G<br>${detail}`);
+            // T2-3 出售反馈世界化：钱不只是数字，而是修镇上的旧设施（纯文案，不改经济公式）
+            showToast(`出售 ${detail}<br>金币 +${result.totalCoins}<br><span style="color:#a5d6a7">▸ 青禾镇的修复基金增加了</span>`);
           }
         });
       }
