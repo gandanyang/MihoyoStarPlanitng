@@ -60,6 +60,14 @@ function createDom(): void {
   panelEl.addEventListener('click', (e) => {
     if (e.target === panelEl) closePanel();
   });
+  // P2-1：图片加载失败兜底（事件委托，捕获阶段处理 img error）
+  panelEl.addEventListener('error', (e) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'IMG' && target.hasAttribute('data-photo-img')) {
+      e.stopPropagation();
+      handleImgError(target as HTMLImageElement);
+    }
+  }, true);
   const closeBtn = panelEl.querySelector('[data-action="close"]') as HTMLElement | null;
   closeBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -77,13 +85,14 @@ function createDom(): void {
 /** 单张照片卡片（解锁 / 未解锁两种态） */
 function renderCard(p: { id: string; title: string; image: string; description: string; source: string; unlocked: boolean }): string {
   if (p.unlocked) {
+    // P2-1：图片加载失败（资源缺失/404）时回退为剪影占位，防止破图
     return `
       <div class="pa-card" data-id="${p.id}" data-unlocked="1" style="background:rgba(255,255,255,0.03);border-radius:10px;padding:12px;border-left:3px solid #7eb8da;">
-        <div style="font-size:15px;font-weight:bold;color:#dde4ff;margin-bottom:6px;">《${p.title}》</div>
-        <img src="${p.image}" alt="${p.title}"
+        <div style="font-size:15px;font-weight:bold;color:#dde4ff;margin-bottom:6px;">《${escapeHtml(p.title)}》</div>
+        <img src="${p.image}" alt="${escapeHtml(p.title)}" data-photo-img="1"
           style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;display:block;border:1px solid rgba(255,255,255,0.15);">
-        <div style="font-size:12px;color:#b8c4e0;line-height:1.6;margin-top:8px;">${p.description}</div>
-        <div style="font-size:11px;color:#8fa2c8;margin-top:6px;">获得方式：${p.source}</div>
+        <div style="font-size:12px;color:#b8c4e0;line-height:1.6;margin-top:8px;">${escapeHtml(p.description)}</div>
+        <div style="font-size:11px;color:#8fa2c8;margin-top:6px;">获得方式：${escapeHtml(p.source)}</div>
       </div>
     `;
   }
@@ -95,9 +104,30 @@ function renderCard(p: { id: string; title: string; image: string; description: 
         background:repeating-linear-gradient(45deg,#2a2438,#2a2438 10px,#241f30 10px,#241f30 20px);border:1px dashed rgba(255,255,255,0.15);">
         <span style="font-size:28px;">🔒</span>
       </div>
-      <div style="font-size:11px;color:#8fa2c8;margin-top:8px;">获得方式：${p.source}</div>
+      <div style="font-size:11px;color:#8fa2c8;margin-top:8px;">获得方式：${escapeHtml(p.source)}</div>
     </div>
   `;
+}
+
+/** 简易 HTML 转义（P2-2：防止文案中的 < > & 破坏面板结构，与 DialogueHistoryPanel 一致） */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** 图片加载失败兜底（事件委托，挂载在 #pa-list 上）：隐藏 img，替换为剪影占位 */
+function handleImgError(img: HTMLImageElement): void {
+  img.style.display = 'none';
+  const placeholder = document.createElement('div');
+  placeholder.style.cssText =
+    'width:100%;aspect-ratio:16/9;border-radius:8px;display:flex;align-items:center;justify-content:center;' +
+    'background:repeating-linear-gradient(45deg,#2a2438,#2a2438 10px,#241f30 10px,#241f30 20px);' +
+    'border:1px dashed rgba(255,255,255,0.15);';
+  placeholder.textContent = '🖼️';
+  img.replaceWith(placeholder);
 }
 
 /** 刷新相簿内容 */

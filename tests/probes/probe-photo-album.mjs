@@ -57,11 +57,14 @@ async function run() {
     });
     check('1. HUD 出现「📖 归星录」入口按钮', btnVisible);
 
-    // 2. 打开相簿（默认未解锁）
+    // 2. 打开相簿（默认未解锁）——照片数从 window.debug.getPhotoTotal() 读取（数据驱动 + 真实实例挂钩）
     await page.evaluate(() => {
       document.getElementById('album-btn')?.click();
     });
     await sleep(600);
+    const photoTotal = await page.evaluate(() => {
+      return window.debug?.getPhotoTotal?.() ?? 0;
+    });
     const albumState = await page.evaluate(() => {
       const el = document.getElementById('photo-album-panel');
       const list = el?.querySelector('#pa-list');
@@ -74,14 +77,14 @@ async function run() {
         cardCount: cards.length,
         lockedCount: lockedCards.length,
         unlockedCount: unlockedCards.length,
-        lockedIcons: (list?.textContent ?? '').split('🔒').length - 1,
         unlockedImgs: imgs.length,
         text: list?.textContent ?? '',
       };
     });
     check('2. 点击后相簿面板打开', albumState.open === true);
-    check('3. 3 张照片卡片渲染（精确 .pa-card）', albumState.cardCount === 3, `cards=${albumState.cardCount}`);
-    check('4. 默认全部未解锁（3 锁卡 + 0 图）', albumState.lockedCount === 3 && albumState.unlockedCount === 0 && albumState.unlockedImgs === 0,
+    check('3. 照片卡片数与 PHOTO_DATABASE 一致', albumState.cardCount === photoTotal,
+      `cards=${albumState.cardCount} db=${photoTotal}`);
+    check('4. 默认全部未解锁（全锁卡 + 0 图）', albumState.lockedCount === photoTotal && albumState.unlockedCount === 0 && albumState.unlockedImgs === 0,
       `locked=${albumState.lockedCount} unlocked=${albumState.unlockedCount} imgs=${albumState.unlockedImgs}`);
     check('5. 未解锁卡片显示获得方式', albumState.text.includes('获得方式：完成「整理旧花园」') &&
       albumState.text.includes('获得方式：完成「矿洞探险」') &&
@@ -93,9 +96,8 @@ async function run() {
     });
     await sleep(400);
     await page.evaluate(() => {
-      // 通过 debug 挂钩（如有）或直接调用模块 API
-      // 无全局挂钩时：用动态 import 的方式在页面内解锁（Vite dev 支持）
-      import('/src/data/PhotoAlbum.ts').then(m => m.unlockPhoto('summer_garden'));
+      // 通过 window.debug.unlockPhoto 解锁（指向游戏真实实例，绕过 dev 双模块问题）
+      window.debug?.unlockPhoto?.('summer_garden');
     });
     await sleep(600);
     // 重新打开
