@@ -15,3 +15,5 @@
 - **行为不变的重构默认不做**；稳定优先。
 
 已有可直接用的：`SaveSystem` / `EventManager` / `StorySystem` / `QuestSystem` / `DailyQuestSystem` / `PhotoAlbum` / `NPCSystem` / `AmbienceSystem`。
+
+已有工具脚本：`tools/` 下 50+ 个（语音/出图/音频/打包，先查再写）；**GPT 请示桥** `tools/gpt-bridge.mjs`（网页版 ChatGPT 传话，制作人要求"请示 GPT"时用，见 `docs/工具-GPT请示桥.md`）。
