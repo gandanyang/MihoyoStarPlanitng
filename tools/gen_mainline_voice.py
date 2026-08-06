@@ -150,6 +150,12 @@ T = [
     ("linche", "branchB_01", "他为什么来这里？他一个人在这里住了多久？"),
     ("linche", "branchB_02", "……我好像从来没问过他这些。"),
     ("linche", "branchC_01", "……说实话，我连明天会怎样都不知道。"),
+    # 支线试点：夏雅藤架（XIYA_GARDEN_TRELLIS_DIALOGUE）——林澈应答
+    ("linche", "trellis_03", "需要几根木材。"),
+    # 支线试点：村长星空（ELDER_TEA_QUEST_DIALOGUE）——林澈应答
+    ("linche", "tea_quest_04", "……好。"),
+    # 支线试点：村长星空（ELDER_STAR_SITE_DIALOGUE）——林澈独白
+    ("linche", "star_site_01", "……爷爷以前，就坐在这里吗？"),
 
     # ---- 夏雅（xiya）----
     ("xiya", "xiya_01", "你就是林澈？"),
@@ -191,6 +197,13 @@ T = [
     ("xiya", "branchC_03", "你在这里，就足够了。"),
     ("xiya", "finale_01", "已经很久了，这片地没有这么热闹过。"),
     ("xiya", "finale_02", "青禾镇，欢迎你。"),
+    # 支线试点：夏雅藤架（XIYA_GARDEN_TRELLIS_DIALOGUE / NEED / DONE）
+    ("xiya", "trellis_01", "你来得正好。这架藤蔓，爷爷走后就没人管了。"),
+    ("xiya", "trellis_02", "要是能修一修，明年花开的时候，还能靠着它看一会儿。"),
+    ("xiya", "trellis_04", "我去找工具。……等你凑齐了木材，我们再一起把它立起来。"),
+    ("xiya", "trellis_need_01", "藤架还差几根木材。你要是有空，从庄园里砍几根来？"),
+    ("xiya", "trellis_done_01", "好了……以后每年花开，都有地方靠了。"),
+    ("xiya", "trellis_done_02", "他说，院子有人照顾，就不会冷清。"),
 
     # ---- 村长（elder）----
     ("elder", "elder_01", "你就是林澈吧？星黎庄园的新主人。"),
@@ -202,6 +215,10 @@ T = [
     ("elder", "shard_04", "你能把它带回来，说明这座岛……已经认你了。"),
     ("elder", "shard_06", "那就够了。有时候，不是人找到东西，是东西找到人。"),
     ("elder", "shard_07", "你爷爷以前啊，总喜欢在晚上去农田后面的地方坐一会儿。他说，那里的星星很亮。"),
+    # 支线试点：村长星空（ELDER_TEA_QUEST_DIALOGUE）——村长委托
+    ("elder", "tea_quest_01", "对了——你爷爷以前啊，忙完一天的活，总喜欢去农田边坐一会儿。"),
+    ("elder", "tea_quest_02", "他说，那里安静，能看见很远的星星。"),
+    ("elder", "tea_quest_03", "你要是晚上有空，带壶茶去那儿坐坐，就当替他看看。"),
 
     # ---- 爷爷（grandpa：笔记/信/纸条）----
     ("grandpa", "notes_01", "今年番茄长得很好，比去年早熟了几天。"),
@@ -306,6 +323,10 @@ T = [
     ("linche", "flashL_03", "我……找不到回去的路了。"),
     ("xiya", "flashL_04", "那就跟着灯回来。"),
     ("linche", "flashL_05", "后来我总记得这句话。好像跟着光走，就不会迷路。"),
+    # 支线试点闪回：夏雅藤架（XIYA_GARDEN_FLASHBACK）——爷爷台词
+    ("grandpa", "flashG_01", "院子有人照顾，就不会冷清。"),
+    # 支线试点闪回：村长星空（ELDER_STAR_FLASHBACK）——爷爷台词
+    ("grandpa", "flashS_01", "那里安静，能看见很远的星星。"),
 ]
 
 

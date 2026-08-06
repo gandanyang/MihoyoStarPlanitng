@@ -1,7 +1,7 @@
 /* eslint-disable */
 // ══════════════════════════════════════════════════════════════════
 // 语音映射数据 —— 由 tools/gen_mainline_voice.py --emit-voicebank 自动生成，勿手改
-// 生成时间：2026-08-06 21:04:12
+// 生成时间：2026-08-06 23:08:18
 // 说明：speaker='' 表示通配（少女/HR/纸条），text 为归一化后原文（已剥（笑）等标注）
 // ══════════════════════════════════════════════════════════════════
 export interface VoiceEntry { file: string; speaker: string; text: string }
@@ -52,6 +52,9 @@ export const VOICE_ENTRIES: VoiceEntry[] = [
   { file: 'linche/branchB_01.wav', speaker: '林澈', text: '他为什么来这里？他一个人在这里住了多久？' },
   { file: 'linche/branchB_02.wav', speaker: '林澈', text: '……我好像从来没问过他这些。' },
   { file: 'linche/branchC_01.wav', speaker: '林澈', text: '……说实话，我连明天会怎样都不知道。' },
+  { file: 'linche/trellis_03.wav', speaker: '林澈', text: '需要几根木材。' },
+  { file: 'linche/tea_quest_04.wav', speaker: '林澈', text: '……好。' },
+  { file: 'linche/star_site_01.wav', speaker: '林澈', text: '……爷爷以前，就坐在这里吗？' },
   { file: 'xiya/xiya_01.wav', speaker: '夏雅', text: '你就是林澈？' },
   { file: 'xiya/xiya_03.wav', speaker: '夏雅', text: '林爷爷以前提过你。……大家都以为，不会有人回来了。' },
   { file: 'xiya/xiya_05.wav', speaker: '夏雅', text: '那就先从这扇门开始吧。' },
@@ -91,6 +94,12 @@ export const VOICE_ENTRIES: VoiceEntry[] = [
   { file: 'xiya/branchC_03.wav', speaker: '夏雅', text: '你在这里，就足够了。' },
   { file: 'xiya/finale_01.wav', speaker: '夏雅', text: '已经很久了，这片地没有这么热闹过。' },
   { file: 'xiya/finale_02.wav', speaker: '夏雅', text: '青禾镇，欢迎你。' },
+  { file: 'xiya/trellis_01.wav', speaker: '夏雅', text: '你来得正好。这架藤蔓，爷爷走后就没人管了。' },
+  { file: 'xiya/trellis_02.wav', speaker: '夏雅', text: '要是能修一修，明年花开的时候，还能靠着它看一会儿。' },
+  { file: 'xiya/trellis_04.wav', speaker: '夏雅', text: '我去找工具。……等你凑齐了木材，我们再一起把它立起来。' },
+  { file: 'xiya/trellis_need_01.wav', speaker: '夏雅', text: '藤架还差几根木材。你要是有空，从庄园里砍几根来？' },
+  { file: 'xiya/trellis_done_01.wav', speaker: '夏雅', text: '好了……以后每年花开，都有地方靠了。' },
+  { file: 'xiya/trellis_done_02.wav', speaker: '夏雅', text: '他说，院子有人照顾，就不会冷清。' },
   { file: 'elder/elder_01.wav', speaker: '村长', text: '你就是林澈吧？星黎庄园的新主人。' },
   { file: 'elder/elder_03.wav', speaker: '村长', text: '我是青禾镇的镇长。你爷爷啊，年轻时候就喜欢晚上坐在那块石头上看天。' },
   { file: 'elder/elder_05.wav', speaker: '村长', text: '喜欢。他以前也经常往后山跑。' },
@@ -100,6 +109,9 @@ export const VOICE_ENTRIES: VoiceEntry[] = [
   { file: 'elder/shard_04.wav', speaker: '村长', text: '你能把它带回来，说明这座岛……已经认你了。' },
   { file: 'elder/shard_06.wav', speaker: '村长', text: '那就够了。有时候，不是人找到东西，是东西找到人。' },
   { file: 'elder/shard_07.wav', speaker: '村长', text: '你爷爷以前啊，总喜欢在晚上去农田后面的地方坐一会儿。他说，那里的星星很亮。' },
+  { file: 'elder/tea_quest_01.wav', speaker: '村长', text: '对了——你爷爷以前啊，忙完一天的活，总喜欢去农田边坐一会儿。' },
+  { file: 'elder/tea_quest_02.wav', speaker: '村长', text: '他说，那里安静，能看见很远的星星。' },
+  { file: 'elder/tea_quest_03.wav', speaker: '村长', text: '你要是晚上有空，带壶茶去那儿坐坐，就当替他看看。' },
   { file: 'grandpa/notes_01.wav', speaker: '爷爷的笔记', text: '今年番茄长得很好，比去年早熟了几天。' },
   { file: 'grandpa/notes_02.wav', speaker: '爷爷的笔记', text: '后山的竹子又长高了，看来春天比往年来得早。' },
   { file: 'grandpa/notes_03.wav', speaker: '爷爷的笔记', text: '村口老周家的孩子回来了一趟，带了不少城里的东西。' },
@@ -170,4 +182,6 @@ export const VOICE_ENTRIES: VoiceEntry[] = [
   { file: 'linche/flashL_03.wav', speaker: '林澈', text: '我……找不到回去的路了。' },
   { file: 'xiya/flashL_04.wav', speaker: '夏雅', text: '那就跟着灯回来。' },
   { file: 'linche/flashL_05.wav', speaker: '林澈', text: '后来我总记得这句话。好像跟着光走，就不会迷路。' },
+  { file: 'grandpa/flashG_01.wav', speaker: '爷爷', text: '院子有人照顾，就不会冷清。' },
+  { file: 'grandpa/flashS_01.wav', speaker: '爷爷', text: '那里安静，能看见很远的星星。' },
 ];
