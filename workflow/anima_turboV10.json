@@ -1,0 +1,242 @@
+{
+  "2": {
+    "inputs": {
+      "text": "score_1, score_2, score_3,bad anatomy, bad proportions, deformed anatomy, deformed face, deformed eyes, text, multiple fingers,watermark,artist name,censor,mosaic, shadows, highlights, strong lighting, dramatic lighting, rim light, backlighting, high contrast, volumetric lighting",
+      "clip": [
+        "13",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP文本编码"
+    }
+  },
+  "3": {
+    "inputs": {
+      "string_a": [
+        "10",
+        0
+      ],
+      "string_b": [
+        "17",
+        0
+      ],
+      "delimiter": ""
+    },
+    "class_type": "StringConcatenate",
+    "_meta": {
+      "title": "连接"
+    }
+  },
+  "5": {
+    "inputs": {
+      "value": 1536
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "图片的宽"
+    }
+  },
+  "6": {
+    "inputs": {
+      "value": 1024
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "图片的长"
+    }
+  },
+  "7": {
+    "inputs": {
+      "text": [
+        "3",
+        0
+      ],
+      "clip": [
+        "13",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP文本编码"
+    }
+  },
+  "8": {
+    "inputs": {
+      "samples": [
+        "16",
+        0
+      ],
+      "vae": [
+        "12",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE解码"
+    }
+  },
+  "10": {
+    "inputs": {
+      "value": ""
+    },
+    "class_type": "PrimitiveString",
+    "_meta": {
+      "title": "画师串"
+    }
+  },
+  "11": {
+    "inputs": {
+      "width": [
+        "5",
+        0
+      ],
+      "height": [
+        "6",
+        0
+      ],
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "空Latent图像"
+    }
+  },
+  "12": {
+    "inputs": {
+      "vae_name": "qwen_image_vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "加载VAE"
+    }
+  },
+  "13": {
+    "inputs": {
+      "clip_name": "anima_baseV10_txt.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "加载CLIP"
+    }
+  },
+  "14": {
+    "inputs": {
+      "value": ",masterpiece, best quality, score_9, score_8，highres, absurdres,anime screenshot,year 2025,"
+    },
+    "class_type": "PrimitiveString",
+    "_meta": {
+      "title": "质量提示词"
+    }
+  },
+  "15": {
+    "inputs": {
+      "unet_name": "anima_turboV10.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "UNet加载器"
+    }
+  },
+  "16": {
+    "inputs": {
+      "seed": 1069320130983756,
+      "steps": 8,
+      "cfg": 1,
+      "sampler_name": "er_sde",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "15",
+        0
+      ],
+      "positive": [
+        "7",
+        0
+      ],
+      "negative": [
+        "2",
+        0
+      ],
+      "latent_image": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "K采样器"
+    }
+  },
+  "17": {
+    "inputs": {
+      "string_a": [
+        "14",
+        0
+      ],
+      "string_b": [
+        "18",
+        0
+      ],
+      "delimiter": ""
+    },
+    "class_type": "StringConcatenate",
+    "_meta": {
+      "title": "连接"
+    }
+  },
+  "18": {
+    "inputs": {
+      "string_a": [
+        "20",
+        0
+      ],
+      "string_b": [
+        "19",
+        0
+      ],
+      "delimiter": ","
+    },
+    "class_type": "StringConcatenate",
+    "_meta": {
+      "title": "连接"
+    }
+  },
+  "19": {
+    "inputs": {
+      "value": ""
+    },
+    "class_type": "PrimitiveString",
+    "_meta": {
+      "title": "lora触发词"
+    }
+  },
+  "20": {
+    "inputs": {
+      "value": ""
+    },
+    "class_type": "PrimitiveString",
+    "_meta": {
+      "title": "画面描述"
+    }
+  },
+  "22": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "保存图像"
+    }
+  }
+}

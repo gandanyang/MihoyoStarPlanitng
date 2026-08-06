@@ -1,0 +1,72 @@
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+dist-ssr/
+
+# Vite 缓存
+.vite/
+
+# 日志
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 编辑器/IDE 临时文件
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 环境变量（如有，切勿提交）
+.env
+.env.local
+.env.*.local
+# 加密后的 API Key 密文（DPAPI 当前用户加密，切勿提交；离开本机账号无法解密）
+tools/.env.enc
+# 通用密钥保险箱（DPAPI 当前用户加密，切勿提交）
+tools/.secrets.enc
+# 本机 APK 构建环境配置（每台机器路径不同，切勿入库）
+tools/local.env.ps1
+tools/local.env.sh
+
+# 语音生成批量任务（含 E 盘绝对路径，切勿入库）
+tools/voice_tasks.json
+# 生成的语音产物仓库太大，不入库；需要入库的音频请手动确认后 git add -f
+public/audio/voice/
+
+# 浏览器自动化测试截图（测试产物，不入库）
+test-screenshots/
+
+# 临时生成目录（AI 生图产物等，正式入库请移入 assets/docs 对应目录）
+tmp/
+
+# 自动配音生成目录（Fish Audio TTS 试听/批量产物；正式定稿后选择性入库）
+public/assets/audio/generated/
+tools/voice_gen_log.txt
+tools/_tmp_*
+
+# Capacitor/Android 构建产物
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+android/.idea/
+android/capacitor-cordova-android-plugins/build/
+*.apk
+
+# 临时探针脚本
+_tmp_*.mjs
+
+# Python 缓存
+**/__pycache__/
+*.pyc

@@ -1,0 +1,53 @@
+{
+  "results": [
+    {
+      "input": "title.mp3",
+      "output": "title.ogg",
+      "orig_size": 3592244,
+      "new_size": 1737212,
+      "orig_bitrate": 256,
+      "target_bitrate": 128,
+      "actual_bitrate": 123,
+      "ratio": 51.63992200975211,
+      "status": "✅"
+    },
+    {
+      "input": "farm_day.mp3",
+      "output": "farm_day.ogg",
+      "orig_size": 5271604,
+      "new_size": 2556453,
+      "orig_bitrate": 256,
+      "target_bitrate": 128,
+      "actual_bitrate": 124,
+      "ratio": 51.505215490389645,
+      "status": "✅"
+    },
+    {
+      "input": "stargaze_night.mp3",
+      "output": "stargaze_night.ogg",
+      "orig_size": 5171294,
+      "new_size": 2597098,
+      "orig_bitrate": 256,
+      "target_bitrate": 128,
+      "actual_bitrate": 128,
+      "ratio": 49.77856606102844,
+      "status": "✅"
+    },
+    {
+      "input": "stargaze_final.mp3",
+      "output": "stargaze_final.ogg",
+      "orig_size": 5246526,
+      "new_size": 2998959,
+      "orig_bitrate": 256,
+      "target_bitrate": 160,
+      "actual_bitrate": 146,
+      "ratio": 42.839147275740174,
+      "status": "✅"
+    }
+  ],
+  "summary": {
+    "total_orig_bytes": 19281668,
+    "total_new_bytes": 9889722,
+    "total_saved_ratio": 48.709198809978474
+  }
+}

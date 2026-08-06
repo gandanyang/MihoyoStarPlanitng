@@ -1,0 +1,84 @@
+# 项目架构 Skill
+
+## 总体架构
+
+项目采用 Phaser Scene + System + Data 分层结构。
+
+## Scene层
+
+负责：
+
+* 场景加载
+* 生命周期
+* 游戏显示
+
+主要：
+
+* TitleScene
+* StationScene
+* MapScene
+
+不要在 Scene 中堆积业务逻辑。
+
+---
+
+## Entity层
+
+负责游戏对象。
+
+例如：
+
+Player
+NPC
+
+规则：
+
+Entity负责表现和交互。
+
+复杂逻辑放入 System。
+
+---
+
+## Data层
+
+负责状态数据。
+
+包括：
+
+FarmState
+Inventory
+Economy
+TimeSystem
+
+原则：
+
+数据状态必须可保存。
+
+---
+
+## System层
+
+负责核心玩法逻辑。
+
+例如：
+
+SaveSystem
+StorySystem
+QuestSystem
+NPCSystem
+
+新增大型功能：
+
+优先创建 System。
+
+---
+
+## UI层
+
+UI只负责：
+
+* 显示
+* 输入
+* 调用系统
+
+不要直接修改核心数据。

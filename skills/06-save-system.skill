@@ -1,0 +1,107 @@
+# 存档系统 Skill
+
+## 系统定位
+
+SaveSystem 是游戏持久化核心。
+
+负责：
+
+* 保存玩家进度
+* 恢复游戏状态
+* 管理版本兼容（版本迁移）
+
+当前存档版本：**v0.5**。
+
+---
+
+## 存档结构（v0.5 分组结构）
+
+不允许新增字段（未经批准不得新增组 v0.5 结构：
+
+```ts
+{
+  version: "0.5",
+  player: {
+    mapKey,
+    spawnKey,   // 当前地图
+    position: { x, y }
+  },
+  world: {
+    day, time, weather, stamina, stamina, stamina maxStamina
+  },
+  farm: FarmState,
+  story: StoryProgress
+}
+```
+
+---
+
+## 存档原则
+
+所有长期存在的数据必须通过 SaveSystem 持久化：
+
+* 玩家位置 / 当前场景
+* 背包 Inventory
+* 金币 Economy
+* 农田状态 FarmState
+* 作物成长 FarmProgress
+* NPC 关系 NPCSystem
+* 剧情进度 StorySystem
+* 任务状态 Quest/DailyQuest
+* 每日任务 DailyQuestSystem
+
+---
+
+## 禁止行为
+
+禁止：
+
+* ❌ 在其他 System 中直接 `localStorage.setItem/getItem
+* ❌ 创建新的存档入口（只允许一个 localStorage key）
+* ❌ 随意改变字段名（可能导致坏档）
+
+原因：存档损坏。
+
+### localStorage key
+
+唯一 key：`return_star_save`。
+
+---
+
+## 新系统接入流程
+
+新系统接入存档步骤：
+
+1. 设计数据结构（interface XxxState { }，不用 any
+2. 定义默认值（初始状态（新游戏新玩家默认值
+3. 添加 save() 写回
+4. 添加 load() 恢复
+5. 测试旧存档兼容迁移）
+6. 必要时 migrate 版本迁移
+
+---
+
+## 修改存档必须检查 3 件事
+
+修改存档前必须回答：
+
+1. 旧玩家读取存档能不能读？字段默认值全吗？
+2. 字段缺失吗？
+3. 要不要版本迁移？
+
+### 版本迁移
+
+版本不匹配走 `migrate()`（当前策略：版本不匹配清空旧档）。
+
+---
+
+## 边界保护
+
+`sanitize()` 边界保护防坏档崩溃。坏档部分字段缺省默认填。
+
+---
+
+## 每日任务跨天刷新规则
+
+跨天刷新时必须保留"已完成但未领奖"的每日任务。
+（此条为硬约束，不得删除后重写，必须保留完成未领奖任务）

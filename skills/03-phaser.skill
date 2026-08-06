@@ -1,0 +1,96 @@
+# Phaser 开发 Skill
+
+## 引擎版本
+
+* Phaser 3.80
+
+---
+
+## Scene 原则
+
+Scene 负责：
+
+* 生命周期（preload / create / update）
+* 加载资源
+* 显示对象（sprite / tilemap / text / graphics）
+* 注册输入事件
+
+不要：把全部游戏逻辑写进 Scene。
+业务逻辑应放入对应的 System。
+
+### 现有 Scene
+
+* **TitleScene** — 标题界面（Start/继续/新游戏）
+* **StationScene** — 车站序章（开场剧情 + 黑屏）
+* **MapScene**（通用）— 所有地图场景，通过 mapKey 参数区分：
+  * `map:gate` / `map:farm` / `map:town` / `map:forest` / `map:mine` / `map:house`
+
+### Scene 切换规则
+
+玩家走到出口区域（WASD/方向键走到出口触发） → 切 mapKey 不同 → 出生点放置。
+
+出口触发区域必须至少 **3×3 tiles** 保证检测可靠。
+不得覆盖农场顶部出口间隙（col 14-15, row 0 Walls 层必须留空，保证农场→森林导航）。
+
+---
+
+## Entity 原则
+
+Player / NPC Entity 负责：
+
+* 移动（Arcade 物理）
+* 动画
+* 交互触发（碰撞盒）
+
+**不负责：** 经济 / 剧情 / 存档。
+
+### Player 前置规则
+
+创建 Player 实例**之前**必须先设置物理世界边界，确保移动边界正确。
+
+---
+
+## 输入系统
+
+* **InputManager** — 键盘（PC）：WASD 移动 / E 交互 / B 背包 / R 切换 / ESC）
+* **TouchControls** — 触屏（移动端）：虚拟摇杆 + 交互按钮 + 背包/任务按钮
+
+新增输入必须**必须同时覆盖** PC 键盘方案 + 移动端触屏方案。
+
+### 触屏专项
+
+* 移动端 HUD 不得显示键盘操作提示（WASD / E交互），以虚拟控件承担教学。
+* 移动端对话框必须固定在屏幕底部居中（`y = scale.height - 180`，`setScrollFactor(0)` 防止相机跟随问题。
+* UI 布局决策必须使用 config.ts 里的**统一 isMobileLayout() 函数，禁止散落的 window.innerWidth 检查。
+
+---
+
+## 地图系统（Tilemap）
+
+* 使用 Tiled .tmj（JSON）保存。
+* 地图专属资源按地图名命名（gate_tileset / farm_tileset 等）。
+* 地图层命名规则：
+
+1. Walls 层（碰撞） 2. Decoration 层（装饰） 3. Foreground 层（前景）。
+
+### Walls 层碰撞规则（MapScene.ts 必须）
+
+农场地图的 MapScene wallsLayer 碰撞必须显式指定 tile ID (3-4, 9-13），不得使用 setCollisionBetween(3,13)。
+因为 G_WOOD=6 和 G_FLOWER=8 是**非碰撞瓦片，不得被误加为碰撞。
+
+### 地图出口指示
+
+每个地图出口必须有**闪烁黄色箭头 + 目标名称（示例：`▲ 森林` / `▶ 小镇` / `▲ 家中` 指示导航点。
+*农场三处出口：顶部（cols 顶部（col 14-15）→ 森林，右侧（rows 9-10）→ 小镇 / 下方（cols 5-7）→ 家中。
+
+---
+
+## 性能要求
+
+避免：
+
+* 每帧创建新对象
+* update 内大量重复查找
+* 无意义的 update 中计算（如：
+* 每帧创建新 Text / Graphics）
+* 重复查询 getTileAt 每帧 new 对象池化

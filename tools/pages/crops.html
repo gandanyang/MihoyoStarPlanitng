@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>像素作物 · 3种作物生长阶段</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0f1a;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: #c8dde0;
+    display: flex;
+    justify-content: center;
+    padding: 2rem;
+    min-height: 100vh;
+  }
+  .container { max-width: 900px; width: 100%; }
+  h1 { font-size: 1.5rem; font-weight: 600; color: #e0f0e8; margin-bottom: 0.5rem; }
+  .subtitle { color: #6a8a8a; font-size: 0.9rem; margin-bottom: 1.5rem; }
+  .card {
+    background: #121a24; border: 1px solid #1a2a3a; border-radius: 12px;
+    padding: 1.5rem; margin-bottom: 1.5rem;
+  }
+  .card h3 { color: #8ac8b8; margin-bottom: 0.8rem; font-size: 1rem; }
+  .preview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+  .crop-col { text-align: center; }
+  .crop-col h4 { color: #8ac8b8; font-size: 0.9rem; margin-bottom: 0.5rem; }
+  .stage-row { display: flex; justify-content: center; gap: 0.5rem; margin-top: 0.3rem; }
+  .stage-row canvas {
+    border: 1px solid #1a2a3a; border-radius: 4px; image-rendering: pixelated;
+  }
+  .stage-label { font-size: 0.7rem; color: #5a7a7a; }
+  .sheet-area { display: flex; flex-direction: column; align-items: center; gap: 0.8rem; }
+  #spriteCanvas {
+    image-rendering: pixelated; border: 1px solid #1a2a3a; border-radius: 6px; background: #0a0f1a;
+  }
+  .btn {
+    padding: 0.6rem 1.5rem; border: none; border-radius: 8px; font-size: 0.9rem;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-primary { background: #2a8a7a; color: #f0f8f0; }
+  .btn-primary:hover { background: #3aaa8a; }
+  .hint { color: #5a7a7a; font-size: 0.8rem; }
+  .info-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  .info-table td { padding: 0.4rem 0.8rem; border-bottom: 1px solid #1a2a3a; }
+  .info-table td:first-child { color: #6a8a8a; }
+  .info-table td:last-child { color: #c8dde0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🌱 像素作物 · 3种作物生长阶段</h1>
+  <p class="subtitle">3 种作物 × 3 阶段 · 32×32 每帧 · 96×96 spritesheet</p>
+
+  <div class="card">
+    <h3>🌿 作物预览</h3>
+    <div class="preview-grid">
+      <div class="crop-col">
+        <h4>🥕 萝卜 (Radish)</h4>
+        <canvas id="r0" width="96" height="96"></canvas>
+        <div class="stage-row">
+          <span class="stage-label">🌱 幼苗</span>
+          <span class="stage-label">🌿 生长</span>
+          <span class="stage-label">🥕 成熟</span>
+        </div>
+      </div>
+      <div class="crop-col">
+        <h4>🍅 番茄 (Tomato)</h4>
+        <canvas id="r1" width="96" height="96"></canvas>
+        <div class="stage-row">
+          <span class="stage-label">🌱 幼苗</span>
+          <span class="stage-label">🌿 生长</span>
+          <span class="stage-label">🍅 成熟</span>
+        </div>
+      </div>
+      <div class="crop-col">
+        <h4>🌽 玉米 (Corn)</h4>
+        <canvas id="r2" width="96" height="96"></canvas>
+        <div class="stage-row">
+          <span class="stage-label">🌱 幼苗</span>
+          <span class="stage-label">🌿 生长</span>
+          <span class="stage-label">🌽 成熟</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>📜 Sprite Sheet · 96×96</h3>
+    <div class="sheet-area">
+      <canvas id="spriteCanvas" width="288" height="288"></canvas>
+      <div>
+        <button class="btn btn-primary" id="exportBtn">📥 导出 crops.png (96×96)</button>
+        <span class="hint">3行×3列 · 行=作物类型 · 列=生长阶段</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>📋 帧索引说明</h3>
+    <table class="info-table">
+      <tr><td>帧 0-2</td><td>萝卜 (radish) · 幼苗/生长/成熟</td></tr>
+      <tr><td>帧 3-5</td><td>番茄 (tomato) · 幼苗/生长/成熟</td></tr>
+      <tr><td>帧 6-8</td><td>玉米 (corn) · 幼苗/生长/成熟</td></tr>
+      <tr><td>公式</td><td>frameIndex = cropTypeIndex × 3 + stageIndex</td></tr>
+    </table>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  像素作物渲染器 · 3 种作物 × 3 阶段
+// ============================================================
+
+const PAL = {
+  leafDark: '#2a6a2a', leafMid: '#4aaf4a', leafLight: '#6adf6a', leafHighlight: '#8aef8a',
+  leafYellow: '#8aaa3a', leafYellowLight: '#aacc5a',
+  radishDark: '#8a2a2a', radishMid: '#cc4444', radishLight: '#dd6666', radishHighlight: '#ee8888', radishWhite: '#f0e8e8',
+  tomatoDark: '#6a1a1a', tomatoMid: '#cc3333', tomatoLight: '#ee5555', tomatoHighlight: '#ff8888', tomatoGreen: '#4a8a3a',
+  cornDark: '#8a7a2a', cornMid: '#ccaa44', cornLight: '#eedd66', cornHighlight: '#ffee88',
+  cornStalk: '#5a8a3a', cornStalkLight: '#7aaa5a',
+  dirtDark: '#4a2a1a', dirtMid: '#6b4423', dirtLight: '#8a6a3a',
+  rootColor: '#c8a888',
+  trans: 'transparent',
+};
+
+class CropRenderer {
+  constructor(size = 32) {
+    this.size = size;
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = size;
+    this.canvas.height = size;
+    this.ctx = this.canvas.getContext('2d');
+  }
+
+  clear() { this.ctx.clearRect(0, 0, this.size, this.size); }
+  setPixel(x, y, c) { if (x < 0 || x >= this.size || y < 0 || y >= this.size) return; this.ctx.fillStyle = c; this.ctx.fillRect(x, y, 1, 1); }
+  fillRect(x, y, w, h, c) { for (let i = x; i < x + w; i++) for (let j = y; j < y + h; j++) this.setPixel(i, j, c); }
+  dot(x, y, c) { this.setPixel(x, y, c); }
+
+  // ========== 萝卜 (Radish) ==========
+  drawRadishSprout() {
+    this.clear(); const P = PAL;
+    this.fillRect(8, 22, 16, 10, P.dirtDark); this.fillRect(9, 22, 14, 10, P.dirtMid); this.fillRect(10, 24, 12, 8, P.dirtLight);
+    this.fillRect(13, 18, 3, 6, P.leafDark); this.fillRect(14, 17, 2, 7, P.leafMid); this.fillRect(15, 18, 1, 5, P.leafLight);
+    this.fillRect(16, 18, 3, 6, P.leafDark); this.fillRect(16, 17, 2, 7, P.leafMid); this.fillRect(16, 18, 1, 5, P.leafLight);
+    this.fillRect(15, 20, 2, 4, P.leafMid); this.fillRect(15, 21, 2, 2, P.leafLight);
+    this.dot(14, 18, P.leafHighlight); this.dot(17, 18, P.leafHighlight);
+    return this.canvas;
+  }
+  drawRadishGrowing() {
+    this.clear(); const P = PAL;
+    this.fillRect(6, 22, 20, 10, P.dirtDark); this.fillRect(7, 22, 18, 10, P.dirtMid); this.fillRect(8, 24, 16, 8, P.dirtLight);
+    this.fillRect(12, 18, 8, 6, P.radishDark); this.fillRect(13, 18, 6, 6, P.radishMid); this.fillRect(14, 18, 4, 6, P.radishLight);
+    this.dot(15, 19, P.radishHighlight); this.dot(16, 20, P.radishHighlight);
+    this.fillRect(8, 12, 5, 8, P.leafDark); this.fillRect(9, 11, 4, 9, P.leafMid); this.fillRect(10, 12, 3, 7, P.leafLight); this.dot(10, 12, P.leafHighlight);
+    this.fillRect(19, 12, 5, 8, P.leafDark); this.fillRect(19, 11, 4, 9, P.leafMid); this.fillRect(19, 12, 3, 7, P.leafLight); this.dot(21, 12, P.leafHighlight);
+    this.fillRect(14, 11, 4, 8, P.leafDark); this.fillRect(15, 10, 2, 9, P.leafMid); this.fillRect(15, 11, 2, 7, P.leafLight); this.dot(15, 11, P.leafHighlight);
+    this.fillRect(14, 18, 4, 3, P.leafMid); this.fillRect(15, 18, 2, 3, P.leafLight);
+    this.dot(14, 24, P.rootColor); this.dot(18, 24, P.rootColor);
+    return this.canvas;
+  }
+  drawRadishMature() {
+    this.clear(); const P = PAL;
+    this.fillRect(4, 24, 24, 8, P.dirtDark); this.fillRect(5, 24, 22, 8, P.dirtMid); this.fillRect(6, 25, 20, 7, P.dirtLight);
+    this.fillRect(8, 20, 16, 6, P.radishDark); this.fillRect(9, 20, 14, 6, P.radishMid); this.fillRect(10, 20, 12, 6, P.radishLight);
+    this.fillRect(10, 14, 12, 8, P.radishDark); this.fillRect(11, 14, 10, 8, P.radishMid); this.fillRect(12, 14, 8, 8, P.radishLight);
+    this.fillRect(13, 15, 3, 4, P.radishHighlight); this.dot(14, 16, '#ffaaaa'); this.dot(14, 17, '#ffaaaa');
+    this.fillRect(14, 22, 4, 3, P.radishWhite); this.fillRect(15, 23, 2, 2, P.radishWhite);
+    this.dot(13, 25, P.rootColor); this.dot(19, 25, P.rootColor); this.dot(16, 26, P.rootColor);
+    this.fillRect(6, 8, 6, 10, P.leafDark); this.fillRect(7, 7, 5, 11, P.leafMid); this.fillRect(8, 8, 4, 9, P.leafLight); this.dot(8, 8, P.leafHighlight); this.dot(9, 10, P.leafHighlight);
+    this.fillRect(20, 8, 6, 10, P.leafDark); this.fillRect(20, 7, 5, 11, P.leafMid); this.fillRect(20, 8, 4, 9, P.leafLight); this.dot(22, 8, P.leafHighlight); this.dot(21, 10, P.leafHighlight);
+    this.fillRect(13, 5, 6, 10, P.leafDark); this.fillRect(14, 4, 4, 11, P.leafMid); this.fillRect(14, 5, 4, 9, P.leafLight); this.dot(15, 5, P.leafHighlight); this.dot(16, 7, P.leafHighlight);
+    this.fillRect(15, 3, 2, 3, P.leafMid); this.fillRect(15, 3, 2, 2, P.leafLight); this.dot(15, 3, P.leafHighlight);
+    this.fillRect(13, 12, 6, 4, P.leafMid); this.fillRect(14, 12, 4, 4, P.leafLight);
+    this.dot(11, 16, P.dirtMid); this.dot(19, 17, P.dirtMid); this.dot(12, 19, P.dirtMid);
+    return this.canvas;
+  }
+
+  // ========== 番茄 (Tomato) ==========
+  drawTomatoSprout() {
+    this.clear(); const P = PAL;
+    this.fillRect(8, 22, 16, 10, P.dirtDark); this.fillRect(9, 22, 14, 10, P.dirtMid); this.fillRect(10, 24, 12, 8, P.dirtLight);
+    this.fillRect(14, 18, 4, 6, P.leafDark); this.fillRect(15, 17, 2, 7, P.leafMid); this.fillRect(15, 18, 2, 5, P.leafLight);
+    this.fillRect(13, 19, 6, 4, P.leafDark); this.fillRect(14, 18, 4, 5, P.leafMid);
+    this.fillRect(15, 20, 2, 4, P.leafMid); this.fillRect(15, 21, 2, 2, P.leafLight);
+    this.dot(15, 18, P.leafHighlight); this.dot(16, 19, P.leafHighlight);
+    return this.canvas;
+  }
+  drawTomatoGrowing() {
+    this.clear(); const P = PAL;
+    this.fillRect(6, 22, 20, 10, P.dirtDark); this.fillRect(7, 22, 18, 10, P.dirtMid); this.fillRect(8, 24, 16, 8, P.dirtLight);
+    // 小绿色番茄
+    this.fillRect(13, 17, 6, 6, P.tomatoGreen); this.fillRect(14, 17, 4, 6, '#5a9a4a');
+    this.dot(15, 18, '#7abb5a');
+    // 叶子
+    this.fillRect(9, 12, 4, 7, P.leafDark); this.fillRect(10, 11, 3, 8, P.leafMid); this.fillRect(10, 12, 2, 6, P.leafLight); this.dot(10, 12, P.leafHighlight);
+    this.fillRect(19, 12, 4, 7, P.leafDark); this.fillRect(19, 11, 3, 8, P.leafMid); this.fillRect(19, 12, 2, 6, P.leafLight); this.dot(20, 12, P.leafHighlight);
+    this.fillRect(14, 11, 4, 7, P.leafDark); this.fillRect(15, 10, 2, 8, P.leafMid); this.fillRect(15, 11, 2, 6, P.leafLight); this.dot(16, 11, P.leafHighlight);
+    this.fillRect(14, 16, 4, 3, P.leafMid);
+    this.dot(14, 24, P.rootColor); this.dot(18, 24, P.rootColor);
+    return this.canvas;
+  }
+  drawTomatoMature() {
+    this.clear(); const P = PAL;
+    this.fillRect(4, 24, 24, 8, P.dirtDark); this.fillRect(5, 24, 22, 8, P.dirtMid); this.fillRect(6, 25, 20, 7, P.dirtLight);
+    // 大红色番茄
+    this.fillRect(9, 16, 14, 10, P.tomatoDark); this.fillRect(10, 16, 12, 10, P.tomatoMid); this.fillRect(11, 16, 10, 10, P.tomatoLight);
+    this.fillRect(12, 17, 4, 6, P.tomatoHighlight); this.dot(13, 18, '#ffaaaa'); this.dot(14, 19, '#ffaaaa');
+    this.fillRect(13, 14, 6, 4, P.tomatoDark); this.fillRect(14, 14, 4, 4, P.tomatoMid);
+    // 叶子（番茄的萼片）
+    this.fillRect(13, 12, 6, 4, P.leafDark); this.fillRect(14, 11, 4, 5, P.leafMid); this.fillRect(14, 12, 4, 3, P.leafLight);
+    this.fillRect(9, 10, 5, 7, P.leafDark); this.fillRect(10, 9, 4, 8, P.leafMid); this.fillRect(11, 10, 3, 6, P.leafLight); this.dot(11, 10, P.leafHighlight);
+    this.fillRect(18, 10, 5, 7, P.leafDark); this.fillRect(18, 9, 4, 8, P.leafMid); this.fillRect(18, 10, 3, 6, P.leafLight); this.dot(20, 10, P.leafHighlight);
+    this.fillRect(14, 8, 4, 5, P.leafDark); this.fillRect(15, 7, 2, 6, P.leafMid); this.fillRect(15, 8, 2, 4, P.leafLight); this.dot(15, 8, P.leafHighlight);
+    // 茎
+    this.fillRect(14, 13, 4, 4, P.leafMid);
+    this.dot(11, 22, P.dirtMid); this.dot(19, 22, P.dirtMid);
+    return this.canvas;
+  }
+
+  // ========== 玉米 (Corn) ==========
+  drawCornSprout() {
+    this.clear(); const P = PAL;
+    this.fillRect(8, 22, 16, 10, P.dirtDark); this.fillRect(9, 22, 14, 10, P.dirtMid); this.fillRect(10, 24, 12, 8, P.dirtLight);
+    // 细长尖叶
+    this.fillRect(14, 16, 4, 8, P.leafDark); this.fillRect(15, 15, 2, 9, P.leafMid); this.fillRect(15, 16, 2, 7, P.leafLight);
+    this.fillRect(12, 18, 3, 6, P.leafDark); this.fillRect(13, 17, 2, 7, P.leafMid); this.fillRect(13, 18, 1, 5, P.leafLight);
+    this.fillRect(17, 18, 3, 6, P.leafDark); this.fillRect(17, 17, 2, 7, P.leafMid); this.fillRect(18, 18, 1, 5, P.leafLight);
+    this.dot(15, 16, P.leafHighlight); this.dot(13, 18, P.leafHighlight); this.dot(18, 18, P.leafHighlight);
+    return this.canvas;
+  }
+  drawCornGrowing() {
+    this.clear(); const P = PAL;
+    this.fillRect(6, 22, 20, 10, P.dirtDark); this.fillRect(7, 22, 18, 10, P.dirtMid); this.fillRect(8, 24, 16, 8, P.dirtLight);
+    // 高秆
+    this.fillRect(14, 8, 4, 16, P.cornStalk); this.fillRect(15, 8, 2, 16, P.cornStalkLight);
+    // 叶子（从秆两侧伸出）
+    this.fillRect(10, 12, 5, 4, P.leafDark); this.fillRect(11, 11, 4, 5, P.leafMid); this.fillRect(12, 12, 3, 3, P.leafLight); this.dot(12, 12, P.leafHighlight);
+    this.fillRect(17, 14, 5, 4, P.leafDark); this.fillRect(17, 13, 4, 5, P.leafMid); this.fillRect(18, 14, 3, 3, P.leafLight); this.dot(19, 14, P.leafHighlight);
+    this.fillRect(11, 16, 4, 4, P.leafDark); this.fillRect(12, 15, 3, 5, P.leafMid); this.fillRect(12, 16, 2, 3, P.leafLight);
+    this.fillRect(17, 17, 4, 4, P.leafDark); this.fillRect(17, 16, 3, 5, P.leafMid); this.fillRect(18, 17, 2, 3, P.leafLight);
+    // 顶部小穗
+    this.fillRect(14, 5, 4, 4, P.leafYellow); this.fillRect(15, 4, 2, 5, P.leafYellowLight);
+    this.fillRect(7, 24, P.rootColor); this.fillRect(24, 24, P.rootColor);
+    return this.canvas;
+  }
+  drawCornMature() {
+    this.clear(); const P = PAL;
+    this.fillRect(4, 24, 24, 8, P.dirtDark); this.fillRect(5, 24, 22, 8, P.dirtMid); this.fillRect(6, 25, 20, 7, P.dirtLight);
+    // 高秆
+    this.fillRect(14, 6, 4, 20, P.cornStalk); this.fillRect(15, 6, 2, 20, P.cornStalkLight);
+    // 玉米棒（金黄色，在秆中部）
+    this.fillRect(11, 13, 5, 8, P.cornDark); this.fillRect(12, 13, 3, 8, P.cornMid); this.fillRect(12, 14, 3, 6, P.cornLight);
+    this.dot(13, 15, P.cornHighlight); this.dot(13, 17, P.cornHighlight);
+    // 玉米须
+    this.fillRect(11, 12, 5, 2, '#8a6a3a'); this.dot(12, 11, '#8a6a3a'); this.dot(14, 11, '#8a6a3a');
+    // 叶子
+    this.fillRect(8, 10, 6, 4, P.leafDark); this.fillRect(9, 9, 5, 5, P.leafMid); this.fillRect(10, 10, 4, 3, P.leafLight); this.dot(10, 10, P.leafHighlight);
+    this.fillRect(18, 12, 6, 4, P.leafDark); this.fillRect(18, 11, 5, 5, P.leafMid); this.fillRect(19, 12, 4, 3, P.leafLight); this.dot(20, 12, P.leafHighlight);
+    this.fillRect(10, 16, 4, 4, P.leafDark); this.fillRect(11, 15, 3, 5, P.leafMid);
+    this.fillRect(18, 16, 4, 4, P.leafDark); this.fillRect(18, 15, 3, 5, P.leafMid);
+    // 顶部穗
+    this.fillRect(14, 3, 4, 4, P.leafYellow); this.fillRect(15, 2, 2, 5, P.leafYellowLight);
+    this.dot(15, 2, P.leafHighlight); this.dot(16, 3, P.leafHighlight);
+    this.dot(10, 24, P.rootColor); this.dot(22, 24, P.rootColor);
+    return this.canvas;
+  }
+
+  // 作物类型 → 绘制函数
+  drawCrop(cropType, stage) {
+    if (cropType === 0) { // radish
+      if (stage === 0) return this.drawRadishSprout();
+      if (stage === 1) return this.drawRadishGrowing();
+      return this.drawRadishMature();
+    } else if (cropType === 1) { // tomato
+      if (stage === 0) return this.drawTomatoSprout();
+      if (stage === 1) return this.drawTomatoGrowing();
+      return this.drawTomatoMature();
+    } else { // corn
+      if (stage === 0) return this.drawCornSprout();
+      if (stage === 1) return this.drawCornGrowing();
+      return this.drawCornMature();
+    }
+  }
+
+  // 生成 Sprite Sheet（3 行 × 3 列）
+  generateSpriteSheet() {
+    const sheet = document.createElement('canvas');
+    sheet.width = this.size * 3;
+    sheet.height = this.size * 3;
+    const ctx = sheet.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    for (let crop = 0; crop < 3; crop++) {
+      for (let stage = 0; stage < 3; stage++) {
+        const src = this.drawCrop(crop, stage);
+        ctx.drawImage(src, 0, 0, this.size, this.size, stage * this.size, crop * this.size, this.size, this.size);
+      }
+    }
+    return sheet;
+  }
+}
+
+// ============================================================
+//  主程序
+// ============================================================
+(function() {
+  const renderer = new CropRenderer();
+  const spriteCanvas = document.getElementById('spriteCanvas');
+  const exportBtn = document.getElementById('exportBtn');
+
+  // 渲染每个作物的 3 阶段预览（96×96 横向排列）
+  for (let crop = 0; crop < 3; crop++) {
+    const canvas = document.getElementById(`r${crop}`);
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    for (let stage = 0; stage < 3; stage++) {
+      const src = renderer.drawCrop(crop, stage);
+      ctx.drawImage(src, 0, 0, 32, 32, stage * 32 + 2, 2, 28, 28);
+    }
+  }
+
+  // 渲染 Sprite Sheet（放大显示）
+  const sheet = renderer.generateSpriteSheet();
+  const sCtx = spriteCanvas.getContext('2d');
+  sCtx.imageSmoothingEnabled = false;
+  const scale = Math.min(spriteCanvas.width / sheet.width, spriteCanvas.height / sheet.height);
+  const dw = sheet.width * scale;
+  const dh = sheet.height * scale;
+  const dx = (spriteCanvas.width - dw) / 2;
+  const dy = (spriteCanvas.height - dh) / 2;
+  sCtx.drawImage(sheet, 0, 0, sheet.width, sheet.height, dx, dy, dw, dh);
+
+  // 导出
+  exportBtn.addEventListener('click', () => {
+    const finalSheet = renderer.generateSpriteSheet();
+    const link = document.createElement('a');
+    link.download = 'crops.png';
+    link.href = finalSheet.toDataURL('image/png');
+    link.click();
+    console.log('[作物导出] 3crops×3stages 96×96 spritesheet 已导出 ✅');
+  });
+
+  console.log('[像素作物] 3种作物×3阶段渲染器已启动 ✅');
+  window.__cropRenderer = renderer;
+})();
+</script>
+</body>
+</html>
