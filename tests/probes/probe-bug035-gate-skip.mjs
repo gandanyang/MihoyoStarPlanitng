@@ -33,7 +33,20 @@ async function run() {
 
     // 进入 station
     await page.keyboard.press('Enter');
-    await sleep(1500);
+    // 开场动画阶段链：列车声（自动约 3.5s）→ 淡入（1.2s）→ 音量提示（需点击）
+    await sleep(5000);
+
+    // 点击音量提示（建议打开声音游玩）→ 进入手机通知阶段
+    for (let i = 0; i < 30; i++) {
+      const clicked = await page.evaluate(() => {
+        const el = [...document.querySelectorAll('div')].find(d => d.textContent?.includes('建议打开声音游玩'));
+        if (el) { el.click(); return true; }
+        return false;
+      });
+      if (clicked) break;
+      await sleep(300);
+    }
+    await sleep(600); // 音量提示淡出 → 手机通知出现
 
     // 轮询等待手机通知出现 → 点击直到关闭（v0.7 两页：第 1 击翻页、第 2 击关闭）→ 对话开始
     let sawNotif = false;

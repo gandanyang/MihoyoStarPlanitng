@@ -89,8 +89,9 @@ async function run() {
     await page.reload({ waitUntil: 'networkidle2' });
     await sleep(2500);
 
-    // ── 1. 大门钥匙（无钥匙，xiya_talk：钥匙尚未给）──
-    await setStep(page, 'xiya_talk');
+    // ── 1. 大门钥匙（无钥匙，station_move：门锁着、夏雅未出现，交互直入门锁分支）──
+    // 注：不能用 xiya_talk——setupGateTutorial 会将其回退 arrive_manor，夏雅拦截交互
+    await setStep(page, 'station_move');
     await gotoScene(page, 'gate');
     await teleport(page, 'gate', 240, 172); // 大门中心 (240,152) 正下方
     await callScene(page, 'gate', 's => s.tryInteract()');
