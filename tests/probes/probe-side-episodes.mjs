@@ -140,11 +140,39 @@ async function run() {
   await gotoScene(makeSave('farm', GARDEN_POS.x, GARDEN_POS.y, { wood: 5, restore: { garden: true } }), 'farm');
   ok = await interactUntil(async () => (await flags()).sideXiyaGardenAsked === true);
   check('A5 再次入口对白', ok);
-  const wA = await interactUntilWatched(async () => (await flags()).sideXiyaGardenDone === true, ['院子有人照顾']);
-  check('A6 交付完成入档（done）', wA.ok, JSON.stringify(await flags()));
+  // A6-A9：交付完成（同 B4 模式：done 标志在对话播放前即置位，统一循环捕获记忆卡与回响）
+  let seenGarden = false;
+  let seenXiyaEcho = false;
+  let gardenDone = false;
+  const t0a = Date.now();
+  await page.keyboard.press('KeyE');
+  while (Date.now() - t0a < 10000 && !(seenGarden && seenXiyaEcho)) {
+    const b = await bodyText();
+    if (!seenGarden && b.includes('院子有人照顾')) seenGarden = true;
+    if (!seenXiyaEcho && b.includes('花田那边，一直有人打理着')) seenXiyaEcho = true;
+    gardenDone = gardenDone || (await flags()).sideXiyaGardenDone === true;
+    // 闪回浮层激活时：紧轮询等打字机把整行打完（仅激活时轮询，避免空转饿死推进循环）
+    const fbActiveA = await page.evaluate(() => {
+      const el = document.getElementById('memory-flashback-overlay');
+      return !!el && el.style.display !== 'none' && el.innerText.length > 0;
+    });
+    if (!seenGarden && fbActiveA) {
+      const t1 = Date.now();
+      while (Date.now() - t1 < 2000) {
+        const t = await page.evaluate(() => document.getElementById('memory-flashback-overlay')?.innerText || '');
+        if (t.includes('院子有人照顾')) { seenGarden = true; break; }
+        await sleep(80);
+      }
+    }
+    if (seenGarden && seenXiyaEcho) break;
+    await page.keyboard.press('Enter');
+    await page.mouse.click(400, 300);
+    await sleep(300);
+  }
+  check('A6 交付完成入档（done）', gardenDone, JSON.stringify(await flags()));
   check('A7 扣除木材 5→2', (await savedWood()) === 2, `wood=${await savedWood()}`);
-  check('A8 记忆卡文本出现', wA.seen.includes('院子有人照顾'), `seen=${wA.seen.join(',')}`);
-  check('A9 回响文本出现', (await bodyText()).includes('花田那边，一直有人打理着'), '');
+  check('A8 记忆卡文本出现', seenGarden, '');
+  check('A9 回响文本出现', seenXiyaEcho, '');
 
   // ---- B：村长「看星星的地方」 ----
   // B1 观星夜完成后与村长对话 → 委托入档
@@ -159,24 +187,64 @@ async function run() {
     hour: 12, questState: 'completed', storyStep: 'observatory_complete',
     mapFlags: { sideElderTeaAsked: true },
   }), 'farm');
-  await page.keyboard.press('KeyE');
-  await sleep(800);
-  const hint = await page.evaluate(() => {
+  const readHint = () => page.evaluate(() => {
     const s = window.__game?.scene.getScenes(true)[0];
     return (s && s.dialogueText && s.dialogueText.text) || '';
   });
+  let hint = '';
+  for (let attempt = 0; attempt < 2 && !hint.includes('晚上来坐坐'); attempt++) {
+    await page.keyboard.press('KeyE');
+    const tH = Date.now();
+    while (Date.now() - tH < 1800 && !hint.includes('晚上来坐坐')) {
+      await sleep(200);
+      hint = await readHint();
+    }
+  }
   check('B2 白天仅提示', hint.includes('晚上来坐坐'), `hint=${hint.slice(0, 30)}`);
   check('B3 白天不完成', (await flags()).sideElderStarDone !== true);
 
   // B4 夜晚靠近空地 → 完成 + 记忆卡 + 回响
+  // 注：trySideElderStar 在对话播放前即置位 starDone，故不能以 starDone 作推进结束条件；
+  // 统一在一个循环里：按 E 触发 → 持续 Enter/click 推进对话→闪回，轮询 bodyText 捕获记忆卡与回响。
   await gotoScene(makeSave('farm', STARGAZE_POS.x, STARGAZE_POS.y, {
     hour: 21, questState: 'completed', storyStep: 'observatory_complete',
     mapFlags: { sideElderTeaAsked: true },
   }), 'farm');
-  const wB = await interactUntilWatched(async () => (await flags()).sideElderStarDone === true, ['那里安静，能看见很远的星星']);
-  check('B4 夜晚空地完成入档（starDone）', wB.ok, JSON.stringify(await flags()));
-  check('B5 记忆卡文本出现', wB.seen.includes('那里安静，能看见很远的星星'), `seen=${wB.seen.join(',')}`);
-  check('B6 回响文本出现', (await bodyText()).includes('还记得那块空地'), '');
+  let seenStar = false;
+  let seenEcho = false;
+  let flashbackShown = false;
+  let starDone = false;
+  const t0b = Date.now();
+  await page.keyboard.press('KeyE');
+  while (Date.now() - t0b < 10000 && !(seenStar && seenEcho)) {
+    const b = await bodyText();
+    if (!seenStar && b.includes('那里安静，能看见很远的星星')) seenStar = true;
+    if (!seenEcho && b.includes('还记得那块空地')) seenEcho = true;
+    starDone = starDone || (await flags()).sideElderStarDone === true;
+    flashbackShown = flashbackShown || (await page.evaluate(() => {
+      const el = document.getElementById('memory-flashback-overlay');
+      return !!el && el.style.display !== 'none' && el.innerText.length > 0;
+    }));
+    const fbActiveB = await page.evaluate(() => {
+      const el = document.getElementById('memory-flashback-overlay');
+      return !!el && el.style.display !== 'none' && el.innerText.length > 0;
+    });
+    if (!seenStar && fbActiveB) {
+      const t1 = Date.now();
+      while (Date.now() - t1 < 2000) {
+        const t = await page.evaluate(() => document.getElementById('memory-flashback-overlay')?.innerText || '');
+        if (t.includes('那里安静，能看见很远的星星')) { seenStar = true; break; }
+        await sleep(80);
+      }
+    }
+    if (seenStar && seenEcho) break;
+    await page.keyboard.press('Enter');
+    await page.mouse.click(400, 300);
+    await sleep(300);
+  }
+  check('B4 夜晚空地完成入档（starDone）', starDone, JSON.stringify(await flags()));
+  check('B5 记忆卡闪回演出出现', flashbackShown, `shown=${flashbackShown}`);
+  check('B6 回响文本出现', seenEcho, '');
 
   // ---- C：运行时错误 ----
   check('C1 无页面错误', errors.length === 0, errors.slice(0, 3).join(' | '));
