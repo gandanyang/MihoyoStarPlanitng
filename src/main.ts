@@ -52,6 +52,10 @@ const game = new Phaser.Game({
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
+  // 像素渲染优化（屏幕适配升级）：pixelArt 禁用纹理抗锯齿避免像素发虚，
+  // roundPixels 让相机/精灵渲染取整避免地图边缘抖动（高清 AI 封面单独恢复 LINEAR）
+  pixelArt: true,
+  roundPixels: true,
   // 启用 Arcade 物理系统（场景内 this.physics 依赖此配置）
   physics: {
     default: 'arcade',
@@ -132,8 +136,6 @@ syncGameContainer();
     markTriggered,
     getSaveData: getGameEventSaveData,
   },
-  unlockPhoto: albumUnlock,
-  getPhotoTotal: () => PHOTO_DATABASE.length,
   nextDay: () => {
     // Phase 4 起统一走 TimeSystem.nextDay，它内调 FarmState.advanceDay
     const newDay = timeNextDay();

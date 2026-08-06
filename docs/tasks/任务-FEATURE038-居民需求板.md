@@ -1,7 +1,8 @@
 # 任务卡：FEATURE-038 居民需求板（林澈=连接者，v0.10）
 
-> 状态：📋 待施工（P1）
+> 状态：✅ 已完成（P1）
 > 立项：制作人 2026-08-06 拍板方向（程序员=连接者）｜ 方案：[林澈程序员身份-归星助手-v0.1.md](design/林澈程序员身份-归星助手-v0.1.md)
+> 施工拍板（制作人 2026-08-07）：交付方式 = 需求板一键交付；反馈文案 = 方向稿 A
 
 ---
 
@@ -72,3 +73,21 @@ interface ResidentRequest {
 - GuiXingRecordSystem（归星记录）：help_resident 标签已存在，直接挂
 - FEATURE-037 复兴循环：需求板可作为建设点/资源的轻量消费出口之一（可选联动，不阻塞）
 - 林澈叙事：连接者方向（forest 系统思维台词已有，本功能是其玩法化）
+
+## 六、实施记录（2026-08-07）
+
+### 实现（制作人拍板：一键交付 + 方向稿 A）
+
+- **新增** `src/systems/ResidentRequestSystem.ts`：静态需求表 2 条（小梅 木材×10 / 老张 食物×5）+ `canFulfillRequest / fulfillRequest / getRequestShortageText` + 食物聚合扣除（萝卜→番茄→玉米→草莓 固定顺序）
+- **新增** `src/ui/ResidentBoardPanel.ts`：DOM 需求板面板（复用 panelFadeIn/FadeOut + Esc/按钮/点空白关闭）；卡片显示需求名/图标/数量/持有量 + 状态徽章（待交付/已完成）；「交付」按钮事件委托一键交付，资源不足红字提示
+- **修改** `src/scenes/MapScene.ts`：小镇 (22,8) 信息板交互物（木牌 + 📌 呼吸动画 + 标签）；E 键交互链 + update 冻结模式；`onResidentDeliver`：关面板 → `triggerTag('help_resident')` → StoryDialogue 反馈对白 → onComplete 存档
+- **存档**：完成态经 EventManager（`gameState.triggeredEvents`）持久化，旧档默认空 → **SaveSystem 零修改**
+- **文案**（制作人方向稿 A）：小梅「谢谢！有了这些木头，花架终于能搭起来了。」老张「正好下矿前垫垫肚子。谢了，小子。」
+
+### 验证
+
+- `npx tsc --noEmit` 0 错
+- 运行时探针 `tests/probes/probe-resident-board-038.mjs`：**25/25 通过**（板位置 / 面板显示 / 资源不足红字不扣不标记 / 交付关面板+反馈对白+存档完成态+wood 扣减 / 食物聚合扣除 / 读档恢复双完成 / NPC 回归 / 无页面错误）
+- 探针排查记录：`gotoTown` 的 reload 会被游戏 beforeunload 自动存档覆盖目标存档 → 探针在 reload 前包裹 `localStorage.setItem` 屏蔽自动存档写入（探针侧修复，非游戏缺陷）；面板红字 BUG：事件委托 `closest('[data-id]')` 命中按钮自身 → 改 `closest('.rb-card')`（游戏侧修复）
+- **是否影响存档**：不破坏旧档结构（新增可选字段 `gameState` 已由 EventManager 管理）；交付完成态经现有 `triggeredEvents` 持久化
+- 遗留（非本任务范围）：数值真机回归；APK 重打包 + Alpha 真机回归（挂起）
