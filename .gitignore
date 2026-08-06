@@ -70,3 +70,6 @@ _tmp_*.mjs
 # Python 缓存
 **/__pycache__/
 *.pyc
+
+# GPT 请示桥运行时 Chrome profile（含 ChatGPT 登录态/Cookies，切勿提交）
+.gpt-bridge-profile/
