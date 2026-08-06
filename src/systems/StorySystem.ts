@@ -265,6 +265,35 @@ export const GARDEN_RESTORED_XIYA_DIALOGUE: DialogueLine[] = [
   { speaker: '夏雅', color: COLORS.xiya, text: '可是它陪了我很多年。' },
 ];
 
+/** FEATURE-037 统一对白批次 environment_restore_v010：老屋修复完成 → 村长（制作人 2026-08-06 定稿）
+ *  范围限定：A/B 类生活对白；花园恢复沿用既有 GARDEN_RESTORED_XIYA_DIALOGUE（制作人拍板，不新增小梅） */
+export const OLD_HOUSE_RESTORED_DIALOGUE: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（老屋修好的第二天，村长路过，在门口站了一会儿。）' },
+  { speaker: '村长', color: COLORS.elder, text: '你爷爷以前每天都会擦这里。' },
+  { speaker: '林澈', color: COLORS.linche, text: '……擦门吗？' },
+  { speaker: '村长', color: COLORS.elder, text: '擦整座屋子。他说，人走了不要紧，屋子不能没人擦。' },
+];
+
+/** FEATURE-037 统一对白批次 environment_restore_v010：后山道路修复完成 → 老张（制作人 2026-08-06 定稿） */
+export const FOREST_ROAD_RESTORED_DIALOGUE: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（矿场的老张扛着镐子路过，踩着新铺的石板路，愣了一下。）' },
+  { speaker: '老张', color: COLORS.miner, text: '以前这条路通向整个岛。' },
+  { speaker: '林澈', color: COLORS.linche, text: '现在也能了。' },
+  { speaker: '老张', color: COLORS.miner, text: '（咧嘴一笑）好小子。' },
+];
+
+// ============ T2 改动 2：关键对白（制作人 2026-08-06 定稿） ============
+/** 村长「为什么种田」：星之碎片交付完成后追加（T2 改动 2，制作人定稿台词） */
+export const ELDER_WHY_FARM_DIALOGUE: DialogueLine[] = [
+  { speaker: '村长', color: COLORS.elder, text: '现在买东西方便了，想吃什么，去店里就能买到。' },
+  { speaker: '村长', color: COLORS.elder, text: '可有时候，人容易忘了一件事。' },
+  { speaker: '村长', color: COLORS.elder, text: '这些东西啊，也不是一开始就在货架上的。' },
+  { speaker: '村长', color: COLORS.elder, text: '一粒种子，要有人种下去，有人照看它，才能变成餐桌上的东西。' },
+  { speaker: '村长', color: COLORS.elder, text: '现在什么都能买到，菜市场有菜，商店有粮。' },
+  { speaker: '村长', color: COLORS.elder, text: '可自己种出来的东西，吃的时候心里踏实。' },
+  { speaker: '村长', color: COLORS.elder, text: '你知道它什么时候种下去，什么时候长出来，也知道这一口是怎么来的。' },
+];
+
 // ============ 支线试点（2026-08-06 制作人拍板方案 A） ============
 // 夏雅「院子有人照顾」：花园恢复后，旧藤架修复事件（交付木材×3 → 记忆卡收尾）
 /** 支线入口：夏雅请林澈一起修旧藤架 */

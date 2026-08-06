@@ -84,6 +84,7 @@ import {
   FOREST_SHARD_DIALOGUE, DEMO_ENDING_DIALOGUE, DEMO_ENDING_BRANCHES, DEMO_ENDING_FINALE,
   WOODCUT_TIP_DIALOGUE, MINE_TIP_DIALOGUE, XIYA_DAWN_DIALOGUE, XIYA_EVENING_DIALOGUE, XIYA_EVENING_OBS_DIALOGUE, getGrandpaNote,
   GARDEN_RESTORED_XIYA_DIALOGUE,
+  OLD_HOUSE_RESTORED_DIALOGUE, FOREST_ROAD_RESTORED_DIALOGUE,
   XIYA_GARDEN_TRELLIS_DIALOGUE, XIYA_GARDEN_TRELLIS_NEED_DIALOGUE, XIYA_GARDEN_TRELLIS_DONE_DIALOGUE,
   ELDER_TEA_QUEST_DIALOGUE, ELDER_STAR_SITE_DIALOGUE,
   FIRST_HARVEST_DIALOGUE,
@@ -4417,8 +4418,11 @@ export class MapScene extends Phaser.Scene {
       dailyQuest: getDailyQuestSaveData(),
     } as any);
     this.updateHUD();
-    this.showDialogueText('老屋修好了。爷爷留下的房子，重新能住了。');
-    setTimeout(() => showMemoryMoment('风吹过修补好的屋瓦——这座岛，开始像家了。'), 1600);
+    // FEATURE-037 统一对白批次 environment_restore_v010：老屋完成 → 村长（单次触发）
+    if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+    this.storyDialogue.play(OLD_HOUSE_RESTORED_DIALOGUE, () => {
+      setTimeout(() => showMemoryMoment('风吹过修补好的屋瓦——这座岛，开始像家了。'), 1600);
+    });
     return true;
   }
 
@@ -4543,8 +4547,11 @@ export class MapScene extends Phaser.Scene {
       dailyQuest: getDailyQuestSaveData(),
     } as any);
     this.updateHUD();
-    this.showDialogueText('后山道路铺好了，通往深处更顺畅了。');
-    setTimeout(() => showMemoryMoment('这条路重新连通了——后山不再是孤岛。'), 1600);
+    // FEATURE-037 统一对白批次 environment_restore_v010：道路完成 → 老张（单次触发）
+    if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+    this.storyDialogue.play(FOREST_ROAD_RESTORED_DIALOGUE, () => {
+      setTimeout(() => showMemoryMoment('这条路重新连通了——后山不再是孤岛。'), 1600);
+    });
     return true;
   }
 

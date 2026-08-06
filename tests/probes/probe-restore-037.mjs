@@ -6,16 +6,17 @@
  *      - 初始（未恢复）：restored=false、破旧装饰 3 组、标记「老屋」存在
  *      - 资源不足按 E → 提示缺木头/石头/金币，不扣除、不恢复、不存档
  *      - 给足资源（wood≥30 stone≥20 gold≥100）按 E → 恢复、装饰替换、扣除正确
- *        （wood 40→10 / stone 30→10 / coins 300→200）、存档 restore.oldHouse=true
+ *        （wood 40→10 / stone 30→10 / coins 300→200）、存档 worldRestore.oldHouse=true、触发村长对白
  *      - 刷新重进 → 恢复态持久
  *   2. forestRoad（forest 底部空地通道）：
  *      - 初始（未恢复）：restored=false、乱土 gid 2、标记存在
  *      - 资源不足按 E → 提示缺石头，不扣除
  *      - 给足资源（stone≥50 gold≥200）按 E → 恢复、石板小路 gid 7 + 两侧花丛 gid 8、
- *        扣除正确（stone 70→20 / coins 200→0）、存档 restore.forestRoad=true
+ *       扣除正确（stone 70→20 / coins 200→0）、存档 worldRestore.forestRoad=true、触发老张对白
  *      - 刷新重进 → 恢复态持久
- *   3. 回归：garden 三阶段流程未受影响（stage 仍 0、debris 3 组、存档无 garden 恢复）
- *   4. 无运行时错误
+ *   3. 回归：garden 三阶段流程未受影响（stage 仍 0、debris 3 组）
+ *   4. 旧档迁移：仅含 farm.restore 的旧档 → 加载后恢复态保留（worldRestore 合并，旧字段不回退）
+ *   5. 无运行时错误
  *
  * 前置：dev server；node probe-restore-037.mjs
  */
@@ -50,10 +51,12 @@ const SNAP_FARM = `(() => {
     ohPos: oh ? oh.pos : null,
     gardenStage: g ? g.stage : -1,
     gardenDebris: g ? g.debris.filter(x => x.active).length : -1,
-    savedRestore: save ? (save.farm.restore ?? null) : null,
+    savedRestore: save ? (save.worldRestore ?? null) : null,
+    savedLegacyRestore: save ? (save.farm?.restore ?? null) : null,
     savedInv: save ? (save.player.inventory ?? null) : null,
     savedCoins: save ? (save.world.coins ?? null) : null,
     dialogue: (s.dialogueText && s.dialogueText.text) || null,
+    dialogueOpen: !!(s.storyDialogue && s.storyDialogue.isOpen()),
   };
 })()`;
 
@@ -83,10 +86,12 @@ const SNAP_FOREST = `(() => {
           if (wLD.data[r][c].collides) return false;
       return true;
     })(),
-    savedRestore: save ? (save.farm.restore ?? null) : null,
+    savedRestore: save ? (save.worldRestore ?? null) : null,
+    savedLegacyRestore: save ? (save.farm?.restore ?? null) : null,
     savedInv: save ? (save.player.inventory ?? null) : null,
     savedCoins: save ? (save.world.coins ?? null) : null,
     dialogue: (s.dialogueText && s.dialogueText.text) || null,
+    dialogueOpen: !!(s.storyDialogue && s.storyDialogue.isOpen()),
   };
 })()`;
 
@@ -214,7 +219,7 @@ async function run() {
       d.dialogue.includes('石头') && d.dialogue.includes('金币'),
       `实际=${d.dialogue}`);
     check('A1 不足时不扣除/不恢复', d.ohRestored === false && d.ohDebris === 3, `实际=restored:${d.ohRestored}`);
-    check('A1 不足时不写存档 restore', d.savedRestore === null, `实际=${JSON.stringify(d.savedRestore)}`);
+    check('A1 不足时不写存档 worldRestore', d.savedRestore === null, `实际=${JSON.stringify(d.savedRestore)}`);
 
     // A2. 资源足够（coins 300）→ 先测"缺木头/石头"提示 → giveItem 补足 → 成功
     await gotoScene('farm', { world: { coins: 300 } });
@@ -235,7 +240,8 @@ async function run() {
     check('A2 资源扣除正确（wood 40→10 / stone 30→10 / coins 300→200）',
       d.savedInv?.wood === 10 && d.savedInv?.stone === 10 && d.savedCoins === 200,
       `实际=${JSON.stringify({ inv: d.savedInv, coins: d.savedCoins })}`);
-    check('A2 存档含 restore.oldHouse=true', d.savedRestore?.oldHouse === true, `实际=${JSON.stringify(d.savedRestore)}`);
+    check('A2 存档含 worldRestore.oldHouse=true', d.savedRestore?.oldHouse === true, `实际=${JSON.stringify(d.savedRestore)}`);
+    check('A2 触发统一对白批次（村长老屋）', d.dialogueOpen === true, `实际=${d.dialogueOpen}`);
 
     // A3. 刷新重进 → 持久化
     await page.reload({ waitUntil: 'networkidle2' });
@@ -266,7 +272,7 @@ async function run() {
       !!d.dialogue && d.dialogue.includes('还缺') && d.dialogue.includes('石头'),
       `实际=${d.dialogue}`);
     check('B2 不足时不扣除/不恢复', d.frRestored === false && d.frDebris === 3, `实际=restored:${d.frRestored}`);
-    check('B2 不足时不写存档 restore', d.savedRestore?.forestRoad !== true, `实际=${JSON.stringify(d.savedRestore)}`);
+    check('B2 不足时不写存档 worldRestore', d.savedRestore?.forestRoad !== true, `实际=${JSON.stringify(d.savedRestore)}`);
 
     // B3. 补足石头 → 成功
     await page.evaluate(() => window.debug.giveItem('stone', 60));
@@ -281,7 +287,8 @@ async function run() {
     check('B3 资源扣除正确（stone 70→20 / coins 200→0）',
       d.savedInv?.stone === 20 && d.savedCoins === 0,
       `实际=${JSON.stringify({ inv: d.savedInv, coins: d.savedCoins })}`);
-    check('B3 存档含 restore.forestRoad=true', d.savedRestore?.forestRoad === true, `实际=${JSON.stringify(d.savedRestore)}`);
+    check('B3 存档含 worldRestore.forestRoad=true', d.savedRestore?.forestRoad === true, `实际=${JSON.stringify(d.savedRestore)}`);
+    check('B3 触发统一对白批次（老张道路）', d.dialogueOpen === true, `实际=${d.dialogueOpen}`);
 
     // B4. 刷新重进 → 持久化（switchScene 不改存档，须先把 player.scene 指向 forest）
     await gotoSceneKeepSave('forest');
@@ -294,9 +301,10 @@ async function run() {
     await page.screenshot({ path: shot2 });
     console.log(`  📸 ${shot2}`);
 
-    // ========== C. garden 回归 + 全部恢复态共存 ==========
-    console.log('\n── 回归：garden 流程不受影响 + 恢复态共存 ──');
-    // 注入含 oldHouse/forestRoad 已恢复的存档（gotoScene 会卸载旧实例，避免自动保存覆盖写档）
+    // ========== C. 旧档迁移 + garden 回归 + 恢复态共存 ==========
+    console.log('\n── 回归：garden 流程不受影响 + 旧档 farm.restore → worldRestore 迁移 ──');
+    // 注入仅含旧格式 farm.restore 的存档（决策 5 迁移场景：旧档仅 farm.restore）
+    // → apply 时一次性迁移合并进 worldRestore → 老屋/道路恢复态保留
     await gotoScene('farm', {
       world: { coins: 0 },
       farm: { tiles: [], crops: [], trees: [], restore: { oldHouse: true, forestRoad: true } },
@@ -305,8 +313,11 @@ async function run() {
     d = await page.evaluate(SNAP_FARM);
     check('C garden stage 仍 0（三阶段流程未破坏）', d.gardenStage === 0, `实际=${d.gardenStage}`);
     check('C garden 破旧装饰 3 组仍在', d.gardenDebris === 3, `实际=${d.gardenDebris}`);
-    check('C 老屋恢复态共存', d.ohRestored === true && d.ohDebris === 0,
+    check('C 旧档迁移：老屋恢复态保留（farm.restore → worldRestore）',
+      d.ohRestored === true && d.ohDebris === 0,
       `实际=restored:${d.ohRestored}, debris:${d.ohDebris}`);
+    check('C 旧档迁移：旧 restore 字段未回退（仍保留原值）',
+      d.savedLegacyRestore?.oldHouse === true, `实际=${JSON.stringify(d.savedLegacyRestore)}`);
 
     const shot3 = join(SHOT_DIR, 'restore037-farm-all-restored.png');
     await page.screenshot({ path: shot3 });

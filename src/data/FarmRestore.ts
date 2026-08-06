@@ -10,8 +10,10 @@
  * 状态：已恢复（restored）↔ 未记录（默认未恢复）
  * 存档序列化：getRestoreEntries / restoreRestoreEntries
  *
- * 与 SaveSystem 的约定（SaveData.farm.restore，可选字段，向后兼容）：
- *   - 旧存档无 restore 字段 → 视为全部未恢复
+ * 与 SaveSystem 的约定（FEATURE-037 决策 5：SaveData.worldRestore，可选字段，向后兼容）：
+ *   - 新档写入顶层 worldRestore（不塞 farm.restore，避免变成垃圾桶）
+ *   - 旧档仅 farm.restore（M1-3 garden）→ 加载时一次性迁移合并进 worldRestore（不回退）
+ *   - 两者皆无 → 视为全部未恢复
  *   - 版本号不递增
  */
 

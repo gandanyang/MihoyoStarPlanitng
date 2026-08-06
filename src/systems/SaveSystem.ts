@@ -83,11 +83,14 @@ export interface SaveData {
     tiles: [string, TileState][];
     crops: [string, CropData][];
     trees: [string, TreeState][];
-    /** M1-3 环境恢复点状态（可选，旧档无此字段视为全部未恢复） */
+    /** M1-3 环境恢复点状态（旧字段，仅用于旧档迁移；新档写入顶层 worldRestore） */
     restore?: Record<string, boolean>;
     /** 自动化设备（可选，旧档无此字段视为无机器人） */
     automation?: { level: number; robots: RobotData[] };
   };
+  /** 归星岛复兴：建设点/恢复点状态（FEATURE-037 决策 5：独立顶层字段，不塞 farm.restore；
+   *  可选，旧档无此字段时优先迁移 farm.restore，两者皆无视为全部未恢复） */
+  worldRestore?: Record<string, boolean>;
   /** 剧情进度 */
   story: {
     storyStep: StoryStep;
@@ -152,9 +155,9 @@ export function save(player: {
       tiles: getAllTileEntries(),
       crops: getAllCropEntries(),
       trees: getAllTreeEntries(),
-      restore: getRestoreEntries(),
       automation: getAutomationSave(),
     },
+    worldRestore: getRestoreEntries(),
     story: {
       storyStep: getStoryStep(),
       ch1TownIntroDone: isCh1TownIntroDone(),
@@ -282,6 +285,14 @@ function sanitize(data: SaveData): void {
   } else if (!data.gameState.triggeredEvents || typeof data.gameState.triggeredEvents !== 'object') {
     data.gameState.triggeredEvents = {};
   }
+  // 归星岛复兴：worldRestore 只保留 true 值（非法值收敛，防坏档）
+  if (data.worldRestore && typeof data.worldRestore === 'object') {
+    for (const [k, v] of Object.entries(data.worldRestore)) {
+      if (v !== true) delete data.worldRestore[k];
+    }
+  } else {
+    data.worldRestore = undefined;
+  }
 }
 
 /**
@@ -310,7 +321,15 @@ export function apply(data: SaveData): void {
   restoreTileEntries(data.farm.tiles as [string, TileState][]);
   restoreCropEntries(data.farm.crops as [string, CropData][]);
   restoreTreeEntries((data.farm.trees as [string, TreeState][]) ?? []);
-  restoreRestoreEntries(data.farm.restore);
+  // FEATURE-037 决策 5：优先顶层 worldRestore；旧档仅 farm.restore（M1-3 garden）→ 一次性迁移合并
+  //   （worldRestore 存在时以其为准；两者皆无 → 全部未恢复；迁移不回退 farm.restore）
+  const wr: Record<string, boolean> = { ...(data.worldRestore ?? {}) };
+  if (data.farm.restore) {
+    for (const [k, v] of Object.entries(data.farm.restore)) {
+      if (v === true && wr[k] === undefined) wr[k] = true;
+    }
+  }
+  restoreRestoreEntries(wr);
   restoreAutomation(data.farm.automation);
   // 剧情
   setStoryStep(data.story.storyStep ?? 'done');
