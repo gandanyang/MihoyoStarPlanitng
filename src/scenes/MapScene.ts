@@ -118,6 +118,9 @@ export interface MapSceneFlags {
   /** 支线试点：村长「看星星的地方」（观星夜完成后，空地事件） */
   sideElderTeaAsked?: boolean;
   sideElderStarDone?: boolean;
+  /** E1/E9 每日偶遇：当天是否已触发（持久化，刷新不重复；存档审查 2026-08-06） */
+  dawnXiyaDay?: number;
+  eveningXiyaDay?: number;
 }
 
 /** 存档中保存的 MapScene flag（模块级暂存，apply 时写入，MapScene.create 时消费） */
@@ -394,6 +397,8 @@ export class MapScene extends Phaser.Scene {
       sideXiyaGardenDone: inst.sideXiyaGardenDone,
       sideElderTeaAsked: inst.sideElderTeaAsked,
       sideElderStarDone: inst.sideElderStarDone,
+      dawnXiyaDay: inst.dawnXiyaDay,
+      eveningXiyaDay: inst.eveningXiyaDay,
     };
   }
 
@@ -419,6 +424,8 @@ export class MapScene extends Phaser.Scene {
       this.sideXiyaGardenDone = saved.sideXiyaGardenDone ?? false;
       this.sideElderTeaAsked = saved.sideElderTeaAsked ?? false;
       this.sideElderStarDone = saved.sideElderStarDone ?? false;
+      this.dawnXiyaDay = saved.dawnXiyaDay ?? 0;
+      this.eveningXiyaDay = saved.eveningXiyaDay ?? 0;
     }
   }
 
@@ -1430,6 +1437,12 @@ export class MapScene extends Phaser.Scene {
     this.dawnXiya = null;
     if (this.dawnXiyaLabel) { this.dawnXiyaLabel.destroy(); this.dawnXiyaLabel = null; }
     if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+    // E1/E9 修复（2026-08-06）：当天已触发标记立即入档，刷新后同一天不再重复触发
+    save({
+      x: this.player.x, y: this.player.y,
+      scene: this.mapKey, facing: this.player.facing,
+      dailyQuest: getDailyQuestSaveData(),
+    } as any);
     this.storyDialogue.play(XIYA_DAWN_DIALOGUE, () => {
       this.updateHUD();
     });
@@ -1473,6 +1486,12 @@ export class MapScene extends Phaser.Scene {
     this.eveningXiya = null;
     if (this.eveningXiyaLabel) { this.eveningXiyaLabel.destroy(); this.eveningXiyaLabel = null; }
     if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+    // E1/E9 修复（2026-08-06）：当天已触发标记立即入档，刷新后同一天不再重复触发
+    save({
+      x: this.player.x, y: this.player.y,
+      scene: this.mapKey, facing: this.player.facing,
+      dailyQuest: getDailyQuestSaveData(),
+    } as any);
     this.storyDialogue.play(XIYA_EVENING_DIALOGUE, () => {
       // 灯意象彩蛋（L2/L3，制作人拍板 2026-08-05）：首次傍晚对话结束后追加观察台词 + 童年点灯闪回
       if (!this.lampFlashbackDone) {
@@ -4614,6 +4633,7 @@ export class MapScene extends Phaser.Scene {
 
     addItem('wood', -3);
     this.sideXiyaGardenDone = true;
+    unlockPhoto('xiya_garden');
     this.storyDialogue.play(XIYA_GARDEN_TRELLIS_DONE_DIALOGUE, () => {
       playMemoryFlashback(XIYA_GARDEN_FLASHBACK, () => {
         showMemoryMoment('花田那边，一直有人打理着。');
@@ -4646,6 +4666,7 @@ export class MapScene extends Phaser.Scene {
     }
 
     this.sideElderStarDone = true;
+    unlockPhoto('elder_star');
     if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
     this.storyDialogue.play(ELDER_STAR_SITE_DIALOGUE, () => {
       playMemoryFlashback(ELDER_STAR_FLASHBACK, () => {
