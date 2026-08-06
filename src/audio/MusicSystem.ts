@@ -63,8 +63,9 @@ function cacheSet(key: string, buf: AudioBuffer): void {
 }
 
 // ── 播放状态 ──
-// 录制视频期间全局屏蔽 BGM（2026-08-06 制作人要求）。恢复播放：改为 false 即可。
-const BGM_MUTED = true;
+// 录制视频期间全局屏蔽 BGM（2026-08-06 制作人要求）→ 已恢复（同日），BGM 正常播放。
+// 如需再次静音：改为 true 即可。
+const BGM_MUTED = false;
 let currentSource: AudioBufferSourceNode | null = null;
 let currentGain: GainNode | null = null;
 let currentVolume = 0.35;
