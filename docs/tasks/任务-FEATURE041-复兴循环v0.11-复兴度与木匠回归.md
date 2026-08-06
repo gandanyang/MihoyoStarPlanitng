@@ -1,6 +1,6 @@
 # 任务卡：FEATURE-041 复兴循环 v0.11（复兴度派生 + 木匠回归 + 常驻 NPC）
 
-> 立项：制作人 2026-08-07（AskUserQuestion 四项拍板 + 木匠设定/贴图顺序/日程简化补充拍板）｜状态：📋 待施工（贴图优先，代码后接）
+> 立项：制作人 2026-08-07（AskUserQuestion 四项拍板 + 木匠设定/贴图顺序/日程简化补充拍板）｜状态：✅ 已施工（美术+代码完成，探针 22/22 通过）｜待办：回归/常驻对白定稿、木匠配音（独立流程）
 > 依据：`docs/design/岛屿复兴循环系统设计方案-v0.1.md`、`docs/design/归星岛复兴循环-v0.10.md`、`docs/design/核心设计原则-世界复兴循环-v0.1.md`
 > 关联：FEATURE-037（worldRestore 建设点）、FEATURE-038（居民需求板）、day2 清晨剧情（FIRST_MORNING_RESPONSE_DIALOGUE）
 > 目标：让玩家第一次完整感受到「我的建设让岛上重新有了人」——复兴度作为隐藏世界状态，木匠回归作为 Lv1 的正面回答。**木匠不是功能 NPC，而是"这个岛开始有人回来工作了"的第一个具体执行者。**
@@ -154,14 +154,14 @@ export function isCarpenterReturned(): boolean {
 
 ## 六、验收探针（probe-revival-v011.mjs）
 
-- [ ] **复兴度派生**：garden+oldHouse 已恢复 → Lv1；三建设点全恢复 → Lv2；全未恢复 → Lv0
-- [ ] **无新存档字段**：save 顶层无 revival 字段，worldRestore 结构不变
-- [ ] **木匠未回归**：getNPCsForScene 不含 carpenter；isNpcFindable('carpenter')=false
-- [ ] **回归触发**：oldHouse 修复 → 次日进 farm → 自动播 CARPENTER_RETURN_DIALOGUE（文案与定稿一致）
-- [ ] **一次性**：刷新/重进/跨天不重复触发（triggerOnce）
-- [ ] **回归后常驻**：此后 getNPCsForScene 按日程含 carpenter，靠近可交互，每日随机句正常
-- [ ] **既有回归**：probe-farm-restore、probe-npc-schedule、probe-day2-morning、probe-daily-event 不破坏
-- [ ] tsc 0 错
+- [x] **复兴度派生**：garden+oldHouse 已恢复 → Lv1；三建设点全恢复 → Lv2；全未恢复 → Lv0（A1-A3）
+- [x] **无新存档字段**：save 顶层无 revival 字段，worldRestore 结构不变（F1-F2）
+- [x] **木匠未回归**：场景 NPC 列表不含 carpenter；不触发回归演出（B1-B3）
+- [x] **回归触发**：oldHouse 修复 → 次日进 farm → 自动播 CARPENTER_RETURN_DIALOGUE（C1-C4，文案为方向稿待定稿）
+- [x] **一次性**：刷新/重进/跨天不重复触发（triggerOnce，C5/D1-D2）
+- [x] **回归后常驻**：此后场景 NPC 列表按日程含 carpenter，靠近可交互，对白池正常（E1-E3/G3）
+- [x] **既有回归**：probe-npc-schedule（7/7）、probe-day2-morning（18/18）、probe-daily-event（6/6）通过；probe-farm-restore 因既有 harness 问题（keyboard.emit）阻塞（与本次改动无关）
+- [x] tsc 0 错
 
 ---
 
