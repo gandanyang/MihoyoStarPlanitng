@@ -107,6 +107,26 @@ async function pressE(page) {
   await sleep(300);
 }
 
+/**
+ * 推进记忆闪回 overlay 直到关闭（碎片采集后播放，9bf2ad8 加入）。
+ * 每轮 pointerdown 一次（typing 中=显示全文，否则=关闭）。返回是否成功关闭。
+ */
+async function advanceFlashback(page, maxRounds = 30) {
+  for (let i = 0; i < maxRounds; i++) {
+    const state = await page.evaluate(() => {
+      const el = document.getElementById('memory-flashback-overlay');
+      if (!el) return 'absent';
+      const visible = el.style.display !== 'none';
+      if (!visible) return 'hidden';
+      el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+      return 'clicked';
+    });
+    if (state === 'hidden' || state === 'absent') { await sleep(1400); return true; }
+    await sleep(200);
+  }
+  return false;
+}
+
 /** 切场景：SceneManager.start 不会自动停当前场景，需先 stop（与黑屏风险同源） */
 async function gotoScene(page, key, spawn) {
   await page.evaluate(([k, sp]) => {
@@ -147,21 +167,23 @@ async function run() {
     info = await sceneInfo(page);
     ok('2. 进入车站（station）', info.scene === 'station', `场景=${info.scene}`);
 
-    // 车站开场：轮询手机通知 → 校验公文文案 → 点击关闭 → 等待对白打开（开场动画时长不定）
+    // 车站开场：音量提示（点击）→ 手机通知两页（点击×2）→ 车站对白（开场动画时长不定）
     let phoneChecked = false;
     let phoneText = '';
     let stationOpen = false;
     for (let i = 0; i < 80 && (!stationOpen || !phoneChecked); i++) {
       const st = await page.evaluate(() => {
+        // 音量提示（zIndex 650）挡在手机通知前，需先点击
+        const prompt = [...document.querySelectorAll('div')].find(d =>
+          d.style?.zIndex === '650' && d.style?.opacity !== '0' && d.textContent?.includes('建议打开声音游玩'));
+        if (prompt) { prompt.click(); return { text: '', clicked: true }; }
+        // 手机通知（zIndex 600，两页需点击两次：翻页 → 关闭）
         const phone = [...document.querySelectorAll('div')].find(d =>
-          d.textContent?.includes('人事通知') && d.textContent?.includes('岗位职责'));
+          d.style?.zIndex === '600' && d.style?.display !== 'none' && d.style?.opacity !== '0' && d.textContent?.includes('人事通知'));
         if (!phone) return { text: '', clicked: false };
         const text = phone.textContent ?? '';
-        if (phone.style.opacity !== '0') {
-          phone.click();
-          return { text, clicked: true };
-        }
-        return { text, clicked: false };
+        phone.click();
+        return { text, clicked: true };
       });
       if (st.text && !phoneChecked) { phoneChecked = true; phoneText = st.text; }
       stationOpen = await page.evaluate(() => {
@@ -195,7 +217,7 @@ async function run() {
     await pressE(page);
     await sleep(700);
     const elderText = await dialogueText(page);
-    ok('4. 镇长委托对话（接受任务）', elderText.includes('你就是林澈吧'), elderText.substring(0, 40));
+    ok('4. 镇长委托对话（接受任务）', elderText.includes('你就是小林吧'), elderText.substring(0, 40));
     await skipDialogue(page, 11); // ELDER_QUEST_DIALOGUE 10 行（多按自动忽略）
 
     // ==================== 第一章：森林采集 ====================
@@ -208,6 +230,11 @@ async function run() {
     const forestText = await dialogueText(page);
     ok('5. 森林采集：程序员能力展示对话', forestText.includes('它在等待一个条件'), forestText.substring(0, 40));
     await skipDialogue(page, 4); // 剩余 3 行 + 关闭 → 自动采集 + 里程碑存档
+
+    // 采集后播放童年记忆闪回 overlay（9bf2ad8）：推进直到关闭，否则 collectShard 回调不触发
+    const flashbackClosed = await advanceFlashback(page);
+    ok('5b. 记忆闪回推进并关闭', flashbackClosed);
+    await sleep(1500); // 等 collectShard + 视觉清理回调链
 
     const afterCollect = await page.evaluate(() => {
       const s = window.__game.scene.getScene('forest');
@@ -272,7 +299,8 @@ async function run() {
 
     await teleport(page, 'farm', 504, 240, 'up'); // 观星点 (504,232)
     await pressE(page);
-    await sleep(700);
+    // 观星夜对话在 camera.pan(2s) 完成后才播放，先等镜头到位
+    await sleep(3200);
     const endOpen = await page.evaluate(() => {
       const s = window.__game.scene.getScene('farm');
       return s?.storyDialogue?.isOpen?.() ?? false;
@@ -310,27 +338,34 @@ async function run() {
     ok('13. 分支 B 独白', branchText.includes('比一封信更多'), branchText.substring(0, 40));
 
     // 分支 → FINALE → 结算面板 + 存档
-    // 行数不定：unknown 分支 4 行 + FINALE 5 行，共需 18 次 advance；原硬编码 skip(1)+skip(5)=14 次
-    // 会停在 FINALE 中途（结算面板/存档永不触发，存的是 beforeunload 兜底档）。改为同步循环推进直到面板打开。
-    const panelOpen = await page.evaluate(() => {
-      const s = window.__game.scene.getScenes(true)[0];
-      for (let i = 0; i < 80; i++) {
-        if (s?.storyDialogue?.isOpen()) s.storyDialogue.advance();
+    // 行数不定：unknown 分支 4 行 + FINALE 5 行；原硬编码 skip(1)+skip(5) 会停在 FINALE 中途
+    // （结算面板/存档永不触发）。改为跳过对白后轮询等晨曦过渡(2s)+镜头回拉(1s)动画链结束。
+    await skipDialogue(page, 4); // unknown 分支 4 行 → FINALE
+    await skipDialogue(page, 5); // FINALE 5 行 → 晨曦过渡 + 结算
+    let panelOpen = false;
+    for (let i = 0; i < 40 && !panelOpen; i++) {
+      await sleep(250);
+      panelOpen = await page.evaluate(() => {
         const el = document.getElementById('ending-panel');
-        if (el && el.style.display === 'flex') return true;
-      }
-      return false;
-    });
-    ok('14. 结算面板打开', !!panelOpen, panelOpen ? 'flex' : 'false');
+        return !!el && el.style.display === 'flex';
+      });
+    }
+    ok('14. 结算面板打开', panelOpen, panelOpen ? 'flex' : 'false');
 
     info = await sceneInfo(page);
     ok('15. storyStep = observatory_complete', info.step === 'observatory_complete', `步骤=${info.step}`);
-    const saved = await page.evaluate(() => {
-      try {
-        const raw = localStorage.getItem('return_star_save');
-        return raw ? JSON.parse(raw) : null;
-      } catch { return null; }
-    });
+    // 存档在面板打开时写入（动画链 onComplete），读取前先轮询等存档就绪
+    let saved = null;
+    for (let i = 0; i < 20; i++) {
+      saved = await page.evaluate(() => {
+        try {
+          const raw = localStorage.getItem('return_star_save');
+          return raw ? JSON.parse(raw) : null;
+        } catch { return null; }
+      });
+      if (saved?.story?.storyStep === 'observatory_complete') break;
+      await sleep(250);
+    }
     ok('16. 存档含 observatory_complete', saved?.story?.storyStep === 'observatory_complete', saved?.story?.storyStep ?? 'null');
     ok('17. 存档无 demoEndingDone 字段', saved?.story?.demoEndingDone === undefined);
     await screenshot(page, 'ch1-ending-panel');

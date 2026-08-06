@@ -61,7 +61,7 @@ import {
 import { InputManager } from '../systems/InputManager';
 import * as AmbienceSystem from '../systems/AmbienceSystem';
 import { triggerTag, getTriggeredTags } from '../systems/GuiXingRecordSystem';
-import { unlockPhoto } from '../data/PhotoAlbum';
+import { unlockPhoto, isPhotoUnlocked, PHOTO_DATABASE } from '../data/PhotoAlbum';
 import { TouchControls, setActionButtonLabel, setWaitHandler } from '../systems/TouchControls';
 import { showMemoryMoment } from '../ui/MemoryMoment';
 import { playMemoryFlashback } from '../ui/MemoryFlashback';
@@ -344,6 +344,9 @@ export class MapScene extends Phaser.Scene {
   private endingPanel: EndingPanel | null = null;
   /** 归星录·相簿面板（FEATURE-040 后新增，v0.1） */
   private photoAlbumPanel: PhotoAlbumPanel | null = null;
+  /** 归星录·相簿解锁反馈（v0.10 记忆卡→相簿闭环）：待展示 toast + 当前 toast */
+  private pendingPhotoUnlock: string | null = null;
+  private photoUnlockToast: HTMLDivElement | null = null;
   // Demo 结尾：观星点视觉（farm 右下空地，像素坐标）
   private readonly STARGAZE_POS = { x: 504, y: 232 };
   private stargazeSprites: Phaser.GameObjects.Ellipse[] = [];
@@ -451,6 +454,8 @@ export class MapScene extends Phaser.Scene {
     // E1/E9 夏雅精灵清理（场景切换时销毁，防止残留）
     this.clearDawnXiya();
     this.clearEveningXiya();
+    // 相簿解锁 toast 清理（DOM，防跨场景残留）
+    this.hidePhotoUnlockToast();
     // M1-3 夏雅见证精灵清理（场景切换时销毁，防止残留）
     this.clearGardenXiya();
     // FEATURE-036 旧机器人精灵清理（场景切换时销毁，防止残留）
@@ -933,6 +938,9 @@ export class MapScene extends Phaser.Scene {
       console.log(`[DEBUG] update skipped: createFailed at ${this.mapKey}`);
       return;
     }
+
+    // 相簿解锁反馈：对话/闪回结束后再弹出（避免被全屏演出盖住）
+    this.maybeShowPhotoUnlockToast();
 
     // Demo 结算界面打开：冻结移动/交互，等待「继续自由游玩」
     if (this.endingPanel?.isOpen()) {
@@ -1807,7 +1815,10 @@ export class MapScene extends Phaser.Scene {
     if (shardCount >= 2) {
       triggerTag('old_tree_memory');
       // 归星录·相簿：完成「后山老树」→ 解锁《后山观景》（幂等）
-      unlockPhoto('hillside_view');
+      if (!isPhotoUnlocked('hillside_view')) {
+        unlockPhoto('hillside_view');
+        this.notifyPhotoUnlocked('hillside_view');
+      }
     }
 
     this.hideOldTreeHint();
@@ -4239,7 +4250,10 @@ export class MapScene extends Phaser.Scene {
       markRestored('garden');
       triggerTag('restore_garden');
       // 归星录·相簿：完成「整理旧花园」→ 解锁《夏日花园》（幂等）
-      unlockPhoto('summer_garden');
+      if (!isPhotoUnlocked('summer_garden')) {
+        unlockPhoto('summer_garden');
+        this.notifyPhotoUnlocked('summer_garden');
+      }
       // 里程碑入档：恢复完成后立即保存（刷新/重进保持恢复态）
       save({
         x: this.player.x, y: this.player.y,
@@ -4633,7 +4647,10 @@ export class MapScene extends Phaser.Scene {
 
     addItem('wood', -3);
     this.sideXiyaGardenDone = true;
-    unlockPhoto('xiya_garden');
+    if (!isPhotoUnlocked('xiya_garden')) {
+      unlockPhoto('xiya_garden');
+      this.notifyPhotoUnlocked('xiya_garden');
+    }
     this.storyDialogue.play(XIYA_GARDEN_TRELLIS_DONE_DIALOGUE, () => {
       playMemoryFlashback(XIYA_GARDEN_FLASHBACK, () => {
         showMemoryMoment('花田那边，一直有人打理着。');
@@ -4666,7 +4683,10 @@ export class MapScene extends Phaser.Scene {
     }
 
     this.sideElderStarDone = true;
-    unlockPhoto('elder_star');
+    if (!isPhotoUnlocked('elder_star')) {
+      unlockPhoto('elder_star');
+      this.notifyPhotoUnlocked('elder_star');
+    }
     if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
     this.storyDialogue.play(ELDER_STAR_SITE_DIALOGUE, () => {
       playMemoryFlashback(ELDER_STAR_FLASHBACK, () => {
@@ -5162,7 +5182,10 @@ export class MapScene extends Phaser.Scene {
     const minedId = target.deposit.id;
     markMined(minedId);
     // 归星录·相簿：完成「矿洞探险」→ 解锁《旧矿灯》（幂等）
-    unlockPhoto('old_mine');
+    if (!isPhotoUnlocked('old_mine')) {
+      unlockPhoto('old_mine');
+      this.notifyPhotoUnlocked('old_mine');
+    }
     this.oreSprites = this.oreSprites.filter((e) => e.deposit.id !== minedId);
 
     this.showDialogueText(`开采成功！获得 ${dropsText.join('、')}  体力 -${target.deposit.staminaCost}`);
@@ -5666,6 +5689,64 @@ export class MapScene extends Phaser.Scene {
     this.inputManager.clearAction();
     this.hideShortcutHint();
     this.photoAlbumPanel.open();
+  }
+
+  /**
+   * 归星录·相簿解锁反馈（v0.10 记忆卡→相簿闭环）：
+   * 新照片解锁后待展示；等对话/闪回/相簿都关闭时弹出 toast + 【查看】按钮。
+   */
+  private notifyPhotoUnlocked(id: string): void {
+    this.pendingPhotoUnlock = id;
+    this.maybeShowPhotoUnlockToast();
+  }
+
+  private maybeShowPhotoUnlockToast(): void {
+    if (!this.pendingPhotoUnlock) return;
+    const fb = document.getElementById('memory-flashback-overlay');
+    const fbActive = !!fb && fb.style.display !== 'none' && fb.innerText.length > 0;
+    if (this.storyDialogue?.isOpen() || fbActive || this.photoAlbumPanel?.isOpen()) return;
+    this.showPhotoUnlockToast(this.pendingPhotoUnlock);
+    this.pendingPhotoUnlock = null;
+  }
+
+  private showPhotoUnlockToast(id: string): void {
+    this.hidePhotoUnlockToast();
+    const photo = PHOTO_DATABASE.find((p) => p.id === id);
+    const title = photo ? photo.title : id;
+    const toast = document.createElement('div');
+    Object.assign(toast.style, {
+      position: 'fixed', bottom: '120px', left: '50%', transform: 'translateX(-50%)',
+      zIndex: '560', display: 'flex', alignItems: 'center', gap: '10px',
+      background: 'rgba(20,18,12,0.95)', border: '1px solid #8a7a5a', borderRadius: '10px',
+      padding: '10px 16px', color: '#e8d8c0', fontSize: '14px',
+      boxShadow: '0 4px 16px rgba(0,0,0,0.5)', pointerEvents: 'auto',
+      maxWidth: '90vw', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+    });
+    const label = document.createElement('span');
+    label.textContent = `📖 归星录新增照片《${title}》`;
+    const btn = document.createElement('button');
+    Object.assign(btn.style, {
+      fontSize: '13px', padding: '5px 12px', background: 'rgba(106,122,184,0.85)',
+      color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', flexShrink: '0',
+    });
+    btn.textContent = '查看';
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.hidePhotoUnlockToast();
+      this.openPhotoAlbum();
+    });
+    toast.appendChild(label);
+    toast.appendChild(btn);
+    document.body.appendChild(toast);
+    this.photoUnlockToast = toast;
+    window.setTimeout(() => this.hidePhotoUnlockToast(), 6000);
+  }
+
+  private hidePhotoUnlockToast(): void {
+    if (this.photoUnlockToast) {
+      this.photoUnlockToast.remove();
+      this.photoUnlockToast = null;
+    }
   }
 
   /**

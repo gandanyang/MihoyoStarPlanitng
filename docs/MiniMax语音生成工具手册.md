@@ -82,6 +82,11 @@ python tools/check_voicebank_match.py   # 需 PYTHONIOENCODING=utf-8（GBK 控�
 
 注意：控制台编码问题——运行带 Unicode 输出的 Python 脚本前设置 `$env:PYTHONIOENCODING='utf-8'`。
 
+`check_voicebank_match.py` 已知输出（2026-08-06 核验记录，非错误）：
+- **孤儿映射（19 条）**：`grandpa/flash1_*`、`linche/flash1_*` 等 flash 系列 13 条由 MemoryFlashback 系统引用，检查器不识别闪回入口，**属预期盲区，保留**；`elder/elder_01..07`（旧村长对话「你就是林澈吧…」）StorySystem 已无对应行，**疑似废弃映射，暂不处理（待制作人确认后清理）**；`system/hr_station_01/03` 为车站提示音。
+- **55 条台词无映射**：多为新增 NPC 循环对话（村长/商店老板/矿工老张/花匠小梅/冒险家阿风等），本就不计划配音，属预期缺口。
+- **53 条空 speaker**：旁白/系统提示，预期输出。
+
 ---
 
 ## 五、夏雅声线定案

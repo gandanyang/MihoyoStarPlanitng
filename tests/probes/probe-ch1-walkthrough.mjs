@@ -181,11 +181,16 @@ async function run() {
     await sleep(2500);
     await page.keyboard.press('Enter');
     await sleep(2500);
-    // 点手机通知关闭（轮询）
+    // 点开音量提示 + 手机通知（两页）关闭（轮询）
     for (let i = 0; i < 40; i++) {
       const done = await page.evaluate(() => {
+        // 音量提示（zIndex 650）挡在手机通知前，需先点击
+        const prompt = [...document.querySelectorAll('div')].find(d =>
+          d.style?.zIndex === '650' && d.style?.opacity !== '0' && d.textContent?.includes('建议打开声音游玩'));
+        if (prompt) { prompt.click(); return 'clicked'; }
+        // 手机通知（zIndex 600，两页需点击两次：翻页 → 关闭）
         const phone = [...document.querySelectorAll('div')].find(d =>
-          d.style?.zIndex === '600' && d.style?.display !== 'none');
+          d.style?.zIndex === '600' && d.style?.display !== 'none' && d.style?.opacity !== '0');
         if (phone) { phone.click(); return 'clicked'; }
         const s = window.__game?.scene?.getScenes(true)?.[0];
         return s?.storyDialogue?.isOpen?.() ? 'dialogue' : '';
