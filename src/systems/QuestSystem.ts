@@ -12,7 +12,7 @@
  */
 
 import { addXp } from '../data/FarmProgress';
-import { COLORS, ELDER_QUEST_DIALOGUE, SHARD_DELIVER_DIALOGUE, type DialogueLine, getStoryStep, isTutorialDone, isObservatoryComplete } from './StorySystem';
+import { COLORS, ELDER_QUEST_DIALOGUE, SHARD_DELIVER_DIALOGUE, ELDER_WHY_FARM_DIALOGUE, type DialogueLine, getStoryStep, isTutorialDone, isObservatoryComplete } from './StorySystem';
 
 /** 任务状态 */
 export type QuestState = 'not_started' | 'accepted' | 'collected' | 'completed';
@@ -67,7 +67,8 @@ export function getElderDialogue(): DialogueLine[] {
       return [{ speaker: '村长', color: COLORS.elder, text: '去你爷爷以前常去的后山看看吧，孩子。' }];
     case 'collected':
       deliverQuest();
-      return SHARD_DELIVER_DIALOGUE;
+      // T2 改动 2：交付完成后追加村长「为什么种田」（制作人 2026-08-06 定稿），一次性连播
+      return [...SHARD_DELIVER_DIALOGUE, ...ELDER_WHY_FARM_DIALOGUE];
     case 'completed':
       return [{ speaker: '村长', color: COLORS.elder, text: '星辰岛的秘密才刚刚揭开……期待你的下一次冒险。' }];
   }
