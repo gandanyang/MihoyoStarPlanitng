@@ -71,7 +71,7 @@ function createDom(): void {
   joy.className = 'tc-joystick';
   joystickEl = joy;
   joy.style.cssText =
-    'position:absolute;bottom:30px;width:130px;height:130px;display:none;';
+    'position:absolute;bottom:calc(30px + env(safe-area-inset-bottom, 0px));width:130px;height:130px;display:none;';
   joystickBase = document.createElement('div');
   joystickBase.className = 'tc-joystick-base';
   joystickBase.style.cssText =
@@ -121,7 +121,7 @@ function createDom(): void {
   btn.className = 'tc-btn tc-btn-main';
   mainBtn = btn;
   btn.style.cssText =
-    'position:absolute;bottom:24px;width:74px;height:74px;' +
+    'position:absolute;bottom:calc(24px + env(safe-area-inset-bottom, 0px));width:74px;height:74px;' +
     'touch-action:none;display:none;';
   // 稳定标识：探针/测试按 data-action 查找按钮，不依赖文字（文字会随场景变化）
   btn.dataset.action = 'interact';
@@ -153,7 +153,7 @@ function createDom(): void {
   backpackBtn = document.createElement('div');
   backpackBtn.className = 'tc-btn tc-btn-backpack';
   backpackBtn.style.cssText =
-    'position:absolute;bottom:110px;width:58px;height:58px;' +
+    'position:absolute;bottom:calc(110px + env(safe-area-inset-bottom, 0px));width:58px;height:58px;' +
     'touch-action:none;display:none;';
   backpackBtn.innerHTML =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -180,7 +180,7 @@ function createDom(): void {
   waitBtn = document.createElement('div');
   waitBtn.className = 'tc-btn tc-btn-wait';
   waitBtn.style.cssText =
-    'position:absolute;bottom:180px;width:58px;height:58px;' +
+    'position:absolute;bottom:calc(180px + env(safe-area-inset-bottom, 0px));width:58px;height:58px;' +
     'touch-action:none;display:none;';
   waitBtn.innerHTML =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +

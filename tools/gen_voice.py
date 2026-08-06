@@ -11,7 +11,7 @@
                       优点：生成速度快（3~15秒/条）、音质稳定、自带语速调节
                       缺点：需先启动 start.bat、需 MiMo API Key、可能限流
 
-目标：不打开 GUI，一条命令生成 NPC/剧情语音文件落到 public/audio/voice/。
+目标：不打开 GUI，一条命令生成 NPC/剧情语音文件落到 art_source/audio/voice/。
 
 退出码详见 docs\VoxCPM语音生成一键调用手册.md §3.3。
 """
@@ -595,7 +595,7 @@ def resolve_task_output(
     task: dict,
     project_root: Path,
 ) -> Path:
-    """按 JSON 约定计算输出路径：任务写了 output 优先，否则默认 public/audio/voice/<role_en>/<id>.wav。"""
+    """按 JSON 约定计算输出路径：任务写了 output 优先，否则默认 art_source/audio/voice/<role_en>/<id>.wav。"""
     explicit_out = task.get("output")
     if explicit_out:
         out_path = Path(explicit_out)
@@ -605,7 +605,7 @@ def resolve_task_output(
 
     role = task.get("role_en", "unknown")
     tid = task.get("id", "task_" + datetime.now().strftime("%Y%m%d%H%M%S"))
-    return project_root / "public" / "audio" / "voice" / role / f"{tid}.wav"
+    return project_root / "art_source" / "audio" / "voice" / role / f"{tid}.wav"
 
 
 def merge_task_with_defaults(
@@ -826,10 +826,10 @@ def run_single_cli(args: argparse.Namespace) -> None:
     # 4. 输出路径
     output_s = args.output
     if not output_s:
-        role = input("👤 输入角色英文名（决定输出子目录 public/audio/voice/<role>/）:\n> ").strip() or "unknown"
+        role = input("👤 输入角色英文名（决定输出子目录 art_source/audio/voice/<role>/）:\n> ").strip() or "unknown"
         default_ext = ".mp3" if engine == "mimo" else ".wav"
         tid = input(f"🆔 输入任务 ID（输出文件名 <id>{default_ext}）:\n> ").strip() or datetime.now().strftime("voice_%Y%m%d_%H%M%S")
-        output = PROJECT_ROOT / "public" / "audio" / "voice" / role / f"{tid}{default_ext}"
+        output = PROJECT_ROOT / "art_source" / "audio" / "voice" / role / f"{tid}{default_ext}"
         print(f"📁 将输出到: {output}")
     else:
         output = Path(output_s)
@@ -885,15 +885,15 @@ def run_single_cli(args: argparse.Namespace) -> None:
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="gen_voice.py",
-        description="归星物语一键语音生成（双引擎）：本地 VoxCPM 离线推理 / 小米 MiMo-TTS HTTP 接口。产物落到 public/audio/voice/。详细文档：docs\\VoxCPM语音生成一键调用手册.md",
+        description="归星物语一键语音生成（双引擎）：本地 VoxCPM 离线推理 / 小米 MiMo-TTS HTTP 接口。产物落到 art_source/audio/voice/。详细文档：docs\\VoxCPM语音生成一键调用手册.md",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "示例（VoxCPM 单条）:\n"
             "  python tools/gen_voice.py --engine voxcpm --text \"大家好\" \\\n"
-            "    --ref-audio \"E:\\BINGdown\\VoxCPM\\examples\\林远.mp3\" --output public/audio/voice/linche/demo.wav\n"
+            "    --ref-audio \"E:\\BINGdown\\VoxCPM\\examples\\林远.mp3\" --output art_source/audio/voice/linche/demo.wav\n"
             "\n示例（MiMo 单条，先双击 start.bat 启动服务）:\n"
             "  python tools/gen_voice.py --engine mimo --text \"大家好\" \\\n"
-            "    --ref-audio \"E:\\BINGdown\\VoxCPM\\examples\\林远.mp3\" --output public/audio/voice/linche/demo_mimo.mp3 --speed 1.05\n"
+            "    --ref-audio \"E:\\BINGdown\\VoxCPM\\examples\\林远.mp3\" --output art_source/audio/voice/linche/demo_mimo.mp3 --speed 1.05\n"
             "\n示例（批量）:\n"
             "  python tools/gen_voice.py --batch tools/voice_tasks.example.json --dry-run\n"
             "  python tools/gen_voice.py --batch tools/voice_tasks.json\n"

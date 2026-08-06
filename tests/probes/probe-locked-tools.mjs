@@ -121,7 +121,7 @@ async function run() {
     await setStep(page, 'get_key');
     await gotoScene(page, 'farm', { x: 400, y: 300 });
     await callScene(page, 'farm', 's => s.useManorKey()'); // 用钥匙开门 → 获得锄头 → clear_land
-    await skipDialogue(page, 9); // GATE_OPENED_DIALOGUE 9 行（E-07 叠加）
+    await skipDialogue(page, 10); // GATE_OPENED_DIALOGUE 10 行（E-07 叠加 + 先开三块地）
     for (const col of [20, 21, 22]) {
       r = await callScene(page, 'farm', `s => s.tryFarmInteractAt(${col}, 12)`);
       if (r?.error) console.log(`  [callScene error till ${col}]`, r.error);

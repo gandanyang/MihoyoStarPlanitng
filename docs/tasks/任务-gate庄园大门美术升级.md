@@ -1,8 +1,10 @@
 # 任务卡：核心场景美术升级（gate 庄园大门 · 第一弹）
 
-> 状态：✅ **已完成**（Trae 2026-08-07，probe-gate-visual 12/12 + 相关探针回归全绿）
+> 状态：✅ **已完成**（Trae 2026-08-07，probe-gate-visual 16/16 + 相关探针回归全绿 + tsc 0 错）
 > 立项：制作人 2026-08-07（「先做开大门的那个场景的升级 简单升级一下」）
 > 一句话：庄园大门场景从「纯色矩形门 + emoji 装饰」升级为「像素风双扇木门 + 生活杂物 + 小动物 + 夜间门灯」，全部零资源代码叠加，教程物理门墙零触碰。
+>
+> **补丁（同日追加）**：Alpha 玩家流程审查 P0 #1/#2 确认 gate 10 个 emoji 装饰与 town 🏠 未随升级移除 → 已全部像素替换，详见 §九。
 
 ---
 
@@ -81,6 +83,27 @@ gate（庄园大门）是新手教程第二场景（车站 → 大门 → 农场
 
 ---
 
-## 七、给施工 AI 的一句话
+## 八、给施工 AI 的一句话
 
 > 在 gate 场景叠加纯视觉 Overlay：`createGateDoorVisual` 双扇木门（随 gateWall 销毁）+ `setupGateDecorations` 生活杂物/小鸟/夜间门灯（零资源 Graphics，坐标已核对避开交互点）。gateWall 物理与教程逻辑一行不改；补 probe-gate-visual 探针并回归 4 个既有教程探针（修复其开场「音量提示」交互推进与时序）。
+
+---
+
+## 九、补丁：gate/town 剩余 emoji 像素化（Alpha 审查 P0 #1/#2，同日完成）
+
+**背景**：Alpha 玩家流程审查（2026-08-07）确认 gate 场景仍有 10 个可见 emoji 装饰（🏠🪵×2🌾×3🏮×2📮🪣）+ 🔒 门锁 + town 1 个 🏠，判定 P0 出戏点——本次升级只叠加像素装饰、未移除旧 emoji，出现「像素努力 + emoji 露馅」混搭。
+
+**处置（制作人拍板：像素替换）**：
+
+- `createGateInteractables()`：10 个 emoji → Graphics 像素绘制（坐标/深度/文案不变）：
+  - 🏠 → 像素木牌（保留「星黎庄园」文字）
+  - 🪵×2 → 像素栅栏（横栏+竖桩）
+  - 🌾×3 → 像素枯草簇
+  - 🏮×2 → 像素红灯笼（夜间光晕由 setupGateDecorations 叠加）
+  - 📮 → 像素信封（红封条）
+  - 🪣 → 像素陶水壶
+- 🔒 门锁 → 金色挂锁（锁体+锁梁+锁孔），画入门视觉 `createGateDoorVisual`，随门一起销毁（原 emoji 无引用、开门后残留问题一并解决）
+- town `setupElderHouseHint()`：🏠 → Container（像素木牌 + 小房子图标），**保留引导功能**（elderHouseHint.sprite 字段类型 Text→Container，tryElderHouseHintInteract / clearElderHouseHint 零改动；呼吸动画作用于 Container）
+- 不改变 `gateLife` 计数（探针 decor=13 断言不变）
+
+**验收**：probe-gate-visual 新增 A7（gate 无可见 emoji）+ E1-E3（town 无可见 emoji + 村长家引导物仍在），16/16 全绿；gate-skip 9/9、bug035 6/6、locked-tools 5/5、resident-board 25/25、farm-life 19/19 回归全绿；tsc 0 错。

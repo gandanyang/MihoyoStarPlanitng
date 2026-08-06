@@ -6,8 +6,9 @@
  *
  * 分类：主线 / 支线 / 日常 / 好感
  *   - 主线：读取 QuestSystem.getQuestState()/getQuestObjective()
+ *   - 支线：读取支线任务 + 居民需求（按进度解锁；flags 由 MapScene 构造时注入，避免循环依赖）
  *   - 日常：读取 DailyQuestSystem.getDailyQuests()
- *   - 支线/好感：当前无数据源，灰色占位（"敬请期待"）
+ *   - 好感：当前无数据源，灰色占位（"敬请期待"）
  *
  * 红点：日常有 completed && !claimed 任务 → 入口按钮角标显示数量
  * 不改变存档结构：只读渲染，领奖走 claimReward()
@@ -15,6 +16,7 @@
 
 import { getQuestState, getQuestObjective } from '../systems/QuestSystem';
 import { getDailyQuests, claimReward, getTalkNpcHomeHint, type DailyQuestInstance } from '../systems/DailyQuestSystem';
+import { getResidentRequests, isRequestDone, canFulfillRequest } from '../systems/ResidentRequestSystem';
 import { play } from '../systems/AudioSystem';
 import { triggerTag } from '../systems/GuiXingRecordSystem';
 import { showMemoryMoment } from './MemoryMoment';
@@ -23,6 +25,82 @@ import { panelFadeIn, panelFadeOut } from './dom-anim';
 type OnClose = () => void;
 type OnClaim = () => void;
 
+/** 支线任务状态（MapScene 构造时注入；结构化类型避免 import MapScene 造成循环依赖） */
+export interface QuestFlags {
+  sideXiyaGardenAsked?: boolean;
+  sideXiyaGardenDone?: boolean;
+  sideElderTeaAsked?: boolean;
+  sideElderStarDone?: boolean;
+  sideXiyaPhotoAsked?: boolean;
+  sideXiyaPhotoDone?: boolean;
+  sideMinerLampAsked?: boolean;
+  sideMinerLampDone?: boolean;
+  sideGardenerPlumAsked?: boolean;
+  sideGardenerPlumDone?: boolean;
+}
+
+/** 支线任务定义（解锁/进行中/完成判定基于注入 flags） */
+interface SideQuestDef {
+  id: string;
+  title: string;
+  /** 未解锁时提示 */
+  lockHint: string;
+  /** 进行中目标文案 */
+  objective: string;
+  isUnlocked: (f: QuestFlags) => boolean;
+  isAsked: (f: QuestFlags) => boolean;
+  isDone: (f: QuestFlags) => boolean;
+}
+
+/** 支线任务清单（2026-08-07 加入任务面板；解锁条件与 MapScene 触发一致） */
+const SIDE_QUESTS: SideQuestDef[] = [
+  {
+    id: 'xiya_garden',
+    title: '院子有人照顾',
+    lockHint: '完成「整理旧花园」后解锁',
+    objective: '帮夏雅修复花田边的旧藤架（交付木材×3）',
+    isUnlocked: (f) => f.sideXiyaGardenAsked === true,
+    isAsked: (f) => f.sideXiyaGardenAsked === true,
+    isDone: (f) => f.sideXiyaGardenDone === true,
+  },
+  {
+    id: 'elder_star',
+    title: '看星星的地方',
+    lockHint: '完成观星夜后解锁',
+    objective: '夜晚带壶茶，去农田边坐坐（替爷爷看看星星）',
+    isUnlocked: (f) => f.sideElderTeaAsked === true,
+    isAsked: (f) => f.sideElderTeaAsked === true,
+    isDone: (f) => f.sideElderStarDone === true,
+  },
+  {
+    id: 'xiya_photo',
+    title: '整理旧照片',
+    lockHint: '完成「老屋修复」后解锁',
+    objective: '在老屋门口，帮夏雅整理旧照片',
+    isUnlocked: (f) => f.sideXiyaPhotoAsked === true,
+    isAsked: (f) => f.sideXiyaPhotoAsked === true,
+    isDone: (f) => f.sideXiyaPhotoDone === true,
+  },
+  {
+    id: 'miner_lamp',
+    title: '矿洞里的灯',
+    lockHint: '进入矿洞后解锁',
+    objective: '为矿洞点亮旧矿灯（交付铜矿×2）',
+    isUnlocked: (f) => f.sideMinerLampAsked === true,
+    isAsked: (f) => f.sideMinerLampAsked === true,
+    isDone: (f) => f.sideMinerLampDone === true,
+  },
+  {
+    id: 'gardener_plum',
+    title: '一株小梅花',
+    lockHint: '抵达小镇花圃后解锁',
+    objective: '在小梅的花圃旁种下一株小梅花',
+    isUnlocked: (f) => f.sideGardenerPlumAsked === true,
+    isAsked: (f) => f.sideGardenerPlumAsked === true,
+    isDone: (f) => f.sideGardenerPlumDone === true,
+  },
+];
+
 // ===== 模块级单例 =====
 let panelEl: HTMLDivElement | null = null;
 let domCreated = false;
@@ -30,6 +108,8 @@ let open = false;
 let onClose: OnClose | null = null;
 let onClaim: OnClaim | null = null;
 let badgeEl: HTMLDivElement | null = null;
+/** 支线任务 flags provider（MapScene 构造时注入；null 时支线页签显示加载提示） */
+let flagsProvider: (() => QuestFlags | null) | null = null;
 
 type Tab = 'main' | 'side' | 'daily' | 'affinity';
 const TABS: { key: Tab; label: string }[] = [
@@ -38,6 +118,15 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'daily', label: '日常' },
   { key: 'affinity', label: '好感' },
 ];
+
+/** 简易 HTML 转义（防止任务名/提示文案破坏面板结构） */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 /** 主线程任务行渲染 */
 function mainRowHtml(): string {
@@ -55,8 +144,7 @@ function mainRowHtml(): string {
   </div>`;
 }
 
-/** 每日任务行渲染（含进度 + 领奖 + 已领） */
-function dailyRowHtml(q: DailyQuestInstance): string {
+/** 每日任务行渲染（含进度 + 领奖 + 已领） */function dailyRowHtml(q: DailyQuestInstance): string {
   const progress = q.progress >= q.target ? '' : ` <span style="color:#aaa;">${q.progress}/${q.target}</span>`;
   if (q.claimed) {
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;margin-bottom:4px;color:#777;background:rgba(255,255,255,0.03);border-radius:6px;">
@@ -84,6 +172,47 @@ function dailyRowHtml(q: DailyQuestInstance): string {
   </div>`;
 }
 
+/** 支线任务行渲染：未解锁 / 进行中 / 已完成 */
+function sideQuestRowHtml(q: SideQuestDef, f: QuestFlags): string {
+  if (!q.isUnlocked(f)) {
+    return `<div style="padding:6px 10px;margin-bottom:6px;color:#7a7262;background:rgba(255,255,255,0.02);border-radius:6px;opacity:0.85;">
+      <div style="font-size:13px;color:#a09880;">🔒 ${escapeHtml(q.title)}</div>
+      <div style="font-size:11px;color:#6a6355;margin-top:2px;">${escapeHtml(q.lockHint)}</div>
+    </div>`;
+  }
+  if (q.isDone(f)) {
+    return `<div style="padding:6px 10px;margin-bottom:6px;color:#6a8a6a;background:rgba(126,220,126,0.10);border-radius:6px;">
+      <div style="font-size:13px;color:#7ec87e;">✅ ${escapeHtml(q.title)}</div>
+      <div style="font-size:12px;color:#8aa88a;margin-top:2px;">已完成</div>
+    </div>`;
+  }
+  return `<div style="padding:8px 10px;margin-bottom:6px;background:rgba(126,184,218,0.12);border-radius:6px;border-left:3px solid #7eb8da;">
+    <div style="font-size:13px;font-weight:bold;color:#cdeafa;">${escapeHtml(q.title)} <span style="font-size:11px;color:#8fd6ff;">进行中</span></div>
+    <div style="font-size:12px;color:#cbd2d6;margin-top:2px;">${escapeHtml(q.objective)}</div>
+  </div>`;
+}
+
+/** 居民需求行渲染（复用 ResidentRequestSystem；完成态经 EventManager） */
+function residentRequestRowHtml(): string {
+  const reqs = getResidentRequests();
+  if (reqs.length === 0) return '';
+  return reqs.map((r) => {
+    const done = isRequestDone(r.id);
+    const enough = canFulfillRequest(r);
+    if (done) {
+      return `<div style="padding:6px 10px;margin-bottom:6px;color:#6a8a6a;background:rgba(126,220,126,0.10);border-radius:6px;">
+        <div style="font-size:13px;color:#7ec87e;">✅ ${escapeHtml(r.npcName)}的请求</div>
+        <div style="font-size:12px;color:#8aa88a;margin-top:2px;">已完成 · 需求已送达</div>
+      </div>`;
+    }
+    return `<div style="padding:8px 10px;margin-bottom:6px;background:rgba(255,215,0,0.08);border-radius:6px;border-left:3px solid #c8a83a;">
+      <div style="font-size:13px;font-weight:bold;color:#e8d8a0;">📌 ${escapeHtml(r.npcName)}的请求 <span style="font-size:11px;color:#d0b860;">待交付</span></div>
+      <div style="font-size:12px;color:#cbd2d6;margin-top:2px;">${r.itemKind === 'wood' ? `交付木材 ×${r.count}` : '交付食物（萝卜/番茄/玉米/草莓）'}${enough ? '' : '<span style="color:#ff9a6a;">（资源不足）</span>'}</div>
+      <div style="font-size:11px;color:#8a7a62;margin-top:2px;">可在小镇需求板交付</div>
+    </div>`;
+  }).join('');
+}
+
 /** 刷新面板内容（按当前激活分类） */
 function refresh(active: Tab = 'daily'): void {
   if (!panelEl) return;
@@ -92,7 +221,7 @@ function refresh(active: Tab = 'daily'): void {
 
   // 页签
   const tabsHtml = TABS.map(t => {
-    const disabled = (t.key === 'side' || t.key === 'affinity') ? 'opacity:0.35;pointer-events:none;' : '';
+    const disabled = (t.key === 'affinity') ? 'opacity:0.35;pointer-events:none;' : '';
     const activeStyle = t.key === active
       ? 'background:#8a6a45;color:#fff;'
       : 'background:rgba(138,106,69,0.25);color:#d8c2a0;';
@@ -104,7 +233,16 @@ function refresh(active: Tab = 'daily'): void {
   if (active === 'main') {
     html = mainRowHtml();
   } else if (active === 'side') {
-    html = '<div style="text-align:center;color:#8a7a62;padding:30px 10px;font-size:13px;">敬请期待 · 支线任务即将上线</div>';
+    const flags = flagsProvider?.() ?? null;
+    const sideHtml = flags
+      ? SIDE_QUESTS.map((q) => sideQuestRowHtml(q, flags)).join('')
+      : '<div style="text-align:center;color:#8a7a62;padding:12px 10px;font-size:12px;">任务数据加载中…</div>';
+    const residentHtml = residentRequestRowHtml();
+    if (sideHtml && residentHtml) {
+      html = sideHtml + '<div style="margin:6px 0 4px;font-size:12px;color:#8a7a62;">—— 居民需求 ——</div>' + residentHtml;
+    } else {
+      html = sideHtml + residentHtml;
+    }
   } else if (active === 'daily') {
     const quests = getDailyQuests();
     if (quests.length === 0) {
@@ -210,9 +348,10 @@ export function refreshBadgeElement(): void {
 }
 
 export class QuestPanel {
-  constructor(onCloseCb?: OnClose, onClaimCb?: OnClaim) {
+  constructor(onCloseCb?: OnClose, onClaimCb?: OnClaim, flagsCb?: () => QuestFlags | null) {
     if (onCloseCb) onClose = onCloseCb;
     if (onClaimCb) onClaim = onClaimCb;
+    if (flagsCb) flagsProvider = flagsCb;
     if (!domCreated) createDom();
   }
 

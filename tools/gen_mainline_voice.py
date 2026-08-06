@@ -32,14 +32,14 @@ from pathlib import Path
 VOX_PY = r"E:\BINGdown\VoxCPM\mwedm\python.exe"
 MODEL_PATH = r"E:\BINGdown\VoxCPM\models\openbmb__VoxCPM-0.5B"
 FFMPEG = r"E:\BINGdown\VoxCPM\src\ffmpeg\bin\ffmpeg.exe"
-OUT_ROOT = Path("public") / "audio" / "voice"
+OUT_ROOT = Path("art_source") / "audio" / "voice"
 MIN_BYTES = 30 * 1024
 MAX_RETRY = 3
 
 # 角色参考（ref_text 为空 → 不传 --prompt-text，让 VoxCPM 自动转写）
 ROLES = {
     "linche": dict(
-        ref=r"public\assets\audio\generated\林澈新B青年清澈_20260804_001.mp3",
+        ref=r"art_source\audio_generated\林澈新B青年清澈_20260804_001.mp3",
         ref_text="十年前的那个早晨，我依然清晰记得，你穿着白衬衫的样子，那是我第一次遇见你，至今难忘。",
         cfg=2.4, steps=16, atempo=1.0, sex="male",
     ),
@@ -47,42 +47,42 @@ ROLES = {
         # 2026-08-06 源修复：VoxCPM 必然回显参考语音（模型行为，无参数可关）；
         # 前导由 gen_mainline_voice.py 管线必跑的 trim_voice_lead() 裁剪。
         # 短样本（夏雅知性女声_样本.wav）F0 漂移率过高（400Hz），换回 12s 长段（F0 稳定）+ 必裁。
-        ref=r"public\assets\audio\generated\夏雅知性女声_20260805_001.wav",
+        ref=r"art_source\audio_generated\夏雅知性女声_20260805_001.wav",
         ref_text="生活中总会遇到不如意，但请记住，每一次跌倒都是成长的机会。不要急着否定自己，也不要轻易放弃希望。温柔地对待自己的同时，也要学会接纳生命中的不确定。当你学会放下，前方自然会有新的风景。",
         cfg=2.4, steps=16, atempo=1.1, sex="female",
     ),
     "elder": dict(
-        ref=r"public\assets\audio\generated\村长亲切_20260804_001.mp3",
+        ref=r"art_source\audio_generated\村长亲切_20260804_001.mp3",
         ref_text="老婆，今天忙不忙？家里的米好像不多了，下班顺路帮我买一袋回来吧。天气凉了，记得多穿点衣服，别感冒了。",
         cfg=2.4, steps=16, atempo=1.0, sex="male",
     ),
     "grandpa": dict(  # v2 换角定案：老人（Character Voice）8bc02ac9
-        ref=r"public\assets\audio\generated\老人A_20260804_001.mp3",
+        ref=r"art_source\audio_generated\老人A_20260804_001.mp3",
         ref_text="孩子啊，做人要懂得知足常乐。我们那个年代，虽然物质条件差，但是人心都很热。现在生活好了，可不要忘记最重要的是保持一颗善良的心。记住，家和万事兴。",
         cfg=2.4, steps=16, atempo=0.95, sex="male",
     ),
     "girl": dict(
-        ref=r"public\assets\audio\generated\少女空灵B_20260804_001.mp3",
+        ref=r"art_source\audio_generated\少女空灵B_20260804_001.mp3",
         ref_text="万物化形馆没有门，但每一个迷路的灵魂，都能在需要的时候，找到它。我携带的数据里，藏着无数等待被发现的秘密，以及那些未曾言说的故事。",
         cfg=2.4, steps=16, atempo=0.95, sex="female",
     ),
     "hr": dict(  # HR 手机通知：林澈声线 + 电话感 EQ
-        ref=r"public\assets\audio\generated\林澈新B青年清澈_20260804_001.mp3",
+        ref=r"art_source\audio_generated\林澈新B青年清澈_20260804_001.mp3",
         ref_text="十年前的那个早晨，我依然清晰记得，你穿着白衬衫的样子，那是我第一次遇见你，至今难忘。",
         cfg=2.4, steps=16, atempo=1.0, sex="male", phone_eq=True,
     ),
     "sms": dict(  # 短信播报（手机通知两页第一句）：豆包 app 默认声参考音克隆（制作人录屏 doubao.mp4 2026-08-05）；去掉 phone_eq 保留本色声
-        ref=r"public\assets\audio\generated\豆包默认声_20260805_001.wav",
+        ref=r"art_source\audio_generated\豆包默认声_20260805_001.wav",
         ref_text="因业务流程智能化调整，您的岗位职责将进行重新分配。随着智能化系统升级，公司将对部分岗位进行调整。",
         cfg=2.4, steps=16, atempo=1.0, sex="female",
     ),
     "miner": dict(  # 矿工老张：粗犷汉子，深沉亲切
-        ref=r"public\assets\audio\generated\老张v3_20260804_001.mp3",
+        ref=r"art_source\audio_generated\老张v3_20260804_001.mp3",
         ref_text="[sigh] 哎呀，俺这山里粗汉，不会说啥漂亮话。小兄弟，[laughter] 进了这山口，你就甭客气了！先干了这碗热汤暖暖身子，在这儿歇脚，保准安稳！",
         cfg=2.4, steps=16, atempo=1.0, sex="male",
     ),
     "gardener": dict(  # 花匠小梅：少女，温柔明亮（2026-08-05 制作人定案音源：千早爱音中文 sample S5）
-        ref=r"public\assets\audio\generated\千早爱音中文S5_20260805_001.mp3",
+        ref=r"art_source\audio_generated\千早爱音中文S5_20260805_001.mp3",
         ref_text="大家好啊我是千石由乃，今天来点大家想看的东西",
         cfg=2.4, steps=16, atempo=1.0, sex="female",
     ),
@@ -92,7 +92,7 @@ ROLES = {
         cfg=2.4, steps=16, atempo=1.0, sex="male",
     ),
     "shopkeeper": dict(  # 商店老板：中年男，沉稳
-        ref=r"public\assets\audio\generated\商店老板_20260804_001.mp3",
+        ref=r"art_source\audio_generated\商店老板_20260804_001.mp3",
         ref_text="最近天气变化大，我跟你说啊，一定要注意身体。年轻时不当回事，现在才知道健康最重要。早上起来喝杯温水，晚上少熬夜，平时多运动，这都是我这些年总结出来的经验。",
         cfg=2.4, steps=16, atempo=1.0, sex="male",
     ),
@@ -372,7 +372,7 @@ def story_speaker(role: str, tid: str) -> str:
     if role == "gardener":
         return "花匠小梅"
     if role == "adventurer":
-        return "冒险家阿风"
+        return "阿风"
     if role == "shopkeeper":
         return "商店老板"
     return ""

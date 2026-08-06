@@ -124,7 +124,7 @@ async function run() {
       if (btn) btn.click();
     });
     await sleep(1200);
-    await skipDialogue(page, 9);
+    await skipDialogue(page, 10); // GATE_OPENED_DIALOGUE 10 行
     await teleport(page, 'gate', 240, 40, 'up');
     await sleep(3200);
     const info0 = await sceneInfo(page);

@@ -100,7 +100,7 @@ function refresh(): void {
   if (headerEl) {
     headerEl.innerHTML = `
       <div style="margin-bottom:12px;">
-        <img src="assets/portraits/linchen_ai_portrait.png" alt="林澈"
+        <img src="assets/portraits/linchen_ai_portrait.webp" alt="林澈"
           style="width:100%;max-height:180px;object-fit:cover;object-position:50% 15%;border-radius:8px;display:block;opacity:0.9;">
       </div>
       <div style="font-size:12px;letter-spacing:3px;color:#6a7ab8;margin-bottom:6px;">📖 归星记录</div>

@@ -163,6 +163,18 @@ async function run() {
   check('A1 信息板交互物存在', a.hasMark === true);
   check('A2 位置 (22,8)', a.x === 22 * 16 + 8 && a.y === 8 * 16 + 8, `(${a.x},${a.y})`);
 
+  // 需求板引导任务：首次进小镇注入（board_quest_done 未标记）；验证后关闭面板防冻结
+  const injected = await page.evaluate(() => {
+    const s = window.__game.scene.getScene('town');
+    s.questPanel?.open?.();
+    const el = document.getElementById('quest-panel');
+    const txt = el?.textContent || '';
+    s.questPanel?.close?.();
+    // daily 行渲染 q.desc（非 title）：「去小镇广场看看需求板…」
+    return { has: txt.includes('去小镇广场看看需求板'), txt: txt.replace(/\s+/g, ' ').slice(0, 200), panel: !!el };
+  });
+  check('A3 需求板引导任务已注入（首次进小镇）', injected.has === true, `panel=${injected.panel} txt="${injected.txt}"`);
+
   const opened = await openBoard();
   check('B1 靠近按 E 打开面板', opened === true);
   const b = await page.evaluate(() => {
@@ -176,6 +188,22 @@ async function run() {
   check('B3 显示小梅需求（木材×10）', b.listText.includes('花匠小梅') && b.listText.includes('木材') && b.listText.includes('×10'));
   check('B4 显示老张需求（食物×5）', b.listText.includes('矿工老张') && b.listText.includes('食物') && b.listText.includes('×5'));
   await page.screenshot({ path: join(SHOT_DIR, 'resident-board-open.png') });
+
+  // 打开需求板 → 引导任务完成（daily 面板该行显示 🎁 可领奖）
+  // 注意：QuestPanel.refresh() 只同步红点、不重渲染内容，内容在 open() 时渲染，
+  // 因此必须 open→读 DOM→close（与 A3 相同），否则读到的是 A3 打开时的旧 DOM（未完成态）。
+  const bDone = await page.evaluate(() => {
+    const s = window.__game.scene.getScene('town');
+    s.questPanel?.open?.();
+    const el = document.getElementById('quest-panel');
+    const txt = el?.textContent || '';
+    s.questPanel?.close?.();
+    const idx = txt.indexOf('去小镇广场看看需求板');
+    // 完成态图标（🎁/⬜）在 desc 之前，往前多截几个字符
+    const seg = idx >= 0 ? txt.slice(Math.max(0, idx - 4), idx + 30) : '';
+    return { done: seg.includes('🎁'), txt: seg || 'not-found' };
+  });
+  check('B5 打开需求板后引导任务完成', bDone.done === true, bDone.txt);
 
   // ---------- C. 资源不足 ----------
   // 背包木材为 0 → 点击交付 → 红字提示 + 不扣资源 + 不标记

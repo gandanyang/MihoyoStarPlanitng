@@ -126,7 +126,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     panel = await openQuestPanel();
     const htmlNoQuest = panel.html;
     // QuestPanel 渲染 q.desc（非 title），必须匹配 desc 文案，否则恒假绿
-    const hasTalk = /与村长对话|与商店老板对话|与矿工老张对话|与花匠小梅对话|与冒险家阿风对话/.test(htmlNoQuest);
+    const hasTalk = /与村长对话|与商店老板对话|与矿工老张对话|与花匠小梅对话|与阿风对话/.test(htmlNoQuest);
     check('3a. 晚间首次刷新任务面板打开', panel.open === true);
     check('3b. 晚间不生成新 talk_* 任务', !hasTalk, hasTalk ? '面板含 talk' : '无 talk');
 

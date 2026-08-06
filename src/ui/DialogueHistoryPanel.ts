@@ -9,6 +9,7 @@
  */
 
 import { getHistory, type DialogueHistoryEntry } from '../systems/DialogueHistoryManager';
+import { VoiceBank } from '../audio/VoiceBank';
 import { panelFadeIn, panelFadeOut } from './dom-anim';
 
 // ===== 模块级单例 =====
@@ -54,6 +55,17 @@ function createDom(): void {
 
   // 点空白关闭
   panelEl.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    const replay = target.closest('[data-action="replay"]') as HTMLElement | null;
+    if (replay) {
+      e.stopPropagation();
+      VoiceBank.play(
+        replay.getAttribute('data-speaker') ?? '',
+        replay.getAttribute('data-text') ?? '',
+        replay.getAttribute('data-inner') === '1',
+      );
+      return;
+    }
     if (e.target === panelEl) closePanel();
   });
   // 关闭按钮
@@ -84,9 +96,15 @@ function renderEntry(entry: DialogueHistoryEntry, index: number): string {
       ? 'color:#e8ecff;'
       : 'color:#b0b0d0;';
   const bg = index % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent';
+  // 有对应语音的行：追加重播按钮（复用 VoiceBank.find 判定是否有音频）
+  const hasVoice = VoiceBank.find(entry.speaker, entry.text) !== null;
+  const replayBtn = hasVoice
+    ? `<button data-action="replay" data-speaker="${escapeHtml(entry.speaker)}" data-text="${escapeHtml(entry.text)}" data-inner="${entry.inner ? '1' : '0'}" style="flex-shrink:0;font-size:11px;padding:2px 8px;background:rgba(126,184,218,0.18);color:#8fd6ff;border:1px solid rgba(126,184,218,0.4);border-radius:5px;cursor:pointer;">🔊 重播</button>`
+    : '';
   return `<div style="padding:6px 10px;border-radius:6px;background:${bg};display:flex;gap:8px;align-items:flex-start;">
     <span style="flex-shrink:0;min-width:56px;">${name}</span>
-    <span style="${textStyle};word-break:break-word;">${escapeHtml(entry.text)}</span>
+    <span style="${textStyle};word-break:break-word;flex:1;">${escapeHtml(entry.text)}</span>
+    ${replayBtn}
   </div>`;
 }
 

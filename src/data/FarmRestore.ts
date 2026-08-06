@@ -83,3 +83,24 @@ export function restoreRestoreEntries(entries: Record<string, boolean> | undefin
     if (val === true) restored.set(key, true);
   }
 }
+
+// ============ 归星岛复兴度（隐藏世界状态，FEATURE-041 v0.11） ============
+// 设计依据：岛屿复兴循环系统设计方案 v0.1 §二 / v1.0 方向总纲 §2.2（Codex 核对：由 worldRestore 派生，不新建存档字段）
+
+/** 复兴度等级（v0.11 实现 Lv0-2；Lv3/Lv4 预留不实现） */
+export type RevivalLevel = 0 | 1 | 2;
+
+/**
+ * 派生归星岛复兴度（纯函数，无副作用）：
+ *   Lv0 荒废：初始（garden / oldHouse 未全部恢复）
+ *   Lv1 初步恢复：garden（农场恢复）+ oldHouse（房屋修复）→ 木匠回归条件
+ *   Lv2 小型社区：三建设点全部恢复（多区域恢复）
+ */
+export function getRevivalLevel(): RevivalLevel {
+  const garden = isRestored('garden');
+  const oldHouse = isRestored('oldHouse');
+  const forestRoad = isRestored('forestRoad');
+  if (garden && oldHouse && forestRoad) return 2;
+  if (garden && oldHouse) return 1;
+  return 0;
+}

@@ -13,8 +13,9 @@
         padding: 0;
         height: 100%;
         overflow: hidden;
-        /* 背景与画布同色：横屏 FIT 缩放产生的两侧黑边融入画面，避免突兀 */
-        background: #2d2d2d;
+        /* 背景氛围化：FIT 缩放产生的黑边区域用夜空渐变填充（与观星主题一致），
+         * 避免纯色黑边突兀；PC 网页居中时外部填充同理 */
+        background: radial-gradient(ellipse at 50% 20%, #1c2340 0%, #141a30 55%, #0d1122 100%);
         font-family: sans-serif;
         /* 阻止移动端双指缩放与橡皮筋滚动 */
         touch-action: none;

@@ -4,7 +4,7 @@
  * 验证：
  *   1. 初始（未恢复）：区域荒土瓦片 gid 2、debris 3 组、提示标记存在、gardenRestore.stage=0
  *   2. 交互：玩家靠近按 E ×3 → stage=3、荒土清除、花丛 gid 8 + 小路 gid 7、蝴蝶 2 只、
- *      存档 localStorage 含 restore.garden=true
+ *      存档 localStorage 含 worldRestore.garden=true（FEATURE-037 决策 5：新档写顶层，不写旧字段 farm.restore）
  *   3. 持久化：刷新重进 → 仍为恢复态（花丛还在、无 debris）
  *   4. 花园区域可走：恢复后新花园（cols 28-32, rows 4-7）无碰撞瓦片，玩家不会被困
  *   5. 无运行时错误、不回归现有农场（农田 FARM_AREA 仍为 gid 5）
@@ -54,7 +54,9 @@ const SNAP = `(() => {
           if (wLD.data[r][c].collides) return false;
       return true;
     })(),
-    savedRestore: save ? (save.farm.restore ?? null) : null,
+    savedRestore: save ? (save.worldRestore ?? null) : null,
+    // FEATURE-037 决策 5：新档不写旧字段 farm.restore（旧档迁移后不回退），探针同时验证
+    legacyFarmRestore: save ? (save.farm?.restore ?? null) : null,
     // 不回归：农田红线仍为 gid 5
     farmOk: (() => {
       for (let r = 8; r <= 16; r++)
@@ -102,14 +104,22 @@ async function run() {
       }));
     });
     await page.reload({ waitUntil: 'networkidle2' });
-    await sleep(1500);
-    await page.keyboard.press('Enter');
-    await sleep(500);
+    await sleep(1000);
     let scene = '';
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 50; i++) { // 最长 ~15s：覆盖标题/音量提示/手机通知/开场动画
       await sleep(300);
       scene = await page.evaluate(() => window.__game?.scene.getScenes(true)[0]?.scene?.key ?? 'none');
       if (scene === 'farm') break;
+      if (scene === 'title') {
+        await page.keyboard.press('Enter');
+        await page.mouse.click(400, 300);
+      }
+      // 开场音量提示（需点击才推进到手机通知→对话→进 farm）
+      await page.evaluate(() => {
+        const el = [...document.querySelectorAll('div')].find(d => d.textContent?.includes('建议打开声音游玩'));
+        if (el) { el.click(); return true; }
+        return false;
+      });
     }
     if (scene !== 'farm') throw new Error('未能进入农场场景');
     await sleep(1200);
@@ -126,18 +136,30 @@ async function run() {
     check('初始 提示标记存在', d.markExists === true, `实际=${d.markExists}`);
     check('初始 无蝴蝶', d.butterflies === 0, `实际=${d.butterflies}`);
     check('初始 新花园区域无碰撞（可走）', d.gardenWalkable === true, `实际=${d.gardenWalkable}`);
-    check('初始 存档无 restore 字段', d.savedRestore === null, `实际=${JSON.stringify(d.savedRestore)}`);
+    check('初始 存档无 worldRestore 字段', d.savedRestore === null, `实际=${JSON.stringify(d.savedRestore)}`);
 
-    // 2. 走到恢复点中心 → 按 E ×3（三阶段清理）
+    // 2. 走到恢复点中心 → 轮询式三阶段清理（E 推进，防对白遮挡吞按键；最多 8 次尝试）
     await page.evaluate(() => {
       const s = window.__game.scene.getScene('farm');
       const p = s.gardenRestore.pos;
       s.player.setPosition(p.x, p.y);
     });
     await sleep(300);
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 8; i++) {
+      const stage = await page.evaluate(() => window.__game.scene.getScene('farm')?.gardenRestore?.stage ?? -1);
+      if (stage >= 3) break;
+      // 若有对白打开先推进关闭（skip 幂等）
+      await page.evaluate(() => {
+        const s = window.__game.scene.getScene('farm');
+        if (s.storyDialogue?.isOpen()) {
+          for (let k = 0; k < 20 && s.storyDialogue?.isOpen(); k++) {
+            window.__game.input.keyboard?.emit('keydown-ENTER');
+          }
+        }
+      });
+      await sleep(200);
       await page.keyboard.press('E');
-      await sleep(600);
+      await sleep(800);
     }
     await sleep(1600); // 等最终提示
 
@@ -155,24 +177,35 @@ async function run() {
       d.collides.flowerCollides === false && d.collides.pathCollides === false,
       `实际=${JSON.stringify(d.collides)}`);
     check('交互后 新花园区域无碰撞（可走）', d.gardenWalkable === true, `实际=${d.gardenWalkable}`);
-    check('交互后 存档含 restore.garden=true',
+    check('交互后 存档含 worldRestore.garden=true',
       d.savedRestore && d.savedRestore.garden === true, `实际=${JSON.stringify(d.savedRestore)}`);
+    check('交互后 新档不写旧字段 farm.restore（决策 5）', d.legacyFarmRestore === null, `实际=${JSON.stringify(d.legacyFarmRestore)}`);
     check('不回归：农田 FARM_AREA 仍全为 gid 5', d.farmOk === true, `实际=${d.farmOk}`);
 
-    const shot1 = join(SHOT_DIR, 'farm-m1-3-restored.png');
-    await page.screenshot({ path: shot1 });
-    console.log(`  📸 ${shot1}`);
+    // 截图（WebGL 大场景偶发超时，失败仅记录不判失败）
+    try {
+      const shot1 = join(SHOT_DIR, 'farm-m1-3-restored.png');
+      await page.screenshot({ path: shot1 });
+      console.log(`  📸 ${shot1}`);
+    } catch (e) { console.log(`  ⚠️ 截图失败（不影响断言）: ${String(e).slice(0, 80)}`); }
 
     // 3. 刷新重进：持久化
     await page.reload({ waitUntil: 'networkidle2' });
-    await sleep(1500);
-    await page.keyboard.press('Enter');
-    await sleep(500);
+    await sleep(1000);
     let scene = '';
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 50; i++) {
       await sleep(300);
       scene = await page.evaluate(() => window.__game?.scene.getScenes(true)[0]?.scene?.key ?? 'none');
       if (scene === 'farm') break;
+      if (scene === 'title') {
+        await page.keyboard.press('Enter');
+        await page.mouse.click(400, 300);
+      }
+      await page.evaluate(() => {
+        const el = [...document.querySelectorAll('div')].find(d => d.textContent?.includes('建议打开声音游玩'));
+        if (el) { el.click(); return true; }
+        return false;
+      });
     }
     await sleep(1200);
     d = await page.evaluate(SNAP);
@@ -182,9 +215,11 @@ async function run() {
     check('重进后 新花园区域无碰撞（可走）', d.gardenWalkable === true, `实际=${d.gardenWalkable}`);
     check('重进后 无恢复前装饰', d.debrisCount === 0, `实际=${d.debrisCount}`);
 
-    const shot2 = join(SHOT_DIR, 'farm-m1-3-persisted.png');
-    await page.screenshot({ path: shot2 });
-    console.log(`  📸 ${shot2}`);
+    try {
+      const shot2 = join(SHOT_DIR, 'farm-m1-3-persisted.png');
+      await page.screenshot({ path: shot2 });
+      console.log(`  📸 ${shot2}`);
+    } catch (e) { console.log(`  ⚠️ 截图失败（不影响断言）: ${String(e).slice(0, 80)}`); }
 
     // 4. 运行时错误检查
     const realErrors = errors.filter(e =>

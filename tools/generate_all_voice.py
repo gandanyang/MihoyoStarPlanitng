@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """主线剧情全台词批量语音生成（VoxCPM 本地推理）。"""
 import argparse, subprocess, sys, time
 from pathlib import Path
@@ -10,31 +10,31 @@ FFMPEG = "ffmpeg"
 
 ROLES = {
     "linche": {
-        "ref_audio": PROJECT_ROOT / "public/assets/audio/generated/林澈新B青年清澈_20260804_001.mp3",
+        "ref_audio": PROJECT_ROOT / "art_source/audio_generated/林澈新B青年清澈_20260804_001.mp3",
         "ref_text": "十年前的那个早晨，我依然清晰记得，你穿着白衬衫的样子，那是我第一次遇见你，至今难忘。",
         "cfg": 2.4, "steps": 16, "atempo": None,
         "output_dir": PROJECT_ROOT / "public/audio/voice/linche",
     },
     "xiya": {
-        "ref_audio": PROJECT_ROOT / "public/assets/audio/generated/夏雅A治愈_20260804_001.mp3",
+        "ref_audio": PROJECT_ROOT / "art_source/audio_generated/夏雅A治愈_20260804_001.mp3",
         "ref_text": "人生就像一场闯关副本，不必急于一时分出高下，找准自己的定位，慢慢打磨实力，总有属于自己发光的时刻。",
         "cfg": 2.4, "steps": 16, "atempo": 1.1,
         "output_dir": PROJECT_ROOT / "public/audio/voice/xiya",
     },
     "grandpa": {
-        "ref_audio": PROJECT_ROOT / "public/assets/audio/generated/老人A_20260804_001.mp3",
+        "ref_audio": PROJECT_ROOT / "art_source/audio_generated/老人A_20260804_001.mp3",
         "ref_text": "占位",
         "cfg": 2.4, "steps": 16, "atempo": None,
         "output_dir": PROJECT_ROOT / "public/audio/voice/grandpa",
     },
     "elder": {
-        "ref_audio": PROJECT_ROOT / "public/assets/audio/generated/村长亲切_20260804_001.mp3",
+        "ref_audio": PROJECT_ROOT / "art_source/audio_generated/村长亲切_20260804_001.mp3",
         "ref_text": "老婆，今天忙不忙？家里的米好像不多了，下班顺路帮我买一袋回来吧。天气凉了，记得多穿点衣服，别感冒了。",
         "cfg": 2.4, "steps": 16, "atempo": None,
         "output_dir": PROJECT_ROOT / "public/audio/voice/elder",
     },
     "girl": {
-        "ref_audio": PROJECT_ROOT / "public/assets/audio/generated/少女空灵B_20260804_001.mp3",
+        "ref_audio": PROJECT_ROOT / "art_source/audio_generated/少女空灵B_20260804_001.mp3",
         "ref_text": "万物化形馆没有门，但每一个迷路的灵魂，都能在需要的时候，找到它。",
         "cfg": 2.4, "steps": 16, "atempo": None,
         "output_dir": PROJECT_ROOT / "public/audio/voice/girl",

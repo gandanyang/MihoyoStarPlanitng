@@ -122,7 +122,7 @@ async function run() {
     await pressBackpack(page);
     await page.evaluate(() => { const b = document.querySelector('button[data-action="use-key"]'); if (b) b.click(); });
     await sleep(1200);
-    await skipDialogue(page, 9); // GATE_OPENED_DIALOGUE 9 行（E-07 叠加）
+    await skipDialogue(page, 10); // GATE_OPENED_DIALOGUE 10 行（E-07 叠加 + 先开三块地）
     info = await sceneInfo(page);
     console.log(`3. 开门 → 步骤=${info.step}${info.step === 'clear_land' ? ' ✅' : ' ❌'}`);
 

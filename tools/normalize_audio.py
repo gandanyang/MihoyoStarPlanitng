@@ -4,7 +4,7 @@
 音频响度标准化工具
 
 用法：
-  python tools/normalize_audio.py --input public/audio/voice --output public/audio/voice_normalized
+  python tools/normalize_audio.py --input art_source/audio/voice --output public/audio/voice_normalized
 
 功能：
   1. 扫描输入目录的 .wav 文件
@@ -247,10 +247,10 @@ def main():
         epilog="""
 示例：
   # 标准化语音文件
-  python tools/normalize_audio.py --input public/audio/voice --output public/audio/voice_normalized
+  python tools/normalize_audio.py --input art_source/audio/voice --output public/audio/voice_normalized
   
   # 使用自定义目标响度
-  python tools/normalize_audio.py --input public/audio/voice --output public/audio/voice_normalized --target -14
+  python tools/normalize_audio.py --input art_source/audio/voice --output public/audio/voice_normalized --target -14
         """
     )
     parser.add_argument(

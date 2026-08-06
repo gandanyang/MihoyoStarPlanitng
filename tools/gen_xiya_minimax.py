@@ -8,8 +8,8 @@ MiniMax（海螺）T2A 批量重配夏雅主线语音。
                                     [--voice-id female-shaonv-jingpin]
 
 产物:
-  public/audio/voice/xiya/<tid>.wav     （16k 单声道 PCM s16le，与旧管线一致）
-  public/audio/voice/xiya/<tid>.wav.txt （来源文本 sidecar，供 gen_mainline_voice 校验）
+  art_source/audio/voice/xiya/<tid>.wav     （16k 单声道 PCM s16le，与旧管线一致）
+  art_source/audio/voice/xiya/<tid>.wav.txt （来源文本 sidecar，供 gen_mainline_voice 校验）
 
 配置:
   MINIMAX_API_KEY 优先级：环境变量 > tools/.env > tools/.secrets.enc（DPAPI 保险箱）
@@ -36,7 +36,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 ROOT = Path(__file__).resolve().parent.parent
 TOOLS = ROOT / "tools"
-VOICE_DIR = ROOT / "public" / "audio" / "voice" / "xiya"
+VOICE_DIR = ROOT / "art_source" / "audio" / "voice" / "xiya"
 DONE_MARKER = VOICE_DIR / ".minimax_done"
 FFMPEG = r"E:\BINGdown\VoxCPM\src\ffmpeg\bin\ffmpeg.exe"
 BASE_URL = "https://api.minimaxi.com/v1/t2a_v2"

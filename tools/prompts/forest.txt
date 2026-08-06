@@ -1,0 +1,16 @@
+16x16 pixel art game tileset, top-down view, STRICT TILE RULES:
+- each tile must be a clean seamless 16x16 game tile
+- no gradients, no lighting effects, no shadows
+- flat pixel clusters only
+- limited palette (8-16 colors per tile)
+- consistent color style across all tiles in the sheet
+- tiles must tile seamlessly (no visible seams when placed adjacent)
+- tiles must be usable in Tiled map editor (clear pixel boundaries)
+- inspired by Stardew Valley / old-school 16-bit JRPG farming games
+- ALL tiles separated by visible 1-pixel grid lines for clarity
+
+Layout: 3 columns x 2 rows of sub-regions, each 256x256 pixels, plus 2 dedicated 256x512 tree regions.
+[6 standard sub-regions]: grass, dirt, dark-soil, fallen-leaves, path, stone
+[2 tree regions]: broadleaf-tree-crown (with trunk below), pine-tree-crown (with trunk below)
+
+Color palette: dark forest greens, brown trunks, mossy earth. Slightly darker/cooler than farm tileset.

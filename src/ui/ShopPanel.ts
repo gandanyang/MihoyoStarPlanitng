@@ -145,6 +145,14 @@ let longPressAction: string | null = null;
 const LONG_PRESS_DELAY = 400; // 首次延迟
 const LONG_PRESS_INTERVAL = 120; // 后续间隔
 
+/**
+ * 防双买标志：pointerdown 已立即购买后置位；click 里购买类按钮消费并跳过。
+ * 触摸端（安卓）pointerdown 购买 + refresh 重建按钮后，浏览器仍可能把 click 派发到
+ * 同位置的「新按钮」（鼠标端命中公共祖先为 no-op），导致「单击买 2 个」。
+ * 每个新 pointerdown 先重置，避免跨手势污染（资金不足单击仍正常走提示）。
+ */
+let suppressNextClick = false;
+
 /** 关闭面板（模块级，事件监听器和 ShopPanel.close() 都走这里） */
 function closePanel(): void {
   if (!open) return;
@@ -199,32 +207,38 @@ function createDom(): void {
   panelEl.id = 'shop-panel';
   panelEl.style.cssText =
     'position:fixed;top:0;right:0;bottom:0;left:0;display:none;align-items:center;justify-content:center;' +
-    'background:rgba(0,0,0,0.55);z-index:200;user-select:none;-webkit-user-select:none';
+    'background:rgba(0,0,0,0.6);z-index:200;user-select:none;-webkit-user-select:none';
 
   panelEl.innerHTML = `
-    <div style="position:relative;width:min(440px,92vw);max-height:85vh;overflow-y:auto;background:#3d3226;border:3px solid #8a6a45;border-radius:10px;padding:16px;color:#fff;font-family:Arial;box-shadow:0 4px 20px rgba(0,0,0,0.6)">
+    <div style="position:relative;width:min(460px,94vw);max-height:86vh;overflow-y:auto;background:linear-gradient(180deg,#4a3a28 0%,#3d3226 60%,#332a1e 100%);border:2px solid #b08950;border-radius:14px;padding:16px;color:#fff;font-family:Arial;box-shadow:0 8px 32px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08)">
       <div id="shop-toast" style="position:absolute;left:50%;top:-2px;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#7ef0a0;font-size:13px;padding:4px 14px;border-radius:6px;display:none;pointer-events:none;white-space:normal;line-height:1.5;text-align:center;"></div>
-      <div style="text-align:center;font-size:18px;font-weight:bold;margin-bottom:8px;color:#ffd700;letter-spacing:1px;">星辰杂货店</div>
-      <div id="shop-coins" style="text-align:center;font-size:14px;margin-bottom:12px;color:#ffe082;"></div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;">
+        <span style="font-size:20px;">🏪</span>
+        <div style="text-align:center;">
+          <div style="font-size:19px;font-weight:bold;color:#ffd97a;letter-spacing:2px;text-shadow:0 2px 6px rgba(0,0,0,0.5);">星辰杂货店</div>
+          <div style="font-size:11px;color:#b8a88a;margin-top:1px;letter-spacing:1px;">青禾镇 · 王叔的铺子</div>
+        </div>
+      </div>
+      <div id="shop-coins" style="text-align:center;font-size:15px;font-weight:bold;margin-bottom:12px;color:#ffe082;background:rgba(0,0,0,0.25);border:1px solid rgba(255,224,130,0.25);border-radius:8px;padding:6px 10px;"></div>
       <div style="display:flex;gap:12px;">
-        <div style="flex:1;background:#4a3626;border-radius:6px;padding:10px;">
-          <div style="text-align:center;font-weight:bold;margin-bottom:8px;color:#ffab91;">出售</div>
+        <div style="flex:1;background:rgba(90,64,40,0.55);border:1px solid rgba(255,171,145,0.3);border-radius:10px;padding:10px;">
+          <div style="text-align:center;font-weight:bold;margin-bottom:8px;color:#ffab91;font-size:13px;letter-spacing:1px;">— 出售 —</div>
           <div id="shop-sell" style="font-size:13px;"></div>
-          <div style="text-align:center;margin-top:8px;">
-            <button data-action="sell-all" style="font-size:12px;padding:4px 14px;background:#c49a2a;border:none;border-radius:4px;color:#fff;cursor:pointer;">全部出售</button>
+          <div style="text-align:center;margin-top:9px;">
+            <button data-action="sell-all" style="font-size:13px;padding:7px 18px;background:linear-gradient(180deg,#d8a53f,#b8872a);border:1px solid #e8c877;border-radius:8px;color:#fff;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.35);">💰 全部出售</button>
           </div>
         </div>
-        <div style="flex:1;background:#4a3626;border-radius:6px;padding:10px;">
-          <div style="text-align:center;font-weight:bold;margin-bottom:8px;color:#a5d6a7;">购买</div>
+        <div style="flex:1;background:rgba(50,80,60,0.45);border:1px solid rgba(165,214,167,0.3);border-radius:10px;padding:10px;">
+          <div style="text-align:center;font-weight:bold;margin-bottom:8px;color:#a5d6a7;font-size:13px;letter-spacing:1px;">— 购买 —</div>
           <div id="shop-buy" style="font-size:13px;"></div>
         </div>
       </div>
-      <div style="background:#2a3d4a;border:1px solid #4a8a9a;border-radius:6px;padding:10px;margin-top:12px;">
-        <div style="text-align:center;font-weight:bold;margin-bottom:8px;color:#4fc3f7;">✨ 特殊商店</div>
+      <div style="background:linear-gradient(180deg,rgba(42,61,74,0.8),rgba(34,50,62,0.8));border:1px solid #4a8a9a;border-radius:10px;padding:10px;margin-top:12px;">
+        <div style="text-align:center;font-weight:bold;margin-bottom:8px;color:#4fc3f7;font-size:13px;letter-spacing:1px;">✨ 特殊商店</div>
         <div id="shop-special" style="font-size:13px;"></div>
       </div>
       <div style="text-align:center;margin-top:14px;">
-        <button data-action="close" style="font-size:14px;padding:6px 26px;background:#8a6a45;border:none;border-radius:4px;color:#fff;cursor:pointer;">关闭 (Esc)</button>
+        <button data-action="close" style="font-size:14px;padding:8px 30px;background:linear-gradient(180deg,#8a6a45,#6d5334);border:1px solid #a5835a;border-radius:8px;color:#fff;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.35);">关闭 (Esc)</button>
       </div>
     </div>
   `;
@@ -233,6 +247,8 @@ function createDom(): void {
   // 事件委托：所有按钮走 data-action 分发
   // 长按连续购买：pointerdown 开始计时，pointerup/cancel 停止
   panelEl.addEventListener('pointerdown', (e) => {
+    // 每个新手势重置防双买标志（若上一手势被 pointercancel 中断，标志不会残留）
+    suppressNextClick = false;
     const target = e.target as HTMLElement;
     const action = target.dataset?.action;
     if (!action || !action.startsWith('buy-')) return;
@@ -242,8 +258,13 @@ function createDom(): void {
     if (!item || item.type !== 'buy') return;
     if (!item.canDo()) return;
 
+    // 阻止 pointerdown 之后派发 click（规范行为，真机 Chromium 有效；CDP 触摸仿真不保证）。
+    // 兜底由 suppressNextClick 标志在 click 处理里吞掉，双保险防「单击买 2 个」。
+    e.preventDefault();
+
     // 首次立即购买
     executeBuy(item);
+    suppressNextClick = true;
     // 启动长按连续购买
     longPressAction = action;
     longPressTimer = setTimeout(() => {
@@ -298,6 +319,12 @@ function createDom(): void {
     }
     const item = SHOP_ITEMS.find(i => i.action === action);
     if (item) {
+      // 防双买：本次 pointerdown 已立即购买，吞掉紧随其后的 click（触摸端浏览器会把
+      // click 派发到 refresh 重建后的同位置按钮）。重置标志，保证下一手势正常。
+      if (item.type === 'buy' && suppressNextClick) {
+        suppressNextClick = false;
+        return;
+      }
       // E-03：按钮不禁用（保留禁用样式）→ 点击给解释，避免"只知道买不了不知道为什么"
       if (!item.canDo()) {
         const need = item.price - getCoins();
@@ -378,8 +405,8 @@ function refresh(): void {
     coinsEl.innerHTML = `${itemIconHtml('coin', 16)} ${coins} G`;
   }
 
-  const btnBase = 'font-size:12px;padding:3px 10px;border:none;border-radius:4px;cursor:pointer;';
-  const btnActive = `${btnBase}background:#c79a5b;color:#fff;`;
+  const btnBase = 'font-size:12px;padding:5px 12px;border:none;border-radius:7px;cursor:pointer;font-weight:bold;';
+  const btnActive = `${btnBase}background:linear-gradient(180deg,#d8a53f,#b8872a);border:1px solid #e8c877;color:#fff;box-shadow:0 2px 5px rgba(0,0,0,0.3);`;
   const btnDisabled = `${btnBase}background:#6b573f;color:#9a8a72;cursor:not-allowed;`;
 
   // 出售栏
@@ -388,10 +415,13 @@ function refresh(): void {
     const sellItems = SHOP_ITEMS.filter(i => i.type === 'sell');
     sellEl.innerHTML = sellItems.map(item => {
       const canSell = item.canDo();
+      const count = getItemCount(item.id as any);
       // E-03：保留禁用样式但不禁用按钮——点击给解释（资金/作物不足提示）
-      return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <span>${itemIconHtml(item.id, 16)} ${item.label}</span>
-        <button data-action="${item.action}" style="${canSell ? btnActive : btnDisabled}">卖 ${item.price}G</button>
+      return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;background:rgba(255,255,255,0.05);border-radius:8px;padding:5px 8px;">
+        <span style="display:flex;align-items:center;gap:6px;">${itemIconHtml(item.id, 20)}
+          <span>${item.label}${count > 0 ? `<span style="color:#9fd89f;font-size:11px;margin-left:4px;">×${count}</span>` : ''}</span>
+        </span>
+        <button data-action="${item.action}" data-can-sell="${canSell ? '1' : '0'}" style="${canSell ? btnActive : btnDisabled}">卖 ${item.price}G</button>
       </div>`;
     }).join('');
   }
@@ -410,9 +440,18 @@ function refresh(): void {
     const buyItems = SHOP_ITEMS.filter(i => i.type === 'buy');
     buyEl.innerHTML = buyItems.map(item => {
       const canBuy = item.canDo();
-      return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <span>${itemIconHtml(item.id, 16)} ${item.label}</span>
-        <button data-action="${item.action}" style="${canBuy ? btnActive : btnDisabled}">买 ${item.price}G</button>
+      const own = getItemCount(item.id as any);
+      const shortage = item.price - getCoins();
+      // 购买力提示：买不起时按钮下方直接显示还差多少（替代"点了才知道"）
+      const hint = !canBuy && shortage > 0
+        ? `<div style="font-size:10px;color:#e57373;margin-top:2px;text-align:right;">还差 ${shortage} G</div>`
+        : (own > 0 ? `<div style="font-size:10px;color:#9fd89f;margin-top:2px;text-align:right;">已有 ×${own}</div>` : '');
+      return `<div style="margin-bottom:7px;background:rgba(255,255,255,0.05);border-radius:8px;padding:5px 8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="display:flex;align-items:center;gap:6px;">${itemIconHtml(item.id, 20)} ${item.label}</span>
+          <button data-action="${item.action}" data-can-sell="${canBuy ? '1' : '0'}" style="${canBuy ? btnActive : btnDisabled}">买 ${item.price}G</button>
+        </div>
+        ${hint}
       </div>`;
     }).join('');
   }
@@ -426,12 +465,16 @@ function refresh(): void {
     const canBuyRobot = diamondCount >= ROBOT_PRICE;
     const canUpgrade = upgradeCost > 0 && diamondCount >= upgradeCost;
     specialEl.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <span>${itemIconHtml('auto_farmer_robot', 16)} 自动农业机器人</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;background:rgba(255,255,255,0.05);border-radius:8px;padding:6px 8px;">
+        <span style="display:flex;align-items:center;gap:6px;">${itemIconHtml('auto_farmer_robot', 20)}
+          <span>自动农业机器人<span style="color:#9fd89f;font-size:11px;margin-left:4px;">已有 ×${getItemCount('auto_farmer_robot')}</span></span>
+        </span>
         <button data-action="buy-robot" style="${canBuyRobot ? btnActive : btnDisabled}">买 ${ROBOT_PRICE} 💠</button>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <span>${itemIconHtml('diamond', 16)} 升级机器人 (Lv.${lv} → Lv.${Math.min(lv + 1, 3)})</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.05);border-radius:8px;padding:6px 8px;">
+        <span style="display:flex;align-items:center;gap:6px;">${itemIconHtml('diamond', 20)}
+          <span>升级机器人 (Lv.${lv} → Lv.${Math.min(lv + 1, 3)})</span>
+        </span>
         <button data-action="upgrade-robot" style="${canUpgrade ? btnActive : btnDisabled}">${upgradeCost === 0 ? '已满级' : `升 ${upgradeCost} 💠`}</button>
       </div>
       <div style="font-size:11px;color:#90a4ae;margin-top:6px;">当前 Lv.${lv}：${lv === 1 ? '自动浇水+收获，范围3' : lv === 2 ? '自动播种+范围4， Lv3：作物×2+范围5' : '满级：作物×2+范围5'}</div>

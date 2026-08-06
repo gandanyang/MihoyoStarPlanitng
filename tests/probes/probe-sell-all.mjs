@@ -89,9 +89,9 @@ async function shopState(page) {
     const panel = document.getElementById('shop-panel');
     const coinsEl = panel?.querySelector('#shop-coins');
     const sellEl = panel?.querySelector('#shop-sell');
-    // 出售栏按钮：可卖=金色(#c79a5b → rgb(199,154,91))，无可卖=禁用色(#6b573f)
+    // 出售栏按钮：可卖状态由 data-can-sell="1" 标记（商店 UI 升级后不再依赖背景色判断）
     const sellButtons = Array.from(sellEl?.querySelectorAll('button') ?? []);
-    const sellableButtons = sellButtons.filter(b => b.style.backgroundColor === 'rgb(199, 154, 91)').length;
+    const sellableButtons = sellButtons.filter(b => b.dataset.canSell === '1').length;
     return {
       coins: coinsEl?.textContent ?? '',
       sellText: sellEl?.textContent ?? '',

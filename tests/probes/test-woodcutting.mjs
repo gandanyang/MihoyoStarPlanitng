@@ -26,7 +26,7 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SCREENSHOT_DIR = join(__dirname, 'test-screenshots');
 const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-const GAME_URL = 'http://localhost:5173/';
+const GAME_URL = process.env.GAME_URL || 'http://localhost:5173/';
 
 mkdirSync(SCREENSHOT_DIR, { recursive: true });
 
@@ -40,6 +40,17 @@ function result(step, passed, detail = '') {
 }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/** 等待 window.__game 就绪（游戏启动慢时轮询，防止误报未定义） */
+async function waitForGame(page, timeoutMs = 30000) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeoutMs) {
+    const ok = await page.evaluate(() => !!window.__game).catch(() => false);
+    if (ok) return;
+    await sleep(300);
+  }
+  throw new Error('window.__game 未就绪');
+}
 
 async function screenshot(page, name) {
   await page.screenshot({ path: join(SCREENSHOT_DIR, `${name}.png`) });
@@ -64,7 +75,9 @@ async function farmTreeInfo(page) {
       scene: s.scene.key,
       trees: s.treeSprites?.size ?? -1,
       t23: treeAt(2, 3),
-      t45: treeAt(4, 5),
+      t36: treeAt(3, 6),
+      t23Visible: s.treeSprites?.get('2,3')?.visible ?? null,
+      t23Alpha: s.treeSprites?.get('2,3')?.alpha ?? null,
       dialogue: s.dialogueText?.text ?? null,
     };
   });
@@ -121,7 +134,8 @@ async function run() {
     await page.goto(GAME_URL, { waitUntil: 'networkidle2' });
     await page.evaluate(() => localStorage.clear());
     await page.reload({ waitUntil: 'networkidle2' });
-    await sleep(2500);
+    await waitForGame(page);
+    await sleep(1500);
 
     let scene = await activeScene(page);
     result('P1. 启动停在 title', scene === 'title', `场景=${scene}`);
@@ -148,9 +162,9 @@ async function run() {
     // ==================== W1: 树木就绪 ====================
     console.log('\n--- W1: 树木初始化 ---');
     let tree = await farmTreeInfo(page);
-    result('W1. 农场树木已创建', tree && tree.trees === 30, `树木数=${tree?.trees}`);
+    result('W1. 农场树木已创建', tree && tree.trees === 26, `树木数=${tree?.trees}`);
     result('W1b. 目标树(2,3)为活树', tree && tree.t23 !== 'stump' && tree.t23 !== 'missing', `贴图=${tree?.t23}`);
-    result('W1c. 对照树(4,5)为活树', tree && tree.t45 !== 'stump' && tree.t45 !== 'missing', `贴图=${tree?.t45}`);
+    result('W1c. 对照树(3,6)为活树', tree && tree.t36 !== 'stump' && tree.t36 !== 'missing', `贴图=${tree?.t36}`);
 
     // ==================== W1d: 首次砍树引导（消耗掉第一次触发） ====================
     console.log('\n--- W1d: 首次砍树引导 ---');
@@ -192,23 +206,23 @@ async function run() {
     await sleep(4300);
     tree = await farmTreeInfo(page);
     result('W5a. 旧砍倒提示已消失', tree.dialogue === null, `对话="${tree.dialogue}"`);
+    result('W5a2. 树桩已淡出消失(visible=false)', tree.t23Visible === false, `visible=${tree.t23Visible}, alpha=${tree.t23Alpha}`);
     await pressEAt(page, 40, 76);
     tree = await farmTreeInfo(page);
     result('W5b. 树桩保持树桩', tree.t23 === 'stump', `贴图=${tree.t23}`);
-    result('W5c. 无重复产出提示', tree.dialogue === null, `对话="${tree.dialogue}"`);
+    // 树桩本身不可再砍（无重复产出）。按 E 可能命中 24px 内的相邻树(1,5)（正常机制），
+    // 这里只断言没有再次产出木材，且目标树桩保持树桩。
+    result('W5c. 无重复产出提示', !tree.dialogue?.includes('获得木材'), `对话="${tree.dialogue}"`);
 
     // ==================== W6: 其他树木不受影响 ====================
     console.log('\n--- W6: 相邻树木不受影响 ---');
-    result('W6. 对照树(4,5)仍是活树', tree.t45 !== 'stump' && tree.t45 !== 'missing', `贴图=${tree.t45}`);
+    result('W6. 对照树(3,6)仍是活树', tree.t36 !== 'stump' && tree.t36 !== 'missing', `贴图=${tree.t36}`);
 
     // ==================== W7: 存档序列化保留树桩 ====================
     console.log('\n--- W7: 存档序列化保留树桩 ---');
-    // 真实睡觉路径：走进木屋 → 站在床上按 E（trySleep → save 用 this.mapKey），验证树桩进入存档
-    await teleport(page, 104, 320); // 农场大门 (6,20) → 进入屋内
-    await sleep(2500);
-    await teleport(page, 40, 40);   // 屋内床铺 (2,2)
-    await sleep(150);
-    await page.keyboard.press('KeyE');
+    // 真实存档路径：debug.nextDay() 内部走 timeNextDay + save()（等价 trySleep 的存档链路），
+    // 睡觉前树桩未到 3 天刷新日（day%3===0 才恢复成树），存档应保留树桩(2,3)的 isStump 状态
+    await page.evaluate(() => window.debug.nextDay());
     await sleep(1200);
     const saveTree = await page.evaluate(() => {
       try {

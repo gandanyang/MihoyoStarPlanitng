@@ -91,6 +91,7 @@ export const GATE_OPENED_DIALOGUE: DialogueLine[] = [
   { speaker: '林澈', color: COLORS.linche, text: '他从来没跟我说过这些。' },
   { speaker: '夏雅', color: COLORS.xiya, text: '有些事，要等你自己回来了，才会知道。' },
   { speaker: '', color: COLORS.system, text: '（夏雅拿出一把旧锄头。）' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '先开三块地。地要翻过，种子才肯住下。' },
   { speaker: '', color: COLORS.system, text: hint('获得物品：【旧锄头】  对着农田区域按 [E] 键锄地，清理 3 块土地。', '获得物品：【旧锄头】  对着农田区域点「交互」锄地，清理 3 块土地。') },
 ];
 
@@ -101,6 +102,32 @@ export const XIYA_DAWN_DIALOGUE: DialogueLine[] = [
   { speaker: '林澈', color: COLORS.linche, text: '你每天都起这么早？' },
   { speaker: '夏雅', color: COLORS.xiya, text: '（笑）岛上的人都这样。太阳一出来，就想醒着。' },
   { speaker: '林澈', color: COLORS.linche, text: '……我以前，都是被闹钟叫醒的。' },
+];
+
+/**
+ * 岛屿的第一声回应（day2 清晨自动触发，制作人定稿 2026-08-07，Agent 不得扩写/改写）
+ * 关键剧情节点：第一天睡觉后，玩家第一次"完整循环"的回报——岛屿开始回应玩家的努力。
+ * 触发：day2 清晨首次进 farm（EventManager triggerOnce 判重，见 MapScene.tryFirstMorningSequence）。
+ * day3+ 清晨仍走 XIYA_DAWN_DIALOGUE 闲聊（两条并存）。
+ */
+export const FIRST_MORNING_RESPONSE_DIALOGUE: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（清晨。阳光从老屋的窗户透进来，外面传来鸟叫和风吹树叶的声音。）' },
+  { speaker: '林澈', color: COLORS.linche, inner: true, text: '……天亮了。' },
+  { speaker: '', color: COLORS.system, text: '（林澈走到门口。夏雅已经站在老屋门口，正看着农田。）' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '早上好，林澈。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '昨晚睡得还好吗？' },
+  { speaker: '林澈', color: COLORS.linche, text: '还行……只是感觉这里安静得有点过头了。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '以前不是这样的。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '爷爷还在的时候，这里每天早上都会有人起来种田、修路、聊天。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '后来大家慢慢离开了。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '但是昨天，我看到田里的变化了。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '虽然只种了一点东西……' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '可是归星岛，好像又重新呼吸了一次。' },
+  { speaker: '', color: COLORS.system, text: '（新目标：让农场重新运转起来——收获成熟作物 / 种下新的作物 / 清理农场杂物）' },
+  { speaker: '', color: COLORS.system, text: '（田里，昨天种下的萝卜苗，有一株已经悄悄长高了一点。）' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '你看。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '植物比人更诚实。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '只要有人愿意照顾它，它就会回应。' },
 ];
 
 /** v0.5.3 剧情密度 E5：爷爷的笔记（庄园角落可读物件，多条轮换、不解释） */
@@ -142,7 +169,7 @@ export const XIYA_EVENING_OBS_DIALOGUE: DialogueLine[] = [
 
 /** 清理完成 → 播种（v0.7 生活化引导） */
 export const SOW_SEEDS_DIALOGUE: DialogueLine[] = [
-  { speaker: '夏雅', color: COLORS.xiya, text: '先开三块地。地要翻过，种子才肯住下。' },
+  { speaker: '夏雅', color: COLORS.xiya, text: '地翻好了。把萝卜种子撒下去，浇水后就会发芽。' },
   { speaker: '', color: COLORS.system, text: '获得物品：【萝卜种子】×3' },
   { speaker: '', color: COLORS.system, text: hint('按 [R] 键切换到萝卜种子，然后对着锄过的土地按 [E] 播种。播种 3 块土地。', '对着锄过的土地点「交互」播种萝卜（默认种子）。播种 3 块土地。') },
 ];
@@ -192,6 +219,22 @@ export const ELDER_QUEST_DIALOGUE: DialogueLine[] = [
   { speaker: '', color: COLORS.system, text: '（村长看向远处的后山，没有再说下去。）' },
   { speaker: '林澈', color: COLORS.linche, text: '……那我去看看吧。' },
   { speaker: '', color: COLORS.system, text: '主线任务已接受：去爷爷以前常去的后山看看。' },
+];
+
+/** f7（2026-08-07 制作人拍板）：第一天村长「暂时有事」——主线委托推迟到第二天，顺带赠送启动物资 */
+export const ELDER_BUSY_DIALOGUE: DialogueLine[] = [
+  { speaker: '村长', color: COLORS.elder, text: '你就是小林吧？林爷爷家的孙子。' },
+  { speaker: '林澈', color: COLORS.linche, text: '您好，您是……' },
+  { speaker: '村长', color: COLORS.elder, text: '我是青禾镇的镇长。本想跟你好好聊聊你爷爷的事——' },
+  { speaker: '', color: COLORS.system, text: '（村长叹了口气，指了指身后正在修缮的公告栏。）' },
+  { speaker: '村长', color: COLORS.elder, text: '镇上这几天忙着修缮，我实在抽不开身。明天吧，明天你来镇长家找我，咱们详谈。' },
+  { speaker: '村长', color: COLORS.elder, text: '这些是给你准备的启动物资：种子、工具，还有一点金币、木材和石头。你先在农场安顿下来。' },
+  { speaker: '', color: COLORS.system, text: hint('（获得村长赠送的启动物资。镇长说：明天再来详谈。）', '（获得村长赠送的启动物资。镇长说：明天再来详谈。）') },
+];
+
+/** f7：第一天再次对话（礼物已给）——村长简短提醒，不重复长篇 */
+export const ELDER_BUSY_SHORT_DIALOGUE: DialogueLine[] = [
+  { speaker: '村长', color: COLORS.elder, text: '这几天镇上忙着修缮。你先在农场安顿，明天来镇长家找我详谈你爷爷的事。' },
 ];
 
 /** 交付星之碎片（第一章完成） */
@@ -280,6 +323,22 @@ export const FOREST_ROAD_RESTORED_DIALOGUE: DialogueLine[] = [
   { speaker: '老张', color: COLORS.miner, text: '以前这条路通向整个岛。' },
   { speaker: '林澈', color: COLORS.linche, text: '现在也能了。' },
   { speaker: '老张', color: COLORS.miner, text: '（咧嘴一笑）好小子。' },
+];
+
+/** FEATURE-041 复兴循环 v0.11：木匠回归演出对白（老屋修复完成后，次日进入 farm 自动触发）
+ *  方向稿，待制作人定稿（剧情权限：Agent 不自行扩写）。
+ *  角色定位：青禾镇留下来的手艺人，不善言辞但可靠；重建行动的第一个具体执行者。 */
+export const CARPENTER_RETURN_DIALOGUE: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（老屋修好的第二天清晨，一个背着工具箱的人站在门口，正打量新补好的屋瓦。）' },
+  { speaker: '林澈', color: COLORS.linche, text: '……你是？' },
+  { speaker: '木匠老周', color: '#c89860', text: '（没有回头，只抬手敲了敲窗框）……青禾镇的。我叫老周。' },
+  { speaker: '木匠老周', color: '#c89860', text: '听说岛上又有人修房子了。' },
+  { speaker: '林澈', color: COLORS.linche, text: '嗯。这屋子是我爷爷留下的。' },
+  { speaker: '木匠老周', color: '#c89860', text: '……你爷爷的房子，是他自己一砖一瓦搭起来的。' },
+  { speaker: '木匠老周', color: '#c89860', text: '（背起工具箱，往农场里走了两步）门轴、窗栓、田边的栅栏……有不顺手的地方，喊我。' },
+  { speaker: '林澈', color: COLORS.linche, text: '你是说，你要留下？' },
+  { speaker: '木匠老周', color: '#c89860', text: '（回头看了一眼，语气很平）有人开始修，就有人愿意留下。' },
+  { speaker: '', color: COLORS.system, text: '（归星岛，多了一个会修东西的人。）' },
 ];
 
 // ============ T2 改动 2：关键对白（制作人 2026-08-06 定稿） ============

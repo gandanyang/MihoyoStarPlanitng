@@ -7,32 +7,24 @@
  * - LRU 缓存已解码音频，上限 2 首防内存膨胀
  * - 浏览器自动播放拦截：先记录 pending，首次用户交互时 ctx.resume() + 补播
  * - 场景切换由各场景 SHUTDOWN 调 stop()，避免叠播
- * - 优先加载 ogg（压缩后体积小 50%），mp3 作为 fallback
+ * - 使用 ogg（P0 资产瘦身：mp3 fallback 已移出 runtime，现代浏览器均支持 ogg vorbis）
  */
 
 import { getCtx } from '../systems/AudioSystem';
 
 // 文件实际位于 public/assets/audio/music/，必须带 assets/ 前缀
-const TRACKS: Record<string, { ogg: string; mp3: string }> = {
-  title: { ogg: 'assets/audio/music/title.ogg', mp3: 'assets/audio/music/title.mp3' },
-  farm_day: { ogg: 'assets/audio/music/farm_day.ogg', mp3: 'assets/audio/music/farm_day.mp3' },
-  stargaze_night: { ogg: 'assets/audio/music/stargaze_night.ogg', mp3: 'assets/audio/music/stargaze_night.mp3' },
-  stargaze_final: { ogg: 'assets/audio/music/stargaze_final.ogg', mp3: 'assets/audio/music/stargaze_final.mp3' },
+const TRACKS: Record<string, string> = {
+  title: 'assets/audio/music/title.ogg',
+  farm_day: 'assets/audio/music/farm_day.ogg',
+  stargaze_night: 'assets/audio/music/stargaze_night.ogg',
+  stargaze_final: 'assets/audio/music/stargaze_final.ogg',
 };
-
-// 检测浏览器 ogg 支持
-const supportsOgg = (() => {
-  try {
-    const audio = document.createElement('audio');
-    return audio.canPlayType('audio/ogg; codecs="vorbis"') !== '';
-  } catch { return false; }
-})();
 
 /** 根据浏览器支持选择最佳格式 */
 function getTrackUrl(key: string): string | null {
   const track = TRACKS[key];
   if (!track) return null;
-  return supportsOgg ? track.ogg : track.mp3;
+  return track;
 }
 
 // ── LRU 缓存（最多 2 首） ──

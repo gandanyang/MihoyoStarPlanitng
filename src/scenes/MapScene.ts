@@ -22,6 +22,7 @@ import {
   refreshStumps,
   getAllCropEntries,
 } from '../data/FarmState';
+import type { TreeState } from '../data/FarmState';
 import {
   getPlotAt,
   getPlotTiles,
@@ -33,13 +34,13 @@ import {
 import { getProjectShortfall, isRestored, markRestored } from '../data/FarmRestore';
 import { addItem, getItemCount, itemIconHtml } from '../data/Inventory';
 import { formatTime, getTime, nextDay as timeNextDay, setTime, setTimeFull, tick as timeTick } from '../data/TimeSystem';
-import { getCoins, spendCoins } from '../data/Economy';
+import { getCoins, spendCoins, addCoins } from '../data/Economy';
 import { addXp, getLevel, getXp, getXpToNext, setOnLevelUp } from '../data/FarmProgress';
 import { getStamina, consumeStamina, resetStamina, MAX_STAMINA } from '../data/Stamina';
 import { ORE_DEPOSITS, OreDeposit, isOreMined, markMined, resetOres } from '../data/MineState';
 import { NPC } from '../entities/NPC';
 import { getNPCsForScene, refreshSchedule, updateNPCs, getDailyNpcLine, getMysteryAfterObservatory } from '../systems/NPCSystem';
-import { collectShard, getElderDialogue, getQuestObjective, getQuestState } from '../systems/QuestSystem';
+import { collectShard, getElderDialogue, getQuestObjective, getQuestState, isElderBusyDay } from '../systems/QuestSystem';
 import { triggerRandomEvent, resetDailyEvents } from '../systems/DailyEventSystem';
 import { getWeather, isCurrentlyRaining } from '../systems/WeatherSystem';
 import {
@@ -56,11 +57,12 @@ import {
   onWoodcut as onDQWoodcut,
   claimReward,
   getDailyQuestSaveData,
-  injectGuideQuests,
+  injectGuideQuests, injectRevivalQuests, injectBoardGuideQuest, onOpenBoard as onDQOpenBoard,
 } from '../systems/DailyQuestSystem';
 import { InputManager } from '../systems/InputManager';
 import * as AmbienceSystem from '../systems/AmbienceSystem';
 import { triggerTag, getTriggeredTags } from '../systems/GuiXingRecordSystem';
+import { triggerOnce, hasTriggered } from '../systems/EventManager';
 import { unlockPhoto, isPhotoUnlocked, PHOTO_DATABASE } from '../data/PhotoAlbum';
 import { TouchControls, setActionButtonLabel, setWaitHandler } from '../systems/TouchControls';
 import { showMemoryMoment } from '../ui/MemoryMoment';
@@ -85,8 +87,10 @@ import {
   WATER_CROPS_DIALOGUE, EVENING_DIALOGUE, TOWN_INTRO_DIALOGUE,
   FOREST_SHARD_DIALOGUE, DEMO_ENDING_DIALOGUE, DEMO_ENDING_BRANCHES, DEMO_ENDING_FINALE,
   WOODCUT_TIP_DIALOGUE, MINE_TIP_DIALOGUE, XIYA_DAWN_DIALOGUE, XIYA_EVENING_DIALOGUE, XIYA_EVENING_OBS_DIALOGUE, getGrandpaNote,
+  FIRST_MORNING_RESPONSE_DIALOGUE,
   GARDEN_RESTORED_XIYA_DIALOGUE, XIYA_SMALL_THINGS_DIALOGUE,
   OLD_HOUSE_RESTORED_DIALOGUE, FOREST_ROAD_RESTORED_DIALOGUE,
+  CARPENTER_RETURN_DIALOGUE,
   XIYA_GARDEN_TRELLIS_DIALOGUE, XIYA_GARDEN_TRELLIS_NEED_DIALOGUE, XIYA_GARDEN_TRELLIS_DONE_DIALOGUE,
   ELDER_TEA_QUEST_DIALOGUE, ELDER_STAR_SITE_DIALOGUE,
   XIYA_PHOTO_ENTRY_DIALOGUE, XIYA_PHOTO_DONE_DIALOGUE,
@@ -279,6 +283,8 @@ export class MapScene extends Phaser.Scene {
   // FEATURE-038 居民需求板（小镇广场右侧信息板交互物 + DOM 面板）
   private residentBoardMark: Phaser.GameObjects.Container | null = null;
   private residentBoardPanel: ResidentBoardPanel | null = null;
+  /** 需求板引导（首次靠近提示，会话级，不入档） */
+  private residentBoardHintShown = false;
   // 教程：大门墙壁（物理矩形，钥匙使用后销毁）
   private gateWall: Phaser.GameObjects.Rectangle | null = null;
   // gate 美术升级：叠加在大门物理墙上的像素风双扇木门视觉（随 gateWall 一起销毁）
@@ -287,15 +293,23 @@ export class MapScene extends Phaser.Scene {
   private gateLampGlows: Phaser.GameObjects.Ellipse[] = [];
   /** gate 美术升级：生活杂物/小动物/门灯计数（验收探针读取，纯统计无逻辑） */
   public gateLife = { decor: 0, wildlife: 0, lamp: 0 };
+  /** P2 农场复兴视觉化：荒废/复兴装饰组 + 小动物计数（验收探针读取，纯统计无逻辑） */
+  public farmLife = { ruin: 0, revive: 0, wildlife: 0 };
   // 教程：夏雅精灵
   private xiyaSprite: Phaser.GameObjects.Sprite | null = null;
   // v0.5.3 剧情密度 E1：清晨偶遇的夏雅（教程完成后，清晨 06-08 时在农场出现）
   private dawnXiya: Phaser.GameObjects.Sprite | null = null;
   private dawnXiyaLabel: Phaser.GameObjects.Text | null = null;
   private dawnXiyaDay = 0;
+  // day2 清晨「岛屿的第一声回应」：老屋门口看农田的夏雅（自动触发，一次性，triggerOnce 判重）
+  private morningXiya: Phaser.GameObjects.Sprite | null = null;
+  private firstMorningDone = false;
+  // FEATURE-041 木匠回归演出：老屋旁出现的木匠（自动触发，一次性，triggerOnce('carpenter_returned') 判重）
+  private carpenterReturnSprite: Phaser.GameObjects.Sprite | null = null;
+  private carpenterReturnDone = false;
   
   // 村长家提示物品
-  private elderHouseHint: { sprite: Phaser.GameObjects.Text; text: Phaser.GameObjects.Text } | null = null;
+  private elderHouseHint: { sprite: Phaser.GameObjects.Container; text: Phaser.GameObjects.Text } | null = null;
   // v0.5.3 剧情密度 E9：傍晚关心的夏雅（教程完成后，傍晚 18-20 时在农场出现）
   private eveningXiya: Phaser.GameObjects.Sprite | null = null;
   private eveningXiyaLabel: Phaser.GameObjects.Text | null = null;
@@ -394,6 +408,8 @@ export class MapScene extends Phaser.Scene {
   private starField: Phaser.GameObjects.Graphics | null = null;
   private starTwinkle: Phaser.GameObjects.Ellipse[] = [];
   private starFieldVisible = false;
+  /** 小地图（宽高小于相机视野）居中标记：不跟随、每帧保持居中 */
+  private centerSmallMap = false;
   private lastQuestObj: string = '';
   private lastHour: number = -1;
   // 农场商店摊位（v0.6 商店入口：农田旁空地，靠近按 E 打开 ShopPanel）
@@ -531,7 +547,7 @@ export class MapScene extends Phaser.Scene {
     }
     // elder_house 与 house 共用 house_tileset.png（地图 JSON 即引用该图；无 elder_house_tileset.png）
     const tilesetName = this.mapKey === 'elder_house' ? 'house' : this.mapKey;
-    this.load.image('tiles', `assets/tiles/${tilesetName}_tileset.png?v=6`);
+    this.load.image('tiles', `assets/tiles/${tilesetName}_tileset.png?v=7`);
     // 玩家 spritesheet（4方向×4帧 run 动画，每帧 32x32，显示时缩放 0.5 与 16x16 瓦片协调）
     if (!this.textures.exists('player')) {
       this.load.spritesheet('player', 'assets/sprites/player.png', { frameWidth: 32, frameHeight: 32 });
@@ -544,6 +560,7 @@ export class MapScene extends Phaser.Scene {
     if (!this.textures.exists('npc_miner')) this.load.image('npc_miner', 'assets/sprites/npc_miner.png');
     if (!this.textures.exists('npc_gardener')) this.load.image('npc_gardener', 'assets/sprites/npc_gardener.png');
     if (!this.textures.exists('npc_adventurer')) this.load.image('npc_adventurer', 'assets/sprites/npc_adventurer.png');
+    if (!this.textures.exists('npc_carpenter')) this.load.image('npc_carpenter', 'assets/sprites/npc_carpenter.png');
     // 矿脉贴图（矿洞场景：石/铜/铁）
     if (this.mapKey === 'mine') {
       if (!this.textures.exists('ore_stone')) this.load.image('ore_stone', 'assets/sprites/ore_stone.png');
@@ -671,9 +688,21 @@ export class MapScene extends Phaser.Scene {
     this.physics.add.collider(this.player, this.wallsLayer);
 
     // 摄像机：跟随 + 限制在地图内 + 放大2倍
-    this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
-    this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
     this.cameras.main.setZoom(2);
+    // 室内小地图（house/elder_house）宽度或高度小于相机可视区（zoom2 下可视宽 = 逻辑宽/2 ≈ 400~666px）：
+    // 若仍 setBounds 会把相机滚动钳制回 0，地图贴在左上角露出背景（安卓反馈：室内地图未居中）。
+    // 这里对小于相机视野的地图关闭 bounds+跟随，居中显示。
+    const camViewW = this.cameras.main.width / this.cameras.main.zoom;
+    const camViewH = this.cameras.main.height / this.cameras.main.zoom;
+    if (map.widthInPixels < camViewW || map.heightInPixels < camViewH) {
+      this.cameras.main.stopFollow();
+      this.centerCameraOn(map.widthInPixels / 2, map.heightInPixels / 2);
+      this.centerSmallMap = true;
+    } else {
+      this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
+      this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+      this.centerSmallMap = false;
+    }
 
     // DOM HUD 覆盖层（扛 zoom + scrollFactor 兼容问题，和 ShopPanel 一样走 DOM）
     // 先移除旧 HUD（场景切换时避免 DOM 泄漏）
@@ -833,6 +862,18 @@ export class MapScene extends Phaser.Scene {
       this.setupXiyaPhoto();
     }
 
+    // P2 农场复兴视觉化（菜园层次/工具区/树荫/碎石小路，荒废→复兴两态，与 FEATURE-037 联动）
+    if (this.mapKey === 'farm') {
+      this.setupFarmDecorations();
+    }
+
+    // day2 清晨「岛屿的第一声回应」：睡醒后切场景/重进 farm 时尝试触发（trySleep 挂钩点在睡觉时）
+    if (this.mapKey === 'farm') {
+      this.time.delayedCall(900, () => this.tryFirstMorningSequence());
+      // FEATURE-041 木匠回归演出：老屋修复后当晚/次日进入 farm 时尝试触发（与清晨剧情各自判重隔离）
+      this.time.delayedCall(950, () => this.tryCarpenterReturn());
+    }
+
     // 农场商店摊位（靠近按 E 打开 ShopPanel，买种子不用跑小镇）
     if (this.mapKey === 'farm') {
       this.setupFarmShop();
@@ -942,6 +983,19 @@ export class MapScene extends Phaser.Scene {
         this.updateHUD();
         this.updateDailyQuestPanel();
       },
+      // 支线任务状态注入（结构化类型，QuestPanel 避免 import MapScene 循环依赖）
+      () => ({
+        sideXiyaGardenAsked: this.sideXiyaGardenAsked,
+        sideXiyaGardenDone: this.sideXiyaGardenDone,
+        sideElderTeaAsked: this.sideElderTeaAsked,
+        sideElderStarDone: this.sideElderStarDone,
+        sideXiyaPhotoAsked: this.sideXiyaPhotoAsked,
+        sideXiyaPhotoDone: this.sideXiyaPhotoDone,
+        sideMinerLampAsked: this.sideMinerLampAsked,
+        sideMinerLampDone: this.sideMinerLampDone,
+        sideGardenerPlumAsked: this.sideGardenerPlumAsked,
+        sideGardenerPlumDone: this.sideGardenerPlumDone,
+      }),
     );
     // E-09 消磨时间：移动端等待按钮 → 打开等待面板
     setWaitHandler(() => this.tryOpenWait());
@@ -954,6 +1008,9 @@ export class MapScene extends Phaser.Scene {
     // 每日任务：刷新并渲染面板
     refreshDailyQuests();
     this.createDailyQuestPanel();
+    // 需求板引导任务：首次进小镇注入「小镇需求板」引导（必须在 refreshDailyQuests 之后，
+    // 否则会被任务池重建清掉；已完成过不再投）
+    if (this.mapKey === 'town' && !hasTriggered('board_quest_done')) injectBoardGuideQuest();
 
     // P1-1 桌面端快捷键提示（J 任务 / B 背包）：首次进入地图显示，使用后本局关闭
     this.setupShortcutHint();
@@ -1003,11 +1060,28 @@ export class MapScene extends Phaser.Scene {
     MusicSystem.play(mHour >= 19 || mHour < 5 ? 'stargaze_night' : 'farm_day');
   }
 
+  /**
+   * 将相机中心对准世界坐标 (wx, wy)（zoom 内化）。
+   * Phaser 3.80 的 centerOn 未缩放：scroll = 目标 - 视口宽/2，
+   * zoom=2 下会整体偏移 (宽/4, 高/4)，导致室内小地图贴角（f1 假修复根因）。
+   * 这里按世界坐标手算：scroll = wx - (width/2) / zoom。
+   */
+  private centerCameraOn(wx: number, wy: number): void {
+    const cam = this.cameras.main;
+    cam.scrollX = wx - cam.width / 2 / cam.zoom;
+    cam.scrollY = wy - cam.height / 2 / cam.zoom;
+  }
+
   update(timeMs: number): void {
     // create 失败：停止每帧逻辑（错误遮罩已显示，避免空引用持续抛错）
     if (this.createFailed) {
       console.log(`[DEBUG] update skipped: createFailed at ${this.mapKey}`);
       return;
+    }
+
+    // 小地图（室内）：不跟随玩家，持续保持居中（玩家只在小地图内活动，不会出视野）
+    if (this.centerSmallMap && this.player) {
+      this.centerCameraOn(this.player.x, this.player.y);
     }
 
     // 相簿解锁反馈：对话/闪回结束后再弹出（避免被全屏演出盖住）
@@ -1196,6 +1270,19 @@ export class MapScene extends Phaser.Scene {
     // P1 未开放区域边界提示：靠近世界边界（非出口）轻提示一次；出口排除由方法内处理
     this.updateBoundaryTip();
 
+    // FEATURE-038 需求板引导：首次靠近需求板时提示（会话级一次性，不入档）
+    if (this.mapKey === 'town' && this.residentBoardMark && !this.residentBoardHintShown) {
+      const dx = this.player.x - this.residentBoardMark.x;
+      const dy = this.player.y - this.residentBoardMark.y;
+      if (dx * dx + dy * dy < 96 * 96) {
+        this.residentBoardHintShown = true;
+        this.showDialogueText(this.hintText(
+          '需求板：镇上的人把需要的东西写在上面。靠近按 [E] 查看。',
+          '需求板：镇上的人把需要的东西写在上面。靠近点「交互」查看。'
+        ));
+      }
+    }
+
     // 后山老树交互检测
     this.checkOldTreeInteract();
 
@@ -1330,10 +1417,27 @@ export class MapScene extends Phaser.Scene {
     // 村长不在镇上，显示提示物品
     const elderSpot = { x: 13 * TILE_SIZE + TILE_SIZE / 2, y: 10 * TILE_SIZE + TILE_SIZE / 2 };
     
-    // 创建交互物品（木牌图标）
-    const hintSprite = this.add.text(elderSpot.x, elderSpot.y, '🏠', {
-      fontSize: '18px',
-    }).setOrigin(0.5).setDepth(4);
+    // 创建交互物品（像素木牌 + 小房子图标，替换 v0.10 前 emoji 🏠；Alpha 审查 P0 #2）
+    const hintContainer = this.add.container(elderSpot.x, elderSpot.y).setDepth(4);
+    const house = this.add.graphics();
+    // 木牌
+    house.fillStyle(0x8a6a45, 1);
+    house.fillRoundedRect(-9, -8, 18, 15, 2);
+    house.fillStyle(0xa8835a, 1);
+    house.fillRect(-7, -6, 14, 11);
+    house.fillStyle(0x6e5633, 1);
+    house.fillRect(-8, 7, 3, 4);
+    house.fillRect(5, 7, 3, 4);
+    // 小房子图标（屋身 + 三角屋顶 + 烟囱 + 门）
+    house.fillStyle(0x9a7a4a, 1);
+    house.fillRect(-5, -5, 10, 8);
+    house.fillStyle(0xc0392b, 1);
+    house.fillTriangle(-6, -5, 6, -5, 0, -10);
+    house.fillStyle(0x6e5633, 1);
+    house.fillRect(3, -8, 1.5, 3);
+    house.fillStyle(0x5a3a26, 1);
+    house.fillRect(-1, -1, 3, 4);
+    hintContainer.add(house);
     
     // 添加提示文字（显示在木牌下方）
     const hintText = this.add.text(elderSpot.x, elderSpot.y + 16, '村长家 →', {
@@ -1345,7 +1449,7 @@ export class MapScene extends Phaser.Scene {
     
     // 添加呼吸动画（吸引玩家注意）
     this.tweens.add({
-      targets: hintSprite,
+      targets: hintContainer,
       alpha: { from: 0.7, to: 1 },
       duration: 1000,
       yoyo: true,
@@ -1353,7 +1457,7 @@ export class MapScene extends Phaser.Scene {
     });
     
     // 存储交互数据
-    this.elderHouseHint = { sprite: hintSprite, text: hintText };
+    this.elderHouseHint = { sprite: hintContainer, text: hintText };
   }
 
   /**
@@ -1435,6 +1539,15 @@ export class MapScene extends Phaser.Scene {
       this.residentBoardPanel = new ResidentBoardPanel((reqId) => this.onResidentDeliver(reqId));
     }
     this.inputManager.clearAction();
+    // 需求板引导任务：打开一次即完成；首次打开标记 board_quest_done（防后续重复投放）
+    onDQOpenBoard();
+    triggerOnce('board_quest_done', () => {
+      save({
+        x: this.player.x, y: this.player.y,
+        scene: this.mapKey, facing: this.player.facing,
+        dailyQuest: getDailyQuestSaveData(),
+      });
+    });
     this.residentBoardPanel.open();
     return true;
   }
@@ -1495,13 +1608,14 @@ export class MapScene extends Phaser.Scene {
     this.rainActive = true;
 
     const map = this.make.tilemap({ key: this.mapKey });
-    const mapWidth = map.widthInPixels;
-    const mapHeight = map.heightInPixels;
 
-    // 雨天覆盖层：半透明蓝色矩形，覆盖整个地图
+    // 雨天覆盖层：半透明蓝色矩形，覆盖整个屏幕（setScrollFactor(0) 为屏幕空间，
+    // 用相机视口尺寸而非地图尺寸，否则小地图四周会露出蓝色矩形边框，BUG-050）
+    const camW = this.cameras.main.width;
+    const camH = this.cameras.main.height;
     this.rainOverlay = this.add.rectangle(
-      mapWidth / 2, mapHeight / 2,
-      mapWidth, mapHeight,
+      camW / 2, camH / 2,
+      camW, camH,
       0x334466, 0.2
     );
     this.rainOverlay.setDepth(100);
@@ -1520,7 +1634,7 @@ export class MapScene extends Phaser.Scene {
 
     // 雨粒子：从天空飘落的白色短线条
     const particles = this.add.particles(0, 0, '__WHITE', {
-      x: { min: 0, max: mapWidth },
+      x: { min: 0, max: map.widthInPixels },
       y: -10,
       lifespan: 2000,
       speedY: { min: 200, max: 350 },
@@ -1644,6 +1758,95 @@ export class MapScene extends Phaser.Scene {
       this.updateHUD();
     });
     return true;
+  }
+
+  /**
+   * day2 清晨「岛屿的第一声回应」（制作人定稿 2026-08-07，见 docs/tasks/任务-岛屿的第一声回应-day2清晨剧情.md）
+   * 玩家第一天睡觉后第一次"完整循环"的回报：睡醒演出 → 夏雅自动出现在老屋门口看农田 → 自动播对白
+   * → 注入复兴引导任务（收获/种植/清理）。
+   * 一次性：EventManager.triggerOnce('first_morning_response') 持久化判重（随每次 save 入档）；
+   * 与 day3+ 清晨 dawnXiya 闲聊（XIYA_DAWN_DIALOGUE）并存互不干扰。
+   * 双挂钩点：trySleep（醒来仍在 farm）+ create（睡醒后切场景/重进 farm）都会尝试，触发一次后静默。
+   */
+  private tryFirstMorningSequence(): void {
+    if (this.mapKey !== 'farm') return;
+    if (!isTutorialDone()) return;
+    if (getTime().day < 2) return;
+    if (hasTriggered('first_morning_response')) return;
+    if (this.firstMorningDone) return;
+    this.firstMorningDone = true;
+    triggerOnce('first_morning_response', () => {
+      // ① 睡醒演出：窗外阳光旁白（鸟叫/风由 farm 白天 ambience 自动播放）
+      showMemoryMoment('清晨。阳光从老屋的窗户透进来，外面传来鸟叫和风吹树叶的声音。');
+      // ② 夏雅自动出现在老屋门口（老屋东侧空地，看着农田；避开 oldHouseRestore 锚点 col11,row20 与 house 出口）
+      const T = TILE_SIZE;
+      const mx = 10 * T + T / 2;
+      const my = 21 * T + T / 2;
+      this.morningXiya = this.add.sprite(mx, my, 'npc_xiya');
+      this.morningXiya.setScale(0.5).setDepth(5);
+      this.add.text(mx, my - 14, '夏雅', {
+        fontSize: '13px', color: '#f0a050',
+        stroke: '#000000', strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(6);
+      // ③ 演出后自动播对白（不等玩家靠近）
+      this.time.delayedCall(2600, () => {
+        if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+        this.storyDialogue.play(FIRST_MORNING_RESPONSE_DIALOGUE, () => {
+          // ④ 对白结束：注入复兴引导任务（收获/种植/清理）→ 刷新面板/HUD → 存档（含 triggerOnce 状态）
+          injectRevivalQuests();
+          this.createDailyQuestPanel();
+          this.updateQuestHUD();
+          save({
+            x: this.player.x, y: this.player.y,
+            scene: this.mapKey, facing: this.player.facing,
+            dailyQuest: getDailyQuestSaveData(),
+          } as any);
+        });
+      });
+    });
+  }
+
+  /**
+   * FEATURE-041 复兴循环 v0.11：木匠老周回归演出（制作人拍板 2026-08-07，见 docs/tasks/任务-FEATURE041-复兴循环v0.11-复兴度与木匠回归.md）
+   * 老屋（oldHouse）修复完成后，当晚/次日进入 farm 时自动触发：
+   * 木匠出现在老屋旁（farm 场景）→ 自动播放 CARPENTER_RETURN_DIALOGUE → 成为常驻 NPC（此后按 NPCSystem 日程出现）。
+   * 一次性：EventManager.triggerOnce('carpenter_returned') 持久化判重（随每次 save 入档）；
+   * 与 day2 清晨剧情（tryFirstMorningSequence）互不干扰（各自判重隔离，可先后触发）。
+   * 双挂钩点：trySleep（醒来仍在 farm）+ create（睡醒后切场景/重进 farm）都会尝试，触发一次后静默。
+   */
+  private tryCarpenterReturn(): void {
+    if (this.mapKey !== 'farm') return;
+    if (!isRestored('oldHouse')) return;
+    if (hasTriggered('carpenter_returned')) return;
+    if (this.carpenterReturnDone) return;
+    this.carpenterReturnDone = true;
+    triggerOnce('carpenter_returned', () => {
+      // ① 演出旁白：老屋修好的第二天清晨
+      showMemoryMoment('老屋修好的第二天清晨。屋瓦还是新的，门轴转得比以前顺滑。');
+      // ② 木匠出现在老屋旁空地（避开 oldHouseRestore 锚点 col11,row20 与 house 出口 col5-7,rows18-20）
+      const T = TILE_SIZE;
+      const cx = 12 * T + T / 2;
+      const cy = 21 * T + T / 2;
+      this.carpenterReturnSprite = this.add.sprite(cx, cy, 'npc_carpenter');
+      this.carpenterReturnSprite.setScale(0.5).setDepth(5);
+      this.add.text(cx, cy - 14, '木匠老周', {
+        fontSize: '13px', color: '#c89860',
+        stroke: '#000000', strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(6);
+      // ③ 演出后自动播对白（不等玩家靠近）
+      this.time.delayedCall(2600, () => {
+        if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+        this.storyDialogue.play(CARPENTER_RETURN_DIALOGUE, () => {
+          // ④ 对白结束：木匠成为常驻 NPC → 刷新 HUD → 存档（含 triggerOnce 状态）
+          this.updateHUD();
+          save({
+            x: this.player.x, y: this.player.y,
+            scene: this.mapKey, facing: this.player.facing,
+            dailyQuest: getDailyQuestSaveData(),
+          } as any);
+        });
+      });
+    });
   }
 
   /**
@@ -2159,36 +2362,8 @@ export class MapScene extends Phaser.Scene {
       });
     });
 
-    // 2) 花草摆动：花园/森林入口/住宅右侧花丛上方叠动态花精灵（瓦片纹理 gid 8）
-    //    位置与 FARM_TREE_POSITIONS、木屋石墙、农田、路径均无重叠
-    //    注意：addTilesetImage 不生成 tileset 纹理（'tiles' 仍是 image），需手动切 spritesheet。
-    //    ⚠️ Phaser 3.80：addSpriteSheet 的 source 传 Texture 对象会把 key 覆盖为源纹理 key 并直接返回，
-    //    不会创建新纹理 —— 必须传 HTMLImageElement（getSourceImage()）才会走 create 分支。
-    if (!this.textures.exists('tiles_fs')) {
-      const tilesImg = this.textures.get('tiles').getSourceImage() as HTMLImageElement;
-      this.textures.addSpriteSheet('tiles_fs', tilesImg, {
-        frameWidth: TILE_SIZE,
-        frameHeight: TILE_SIZE,
-      });
-    }
-    const flowerSpots: Array<[number, number]> = [
-      [4, 3], [7, 4], [5, 3], // 花园区
-      [12, 2], [17, 3],       // 森林入口两侧
-      [10, 22],               // 住宅右侧
-    ];
-    flowerSpots.forEach(([c, r], i) => {
-      const f = this.add.sprite(c * T + T / 2, r * T + T / 2, 'tiles_fs', 7);
-      f.setDepth(4);
-      f.setAlpha(0.92);
-      this.tweens.add({
-        targets: f,
-        angle: { from: -8, to: 8 },
-        duration: 1500 + i * 300,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.InOut',
-      });
-    });
+    // 2) 花草摆动已删除（2026-08-07 制作人反馈：花精灵左右摆动动效违和，
+    //    静态花丛瓦片 gid 8 保留，花园区域不再叠动态花精灵）
 
     // 3) 暖色光斑：农田上空缓慢漂移（低透明度大圆，模拟日光斑驳）
     const glow = this.add.graphics();
@@ -2757,11 +2932,37 @@ export class MapScene extends Phaser.Scene {
       const sprite = this.add.image(cx, cy, textureKey);
       sprite.setScale(0.5);
       sprite.setDepth(4);
-      // 树木碰撞（静态物理体）；树桩保留碰撞避免穿模
+      // 静态物理体（树桩也建 body，便于 3 天后恢复为树时重新启用碰撞）
       this.physics.add.existing(sprite, true);
-      this.physics.add.collider(this.player, sprite);
+      if (tree.isStump) {
+        // 树桩不挡路（制作人需求 2026-08-07：木桩无碰撞体积）；已消失的树桩保持隐藏
+        (sprite.body as Phaser.Physics.Arcade.StaticBody).enable = false;
+        if (tree.stumpGone) {
+          sprite.setVisible(false);
+        } else {
+          // 树桩只保留几秒后消失（砍倒后立刻切场景时，重进补调度淡出）
+          this.scheduleStumpFade(sprite, tree);
+        }
+      } else {
+        // 树木碰撞
+        this.physics.add.collider(this.player, sprite);
+      }
       this.treeSprites.set(`${pos.col},${pos.row}`, sprite);
     }
+  }
+
+  /** 树桩短暂保留（3.2s）后淡出消失并标记，防止切场景后残留 */
+  private scheduleStumpFade(sprite: Phaser.GameObjects.Image, tree: TreeState): void {
+    this.tweens.add({
+      targets: sprite,
+      alpha: 0,
+      delay: 3200,
+      duration: 800,
+      onComplete: () => {
+        sprite.setVisible(false);
+        tree.stumpGone = true;
+      },
+    });
   }
 
   /** 出口指示箭头：在每个出口区域边缘显示方向 + 目标名称 */
@@ -2847,11 +3048,7 @@ export class MapScene extends Phaser.Scene {
       this.gateWall.setDepth(4);
       this.physics.add.existing(this.gateWall, true);
       this.physics.add.collider(this.player, this.gateWall);
-      // 门锁标志
-      this.add.text(gateX, gateY, '🔒', {
-        fontSize: '12px',
-      }).setOrigin(0.5).setDepth(5);
-      // gate 美术升级：在物理墙上方叠加像素风双扇木门视觉（随 gateWall 一起销毁）
+      // gate 美术升级：在物理墙上方叠加像素风双扇木门视觉（含挂锁，随 gateWall 一起销毁）
       this.gateDoorVisual = this.createGateDoorVisual(gateX, gateY);
       this.gateDoorVisual.setDepth(4);
     }
@@ -2913,6 +3110,15 @@ export class MapScene extends Phaser.Scene {
     g.fillStyle(0x4a3220, 1);
     g.fillCircle(-7.5, -3, 0.8);
     g.fillCircle(7.5, -3, 0.8);
+    // 门锁（金色挂锁，门缝上端；替换 v0.10 前 emoji 🔒，随门视觉一起销毁）
+    g.fillStyle(0xd8b060, 1);
+    g.fillRoundedRect(-3, -8, 6, 7, 1);
+    g.lineStyle(1.5, 0xd8b060, 1);
+    g.beginPath();
+    g.arc(0, -8, 3, Math.PI, 0, false);
+    g.strokePath();
+    g.fillStyle(0x4a3220, 1);
+    g.fillCircle(0, -5, 1);
     // 门楣（门上方横梁）
     g.fillStyle(0x5a3c24, 1);
     g.fillRect(-17, -18, 34, 3);
@@ -3083,57 +3289,108 @@ export class MapScene extends Phaser.Scene {
     if (hints[step]) this.showTutorialHint(hints[step]!);
   }
 
-  /** 庄园大门场景交互物品（增加氛围和代入感） */
+  /**
+   * 庄园大门场景氛围物品（像素化版本）。
+   * v0.10 前为 emoji 文本占位（🏠🪵🌾🏮📮🪣），Alpha 玩家流程审查 P0 #1 要求
+   * gate 场景玩家可见范围无任何 emoji 字符 → 全部替换为 Graphics 像素绘制（零素材）。
+   * 坐标/深度/文案保持不变；不触碰碰撞/存档/教程逻辑；随场景 shutdown 自动销毁。
+   */
   private createGateInteractables(_step: string): void {
     // 只在大门场景创建
     if (this.mapKey !== 'gate') return;
+    const T = TILE_SIZE;
+    const px = (c: number, r: number): [number, number] => [c * T + T / 2, r * T + T / 2];
 
-    // 旧木牌（庄园入口标识）
-    const signX = 12 * TILE_SIZE;
-    const signY = 10 * TILE_SIZE;
-    this.add.text(signX, signY, '🏠', { fontSize: '18px' }).setOrigin(0.5).setDepth(3);
+    // 旧木牌（庄园入口标识）→ 像素木牌 + 「星黎庄园」文字（保留）
+    const [signX, signY] = px(12, 10);
+    const sign = this.add.graphics();
+    sign.fillStyle(0x8a6a45, 1);
+    sign.fillRoundedRect(signX - 9, signY - 7, 18, 14, 2);
+    sign.fillStyle(0xa8835a, 1);
+    sign.fillRect(signX - 7, signY - 5, 14, 10);
+    sign.fillStyle(0x6e5633, 1);
+    sign.fillRect(signX - 6, signY - 7, 4, 2);
+    sign.fillRect(signX + 2, signY - 7, 4, 2);
+    sign.fillRect(signX - 6, signY + 7, 3, 4);
+    sign.fillRect(signX + 3, signY + 7, 3, 4);
+    sign.setDepth(3);
     this.add.text(signX, signY + 14, '星黎庄园', {
       fontSize: '9px', color: '#c8a878',
       stroke: '#000000', strokeThickness: 2,
     }).setOrigin(0.5).setDepth(3);
 
-    // 破旧栅栏（门左侧）
-    const fenceX = 13 * TILE_SIZE;
-    const fenceY = 9 * TILE_SIZE;
-    this.add.text(fenceX, fenceY, '🪵', { fontSize: '14px' }).setOrigin(0.5).setDepth(2);
+    // 破旧栅栏（门左侧）→ 像素横栏+竖桩
+    const [fenceX, fenceY] = px(13, 9);
+    const fence = this.add.graphics();
+    fence.fillStyle(0x8a6a45, 1);
+    fence.fillRect(fenceX - 7, fenceY - 4, 14, 2.5);
+    fence.fillRect(fenceX - 7, fenceY + 1, 14, 2.5);
+    fence.fillStyle(0x6e5633, 1);
+    fence.fillRect(fenceX - 6, fenceY - 5, 2, 9);
+    fence.fillRect(fenceX - 1, fenceY - 5, 2, 9);
+    fence.fillRect(fenceX + 4, fenceY - 5, 2, 9);
+    fence.setDepth(2);
 
-    // 门右侧栅栏
-    const fence2X = 17 * TILE_SIZE;
-    this.add.text(fence2X, fenceY, '🪵', { fontSize: '14px' }).setOrigin(0.5).setDepth(2);
+    // 门右侧栅栏（同款）
+    const [fence2X, fence2Y] = px(17, 9);
+    const fence2 = this.add.graphics();
+    fence2.fillStyle(0x8a6a45, 1);
+    fence2.fillRect(fence2X - 7, fence2Y - 4, 14, 2.5);
+    fence2.fillRect(fence2X - 7, fence2Y + 1, 14, 2.5);
+    fence2.fillStyle(0x6e5633, 1);
+    fence2.fillRect(fence2X - 6, fence2Y - 5, 2, 9);
+    fence2.fillRect(fence2X - 1, fence2Y - 5, 2, 9);
+    fence2.fillRect(fence2X + 4, fence2Y - 5, 2, 9);
+    fence2.setDepth(2);
 
-    // 杂草（庄园荒废感）
-    const weedPositions = [
-      { x: 13 * TILE_SIZE, y: 12 * TILE_SIZE },
-      { x: 17 * TILE_SIZE, y: 12 * TILE_SIZE },
-      { x: 14 * TILE_SIZE, y: 13 * TILE_SIZE },
-    ];
-    for (const pos of weedPositions) {
-      this.add.text(pos.x, pos.y, '🌾', { fontSize: '10px' }).setOrigin(0.5).setDepth(2);
+    // 杂草（庄园荒废感）→ 像素枯草簇
+    const weedPositions: Array<[number, number]> = [[13, 12], [17, 12], [14, 13]];
+    for (const [c, r] of weedPositions) {
+      const [wx, wy] = px(c, r);
+      const w = this.add.graphics();
+      for (let i = -2; i <= 2; i += 2) {
+        w.lineStyle(1, 0x8a7a3a, 0.9);
+        w.lineBetween(wx + i - 1, wy + 2, wx + i, wy - 2);
+        w.lineStyle(1, 0xb8a060, 0.7);
+        w.lineBetween(wx + i + 1, wy + 2, wx + i + 2, wy - 1);
+      }
+      w.setDepth(2);
     }
 
-    // 旧灯笼（门柱旁）
-    const lanternX = 14 * TILE_SIZE;
-    const lanternY = 8 * TILE_SIZE;
-    this.add.text(lanternX, lanternY, '🏮', { fontSize: '12px' }).setOrigin(0.5).setDepth(3);
+    // 旧灯笼（门柱旁）→ 像素红灯笼（夜间光晕由 setupGateDecorations 叠加）
+    const lanternSpots: Array<[number, number]> = [[14, 8], [16, 8]];
+    for (const [c, r] of lanternSpots) {
+      const [lx, ly] = px(c, r);
+      const l = this.add.graphics();
+      l.lineStyle(1, 0x8a6a45, 1);
+      l.lineBetween(lx, ly - 7, lx, ly - 4);
+      l.fillStyle(0xc0392b, 1);
+      l.fillRoundedRect(lx - 3, ly - 4, 6, 8, 2);
+      l.fillStyle(0xe8b64a, 1);
+      l.fillRect(lx - 3, ly - 4, 6, 1.5);
+      l.fillRect(lx - 3, ly + 2.5, 6, 1.5);
+      l.setDepth(3);
+    }
 
-    // 门柱右侧灯笼
-    const lantern2X = 16 * TILE_SIZE;
-    this.add.text(lantern2X, lanternY, '🏮', { fontSize: '12px' }).setOrigin(0.5).setDepth(3);
+    // 散落的信件（爷爷的信，氛围物件）→ 像素信封
+    const [letterX, letterY] = px(16, 12);
+    const letter = this.add.graphics();
+    letter.fillStyle(0xe8d8c8, 1);
+    letter.fillRoundedRect(letterX - 5, letterY - 3, 10, 6, 1);
+    letter.lineStyle(1, 0xc0392b, 1);
+    letter.lineBetween(letterX - 5, letterY - 3, letterX, letterY);
+    letter.lineBetween(letterX + 5, letterY - 3, letterX, letterY);
+    letter.setDepth(2);
 
-    // 散落的信件（爷爷的信，氛围物件）
-    const letterX = 16 * TILE_SIZE;
-    const letterY = 12 * TILE_SIZE;
-    this.add.text(letterX, letterY, '📮', { fontSize: '12px' }).setOrigin(0.5).setDepth(2);
-
-    // 旧水壶（被遗忘在角落）
-    const waterX = 14 * TILE_SIZE;
-    const waterY = 13 * TILE_SIZE;
-    this.add.text(waterX, waterY, '🪣', { fontSize: '11px' }).setOrigin(0.5).setDepth(2);
+    // 旧水壶（被遗忘在角落）→ 像素陶水壶
+    const [waterX, waterY] = px(14, 13);
+    const water = this.add.graphics();
+    water.fillStyle(0x8c5a3c, 1);
+    water.fillRoundedRect(waterX - 3, waterY - 3, 6, 6, 2);
+    water.fillRect(waterX - 4, waterY - 4, 8, 2);
+    water.fillStyle(0x6e3a26, 1);
+    water.fillRect(waterX - 1, waterY - 5, 2, 1.5);
+    water.setDepth(2);
   }
 
   /** 显示教程提示 */
@@ -3961,9 +4218,14 @@ export class MapScene extends Phaser.Scene {
       // 村长对话：根据任务状态播放完整剧情剧本（StoryDialogue 全屏）
       if (nearest.id === 'elder') {
         if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+        // f7：第一天村长「暂时有事」对话 → 结束后发放启动资源大礼包（一次性，随 triggeredEvents 入档）
+        const elderBusy = isElderBusyDay();
         this.storyDialogue.play(getElderDialogue(), () => {
           this.updateQuestHUD();
           this.updateHUD();
+          if (elderBusy) {
+            triggerOnce('elder_starter_gift', () => this.grantElderStarterGift());
+          }
           // 支线试点：观星夜完成后，村长追加「看星星的地方」委托（一次性，随 mapFlags 入档）
           if (!this.sideElderTeaAsked && !this.sideElderStarDone && isObservatoryComplete()) {
             this.sideElderTeaAsked = true;
@@ -4043,6 +4305,27 @@ export class MapScene extends Phaser.Scene {
 
     // 农田交互：根据面前格子状态自动判断锄地/播种/浇水/收获
     this.tryFarmInteract();
+  }
+
+  /**
+   * f5（2026-08-07 制作人拍板）：村长第一天赠送启动资源大礼包
+   * 种子 / 工具 / 金币 / 木材 / 石头 / 特殊道具（钻石），仅发放一次
+   * 调用方须用 triggerOnce('elder_starter_gift', ...) 防重复，结束后由外层回调 save 入档
+   */
+  private grantElderStarterGift(): void {
+    addItem('radish_seed', 5);
+    addItem('tomato_seed', 3);
+    addItem('corn_seed', 3);
+    addItem('old_hoe', 1);
+    addItem('old_watering_can', 1);
+    addItem('old_axe', 1);
+    addCoins(100);
+    addItem('wood', 10);
+    addItem('stone', 5);
+    addItem('diamond', 1);
+    this.showDialogueText('收到村长的启动物资：种子、工具、金币、木材、石头、钻石！');
+    this.updateHUD();
+    this.updateQuestHUD();
   }
 
   /**
@@ -4138,6 +4421,10 @@ export class MapScene extends Phaser.Scene {
           setTimeout(() => showMemoryMoment(randomLine), 2000);
         }
       }
+      // day2 清晨「岛屿的第一声回应」：睡醒（次日 06:00）仍留在 farm 时立即尝试触发
+      this.time.delayedCall(1800, () => this.tryFirstMorningSequence());
+      // FEATURE-041 木匠回归演出：睡醒后仍留在 farm 时立即尝试触发（老屋已完成且未回归过）
+      this.time.delayedCall(2000, () => this.tryCarpenterReturn());
     } finally {
       this.sleeping = false;
     }
@@ -4383,10 +4670,18 @@ export class MapScene extends Phaser.Scene {
 
     // 播放记忆闪回
     if (flashback) {
+      // 碎片闪回配剧情插图背景：
+      //   shard 0 牵牛星·田埂看星 → stargaze_niulang_v1
+      //   shard 1 老槐树·午后孩子群 → shard2_huai_tree_v1
+      const FLASHBACK_BG: Record<number, string> = {
+        0: 'assets/images/story/stargaze_niulang_v1.jpg',
+        1: 'assets/images/story/shard2_huai_tree_v1.jpg',
+      };
+      const bg = FLASHBACK_BG[shardIndex];
       playMemoryFlashback(flashback, () => {
         // 闪回结束后执行采集
         this.executeShardCollection();
-      });
+      }, bg);
     } else {
       // 无闪回数据，直接采集
       this.executeShardCollection();
@@ -4484,6 +4779,10 @@ export class MapScene extends Phaser.Scene {
       if (!tree.isStump && sprite.texture.key === 'stump') {
         const textureKey = (col + row) % 2 === 0 ? 'tree1' : 'tree2';
         sprite.setTexture(textureKey);
+        // 树再生长：还原显示 / 透明度 / 碰撞（树桩曾淡出隐藏并禁用碰撞）
+        sprite.setVisible(true);
+        sprite.setAlpha(1);
+        (sprite.body as Phaser.Physics.Arcade.StaticBody).enable = true;
       }
     }
   }
@@ -4672,27 +4971,8 @@ export class MapScene extends Phaser.Scene {
     this.createButterfly(29 * T + T / 2, 4 * T + T / 2);
     this.createButterfly(31 * T + T / 2, 6 * T + T / 2);
 
-    // 制作人反馈：静态瓦片花太小看不清 → 动态花精灵（摆动）+ 暖色光斑提亮
-    if (!this.textures.exists('tiles_fs')) {
-      const tilesImg = this.textures.get('tiles').getSourceImage() as HTMLImageElement;
-      this.textures.addSpriteSheet('tiles_fs', tilesImg, {
-        frameWidth: TILE_SIZE,
-        frameHeight: TILE_SIZE,
-      });
-    }
-    flowerSpots.forEach(([c, r], i) => {
-      const f = this.add.sprite(c * T + T / 2, r * T + T / 2, 'tiles_fs', 7);
-      f.setDepth(4);
-      f.setScale(1.3);
-      this.tweens.add({
-        targets: f,
-        angle: { from: -10, to: 10 },
-        duration: 1400 + i * 250,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.InOut',
-      });
-    });
+    // 动态花精灵（摆动）已删除（2026-08-07 制作人反馈：左右晃动效违和；
+    // 静态花丛瓦片 gid 8 与蝴蝶保留，仅去除摆动精灵层）
     const glow = this.add.graphics();
     glow.fillStyle(0xffeec8, 0.18);
     glow.fillCircle(0, 0, 22);
@@ -4912,6 +5192,8 @@ export class MapScene extends Phaser.Scene {
     spendCoins(100);
     markRestored('oldHouse');
     g.restored = true;
+    // FEATURE-041：老屋修复完成 → 归星记录「修复老屋」（木匠回归判定的状态条件之一）
+    triggerTag('restore_oldhouse');
     this.buildOldHouseRestored();
     // 里程碑入档：完成后立即保存（刷新/重进保持恢复态）
     save({
@@ -4926,6 +5208,328 @@ export class MapScene extends Phaser.Scene {
       setTimeout(() => showMemoryMoment('风吹过修补好的屋瓦——这座岛，开始像家了。'), 1600);
     });
     return true;
+  }
+
+  // ============ P2 农场复兴视觉化（菜园层次/工具区/树荫/碎石小路） ============
+
+  /**
+   * P2 农场复兴视觉化（视觉升级方案 v0.10 §五，制作人 2026-08-07 拍板 P2 先行）。
+   * 荒废→复兴两态装饰组，与 FEATURE-037 worldRestore 联动：
+   *   菜园层次   → isRestored('garden')
+   *   工具区/树荫/碎石小路 → isRestored('oldHouse')
+   * 纯视觉叠加：零新素材、不触碰碰撞层/存档/出口/交互点/NPC 站位；
+   * 装饰随场景 shutdown 自动销毁（不存引用）；farmLife 统计供验收探针读取。
+   * 坐标均经 farm.json 核对（草地 + 无碰撞），避开树位/农田/出口/花园覆盖区/木屋/水池/既有花草。
+   */
+  private setupFarmDecorations(): void {
+    if (this.mapKey !== 'farm') return;
+    const gardenRestored = isRestored('garden');
+    const homeRestored = isRestored('oldHouse');
+    let ruin = 0;
+    let revive = 0;
+
+    // 组1 菜园层次（花园恢复区外围，错开 oldRobot(28,3)/夏雅(33,4)/(33,6) 站位）
+    if (gardenRestored) {
+      revive += this.buildGardenLayersRestored();
+    } else {
+      ruin += this.buildGardenLayersRuined();
+    }
+    // 组2 工具区域（老屋周围空地，错开木屋建筑/石墙/门前出口/出生点）
+    if (homeRestored) {
+      revive += this.buildToolAreaRestored();
+    } else {
+      ruin += this.buildToolAreaRuined();
+    }
+    // 组3 树荫区域（开阔树下，错开农田/出口/交互点）
+    if (homeRestored) {
+      revive += this.buildTreeShadeRestored();
+    } else {
+      ruin += this.buildTreeShadeRuined();
+    }
+    // 组4 碎石小路（老屋门前往农田的走廊 row 17）
+    if (homeRestored) {
+      revive += this.buildGravelPathRestored();
+    } else {
+      ruin += this.buildGravelPathRuined();
+    }
+    // 小动物：有人打理后东北角树冠上有小鸟（(37,4)，错开东侧出口 rows 9-11）
+    this.farmLife = { ruin, revive, wildlife: homeRestored ? 1 : 0 };
+    if (homeRestored) {
+      this.createFarmBird();
+    }
+  }
+
+  /** 菜园层次·荒废态：破木桩/倒伏菜架/破陶罐/乱草堆（花园外围空地，4 组） */
+  private buildGardenLayersRuined(): number {
+    const T = TILE_SIZE;
+    // 破木桩：(26,3)
+    const stump = this.add.graphics();
+    stump.fillStyle(0x8d6e4a, 1);
+    stump.fillCircle(0, 0, 5);
+    stump.fillStyle(0x6e5236, 1);
+    stump.fillCircle(0, 0, 3);
+    stump.fillCircle(-1.5, -1, 1.2);
+    stump.fillCircle(1.5, 1, 1);
+    stump.setPosition(26 * T + T / 2, 3 * T + T / 2).setDepth(3);
+    // 倒伏菜架：(27,6) 歪斜木架
+    const frame = this.add.graphics();
+    frame.fillStyle(0x9c7b52, 1);
+    frame.fillRect(-6, 0, 12, 1.5);
+    frame.fillRect(-5, 1.5, 1.5, 6);
+    frame.setRotation(0.4);
+    frame.setPosition(27 * T + T / 2, 6 * T + T / 2).setDepth(3);
+    // 破陶罐：(32,8) 灰陶残片
+    const pot = this.add.graphics();
+    pot.fillStyle(0x9a8a76, 1);
+    pot.fillRoundedRect(-3, -4, 6, 7, 2);
+    pot.fillStyle(0x6e6250, 1);
+    pot.fillRect(-2, -6, 4, 2);
+    pot.setPosition(32 * T + T / 2, 8 * T + T / 2).setDepth(3);
+    // 乱草堆：(34,8) 枯黄乱草
+    const weeds = this.add.graphics();
+    weeds.fillStyle(0xb8a060, 1);
+    for (let i = 0; i < 5; i++) {
+      weeds.fillRect(-8 + i * 4, 0, 1, 3 + (i % 3) * 2);
+    }
+    weeds.setPosition(34 * T + T / 2, 8 * T + T / 2).setDepth(3);
+    return 4;
+  }
+
+  /** 菜园层次·复兴态：菜畦色块×2 / 篱笆×2 / 花簇×1（5 组） */
+  private buildGardenLayersRestored(): number {
+    const T = TILE_SIZE;
+    // 菜畦层次：(30,8)/(31,8) 深浅绿菜畦条（半透明地面色块，模拟蔬菜层次）
+    const bedA = this.add.graphics();
+    bedA.fillStyle(0x4a9e3f, 0.55);
+    bedA.fillRect(-7, -5, 13, 9);
+    bedA.fillStyle(0x3c8a33, 0.5);
+    bedA.fillRect(-5, -2, 9, 3);
+    bedA.setPosition(30 * T + T / 2, 8 * T + T / 2).setDepth(2);
+    const bedB = this.add.graphics();
+    bedB.fillStyle(0x5cb850, 0.5);
+    bedB.fillRect(-6, -4, 12, 8);
+    bedB.fillStyle(0x9dd46a, 0.5);
+    bedB.fillRect(-4, -1, 8, 2);
+    bedB.setPosition(31 * T + T / 2, 8 * T + T / 2).setDepth(2);
+    // 篱笆：(26,4)/(27,7) 两段小篱笆（竖栏）
+    const fence = (cx: number, cy: number): void => {
+      const f = this.add.graphics();
+      f.fillStyle(0x9c7b52, 1);
+      f.fillRect(-5, -7, 1, 14);
+      f.fillRect(5, -7, 1, 14);
+      f.fillRect(-5, -3, 11, 1.5);
+      f.fillRect(-5, 2, 11, 1.5);
+      f.setPosition(cx, cy).setDepth(3);
+    };
+    fence(26 * T + T / 2, 4 * T + T / 2);
+    fence(27 * T + T / 2, 7 * T + T / 2);
+    // 花簇：(31,3) 红花绿叶
+    const flower = this.add.graphics();
+    flower.fillStyle(0xe74c3c, 1);
+    flower.fillCircle(-3, 0, 2);
+    flower.fillCircle(3, 0, 2);
+    flower.fillCircle(0, -3, 2);
+    flower.fillStyle(0xffd166, 1);
+    flower.fillCircle(0, 0, 1.6);
+    flower.fillStyle(0x3c8a33, 1);
+    flower.fillRect(-1, 2, 2, 4);
+    flower.setPosition(31 * T + T / 2, 3 * T + T / 2).setDepth(3);
+    return 5;
+  }
+
+  /** 工具区域·荒废态：断柄锄/锈镰刀/破木箱/干裂木桶（老屋周围空地，4 组） */
+  private buildToolAreaRuined(): number {
+    const T = TILE_SIZE;
+    // 断柄锄头：(1,17) 斜躺（木柄 + 铁头）
+    const hoe = this.add.graphics();
+    hoe.fillStyle(0x8d6e4a, 1);
+    hoe.fillRect(-5, -2, 10, 2);
+    hoe.fillStyle(0x6e6a62, 1);
+    hoe.fillRect(3, -5, 2, 8);
+    hoe.setRotation(0.5);
+    hoe.setPosition(1 * T + T / 2, 17 * T + T / 2).setDepth(3);
+    // 锈镰刀：(1,19) 弧线锈刀
+    const sickle = this.add.graphics();
+    sickle.fillStyle(0x7a7268, 1);
+    sickle.fillRect(-4, -1, 8, 2);
+    sickle.fillStyle(0x8a7a5a, 1);
+    sickle.fillCircle(4, -2, 2);
+    sickle.setRotation(-0.3);
+    sickle.setPosition(1 * T + T / 2, 19 * T + T / 2).setDepth(3);
+    // 破木箱：(9,17) 歪斜箱体
+    const crate = this.add.graphics();
+    crate.fillStyle(0x9c7b52, 1);
+    crate.fillRect(-5, -4, 10, 8);
+    crate.fillStyle(0x6e5236, 1);
+    crate.fillRect(-5, -1, 10, 1.5);
+    crate.setRotation(-0.12);
+    crate.setPosition(9 * T + T / 2, 17 * T + T / 2).setDepth(3);
+    // 干裂木桶：(12,18) 桶身 + 裂纹
+    const barrel = this.add.graphics();
+    barrel.fillStyle(0x8d6e4a, 1);
+    barrel.fillRect(-4, -5, 8, 10);
+    barrel.fillStyle(0x6e5236, 1);
+    barrel.fillRect(-4, -5, 8, 2);
+    barrel.fillRect(-4, 3, 8, 2);
+    barrel.lineStyle(1, 0x4a3826, 1);
+    barrel.lineBetween(-2, -4, 2, 0);
+    barrel.setPosition(12 * T + T / 2, 18 * T + T / 2).setDepth(3);
+    return 4;
+  }
+
+  /** 工具区域·复兴态：工具架/木桶/柴堆/水桶/磨刀石（5 组） */
+  private buildToolAreaRestored(): number {
+    const T = TILE_SIZE;
+    // 工具架：(1,17) 靠左墙竖排木架 + 三件工具
+    const rack = this.add.graphics();
+    rack.fillStyle(0x9c7b52, 1);
+    rack.fillRect(-1, -8, 2, 16);
+    rack.fillRect(-6, -5, 12, 1.5);
+    rack.fillRect(-6, 2, 12, 1.5);
+    rack.fillStyle(0x6e5236, 1);
+    rack.fillRect(-4, 4, 1.5, 4);
+    rack.fillRect(0, 4, 1.5, 4);
+    rack.fillRect(3, 4, 1.5, 4);
+    rack.setPosition(1 * T + T / 2, 17 * T + T / 2).setDepth(3);
+    // 木桶：(1,19) 整齐木桶（带桶箍）
+    const barrel = this.add.graphics();
+    barrel.fillStyle(0x8d6e4a, 1);
+    barrel.fillRect(-4, -5, 8, 10);
+    barrel.fillStyle(0x6e5236, 1);
+    barrel.fillRect(-4, -5, 8, 2);
+    barrel.fillRect(-4, 3, 8, 2);
+    barrel.fillStyle(0xd8b060, 1);
+    barrel.fillRect(-1, -7, 2, 1.5);
+    barrel.setPosition(1 * T + T / 2, 19 * T + T / 2).setDepth(3);
+    // 柴堆：(9,17) 木柴横竖叠放
+    const wood = this.add.graphics();
+    wood.fillStyle(0x8d6e4a, 1);
+    wood.fillRect(-6, -1, 12, 3);
+    wood.fillRect(-5, 2, 10, 3);
+    wood.fillStyle(0x6e5236, 1);
+    wood.fillRect(-6, -1, 12, 1);
+    wood.setPosition(9 * T + T / 2, 17 * T + T / 2).setDepth(3);
+    // 水桶：(3,17) 桶 + 提手
+    const pail = this.add.graphics();
+    pail.fillStyle(0x6e8290, 1);
+    pail.fillRect(-3, -4, 6, 8);
+    pail.fillStyle(0x8d9aa5, 1);
+    pail.fillRect(-3, -4, 6, 1.5);
+    pail.lineStyle(1, 0x8d6e4a, 1);
+    pail.strokeRoundedRect(-4, -7, 8, 4, 4);
+    pail.setPosition(3 * T + T / 2, 17 * T + T / 2).setDepth(3);
+    // 磨刀石：(2,17) 灰石
+    const whetstone = this.add.graphics();
+    whetstone.fillStyle(0x9a9a92, 1);
+    whetstone.fillRoundedRect(-3, -2, 6, 4, 2);
+    whetstone.setPosition(2 * T + T / 2, 17 * T + T / 2).setDepth(3);
+    return 5;
+  }
+
+  /** 树荫区域·荒废态：树下枯草圈 ×3（(3,7)/(14,21)/(37,6)） */
+  private buildTreeShadeRuined(): number {
+    const T = TILE_SIZE;
+    const spots: Array<[number, number]> = [[3, 7], [14, 21], [37, 6]];
+    for (const [c, r] of spots) {
+      const g = this.add.graphics();
+      g.fillStyle(0xb8a060, 0.7);
+      for (let i = 0; i < 6; i++) {
+        g.fillRect(-7 + i * 3, -2, 1.5, 4 + (i % 3) * 2);
+      }
+      g.setPosition(c * T + T / 2, r * T + T / 2).setDepth(2);
+    }
+    return spots.length;
+  }
+
+  /** 树荫区域·复兴态：树下蘑菇圈/花丛/白花丛 ×3 */
+  private buildTreeShadeRestored(): number {
+    const T = TILE_SIZE;
+    const flower = (fx: number, fy: number, color: number): void => {
+      const f = this.add.graphics();
+      f.fillStyle(color, 1);
+      f.fillCircle(0, 0, 2);
+      f.fillStyle(0xffd166, 1);
+      f.fillCircle(0, 0, 1);
+      f.fillStyle(0x3c8a33, 1);
+      f.fillRect(-1, 1.5, 2, 3);
+      f.setPosition(fx, fy).setDepth(3);
+    };
+    // 蘑菇圈：(3,7) 双蘑菇
+    const mushroom = (mx: number, my: number, color: number): void => {
+      const m = this.add.graphics();
+      m.fillStyle(0xe8d8c8, 1);
+      m.fillRect(-1.5, 0, 3, 4);
+      m.fillStyle(color, 1);
+      m.fillCircle(0, -1, 3);
+      m.fillStyle(0xffffff, 0.9);
+      m.fillCircle(-1, -2, 0.8);
+      m.setPosition(mx, my).setDepth(3);
+    };
+    mushroom(3 * T + T / 2 - 4, 7 * T + T / 2, 0xd46a3c);
+    mushroom(3 * T + T / 2 + 3, 7 * T + T / 2 - 1, 0xc0392b);
+    // 花丛：(14,21) 双花
+    flower(14 * T + T / 2 - 4, 21 * T + T / 2, 0xff9e80);
+    flower(14 * T + T / 2 + 3, 21 * T + T / 2 + 1, 0xe8b64a);
+    // 白花丛：(37,6) 双花
+    flower(37 * T + T / 2 - 3, 6 * T + T / 2, 0xf0f0f0);
+    flower(37 * T + T / 2 + 3, 6 * T + T / 2 - 1, 0xe8b64a);
+    return 3;
+  }
+
+  /** 碎石小路·荒废态：门前往农田的土路裂缝 ×4 */
+  private buildGravelPathRuined(): number {
+    const T = TILE_SIZE;
+    const cracks: Array<[number, number]> = [[6, 17], [8, 17], [11, 17], [12, 17]];
+    for (const [c, r] of cracks) {
+      const g = this.add.graphics();
+      g.lineStyle(1, 0x6e5a3a, 0.8);
+      g.lineBetween(-3, -2, 2, 1);
+      g.lineBetween(0, 1, 3, -1);
+      g.setPosition(c * T + T / 2, r * T + T / 2).setDepth(2);
+    }
+    return cracks.length;
+  }
+
+  /** 碎石小路·复兴态：门前往农田的碎石点 ×6 */
+  private buildGravelPathRestored(): number {
+    const T = TILE_SIZE;
+    const gravel: Array<[number, number]> = [[6, 17], [7, 17], [8, 17], [10, 17], [11, 17], [12, 17]];
+    for (const [c, r] of gravel) {
+      const g = this.add.graphics();
+      g.fillStyle(0x9a9286, 0.9);
+      g.fillCircle(-2, -1, 1.2);
+      g.fillCircle(2, 1, 1.4);
+      g.fillCircle(0, 1, 1);
+      g.setPosition(c * T + T / 2, r * T + T / 2).setDepth(2);
+    }
+    return gravel.length;
+  }
+
+  /** P2 小动物：东北角树 (37,5) 冠上方的小鸟（小范围跳动，复用 gate/town 模式，depth 5 高于树 4） */
+  private createFarmBird(): void {
+    const T = TILE_SIZE;
+    const bird = this.add.container(37 * T + T / 2, 4 * T + T / 2 - 2);
+    bird.setDepth(5);
+    const g = this.add.graphics();
+    g.fillStyle(0x8a6a5a, 1);
+    g.fillCircle(-3, 0, 2.2);
+    g.fillCircle(3, 0, 2.2);
+    g.fillStyle(0x6e4a3a, 1);
+    g.fillCircle(-3, 0, 1);
+    g.fillCircle(3, 0, 1);
+    g.fillStyle(0xd8b060, 1);
+    g.fillCircle(0, -3, 1);
+    bird.add(g);
+    // 原地小跳（模拟啄食）
+    this.tweens.add({
+      targets: bird,
+      y: bird.y - 3,
+      angle: { from: -6, to: 6 },
+      duration: 900,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.InOut',
+    });
   }
 
   // ============ FEATURE-037 后山道路修复（forest 底部空地通道） ============
@@ -5610,8 +6214,8 @@ export class MapScene extends Phaser.Scene {
     g.fillCircle(x - 2, y - 3, 2.5);
     g.fillStyle(0xf1c40f, 1);
     g.fillCircle(x + 8, y - 3, 2.5);
-    // 标签（放摊位下方空地，不压农田）——E-02：加"打开方式"提示，让摊位可交互性一目了然
-    const mark = this.add.text(x, y + 16, this.hintText('商店\n[按E]打开', '商店\n[点击]打开'), {
+    // 标签（放摊位下方空地，不压农田）——去掉"打开方式"提示（制作人 2026-08-07 拍板：删"按E打开"）
+    const mark = this.add.text(x, y + 16, '商店', {
       fontFamily: 'Arial',
       fontSize: '11px',
       color: '#ffe082',
@@ -6031,11 +6635,18 @@ export class MapScene extends Phaser.Scene {
     const sprite = this.treeSprites.get(key);
 
     if (chopped) {
-      // 树倒了：掉落 2 个木材 + 变树桩
+      // 树倒了：掉落 2 个木材 + 变树桩（树桩无碰撞、只保留几秒后淡出消失——制作人需求 2026-08-07）
       addItem('wood', 2);
       addXp(5, 'harvest');
       play('tree_fall');
-      if (sprite) sprite.setTexture('stump');
+      if (sprite) {
+        sprite.setTexture('stump');
+        // 树桩不挡路：禁用碰撞
+        (sprite.body as Phaser.Physics.Arcade.StaticBody).enable = false;
+        // 树桩短暂保留（3.2s）后淡出消失
+        const tree = getTree(targetPos.col, targetPos.row);
+        if (tree) this.scheduleStumpFade(sprite, tree);
+      }
       this.showDialogueText('砍倒了树！获得木材 ×2');
       // 砍树引导任务进度
       onDQWoodcut();

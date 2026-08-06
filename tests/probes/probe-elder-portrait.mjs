@@ -1,7 +1,7 @@
 /**
  * 3.4 村长立绘接线验证探针
  *
- * 验证：PORTRAIT_MAP 含「村长 → elder_ai.png」映射 + elder_ai.png 资源可加载（无 404）。
+ * 验证：PORTRAIT_MAP 含「村长 → elder_ai.webp」映射 + elder_ai.webp 资源可加载（无 404）。
  * 前置：dev server 在 localhost:5173；node probe-elder-portrait.mjs
  */
 import puppeteer from 'puppeteer-core';
@@ -43,9 +43,9 @@ async function run() {
     });
     check('game 实例存在', result.game);
 
-    // elder_ai.png 资源 HTTP 可访问（无 404）
-    const resp = await page.goto(GAME_URL + 'assets/portraits/elder_ai.png', { waitUntil: 'networkidle2' }).catch(() => null);
-    check('elder_ai.png HTTP 可访问', !!resp && resp.ok(), resp ? `${resp.status()}` : '<请求失败>');
+    // elder_ai.webp 资源 HTTP 可访问（无 404）
+    const resp = await page.goto(GAME_URL + 'assets/portraits/elder_ai.webp', { waitUntil: 'networkidle2' }).catch(() => null);
+    check('elder_ai.webp HTTP 可访问', !!resp && resp.ok(), resp ? `${resp.status()}` : '<请求失败>');
 
     // 运行时验证：推进到 station 场景（?reset=1 后按 Enter 进入车站，MapScene 系有 storyDialogue 实例），
     // 对 storyDialogue.play() 注入村长说话，检查立绘 img src
@@ -65,15 +65,15 @@ async function run() {
       s.storyDialogue.skip();
       return { played: true, src };
     });
-    check('运行时村长立绘 img 显示', runtime.played && runtime.src.includes('elder_ai.png'), runtime.src || (runtime.reason || '<无立绘>'));
+    check('运行时村长立绘 img 显示', runtime.played && runtime.src.includes('elder_ai.webp'), runtime.src || (runtime.reason || '<无立绘>'));
 
-    // elder_ai.png 尺寸验证（512×512 正方形，对话框头像）
+    // elder_ai.webp 尺寸验证（512×512 正方形，对话框头像）
     const imgInfo = await page.evaluate(async () => {
       const im = new Image();
-      await new Promise(r => { im.onload = r; im.src = '/assets/portraits/elder_ai.png'; });
+      await new Promise(r => { im.onload = r; im.src = '/assets/portraits/elder_ai.webp'; });
       return { w: im.naturalWidth, h: im.naturalHeight };
     }).catch(() => null);
-    check('elder_ai.png 512×512', imgInfo?.w === 512 && imgInfo?.h === 512, imgInfo ? `${imgInfo.w}x${imgInfo.h}` : '<加载失败>');
+    check('elder_ai.webp 512×512', imgInfo?.w === 512 && imgInfo?.h === 512, imgInfo ? `${imgInfo.w}x${imgInfo.h}` : '<加载失败>');
 
     const assetFailed = failedRequests.filter(u => u.includes('elder'));
     check('无 elder 资源加载失败', assetFailed.length === 0, assetFailed.join(','));

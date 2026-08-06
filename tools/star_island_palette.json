@@ -1,0 +1,33 @@
+{
+  "version": "1.1",
+  "name": "star_island_palette",
+  "description": "《归星物语》统一像素调色板锚点（v1.1：flower 改为草地绿底+花点保留杂色；整体配合 normalizer --soften 0.7 柔化）",
+  "anchors": {
+    "grass":  "#609848",
+    "dirt":   "#967042",
+    "soil":   "#482e1a",
+    "stone":  "#54545c",
+    "water":  "#345c8c",
+    "wood":   "#be9054",
+    "path":   "#d2b07c",
+    "flower": "#6e9450"
+  },
+  "usage": {
+    "pipeline": "GPT 原稿 → 网格清洗 → 色彩量化 → 调色板映射(主色邻域偏移到锚点, 杂色保留) → 无缝边缘 → 整体柔化(--soften) → 16px tile",
+    "gid_map": {
+      "1": "grass",
+      "2": "dirt",
+      "3": "stone",
+      "4": "water",
+      "5": "soil",
+      "6": "wood",
+      "7": "path",
+      "8": "flower"
+    },
+    "note": [
+      "flower 锚点 = 草地绿（绿底），黄色花点由 map_to_anchor 的阈值保留杂色机制呈现，避免花园一片黄",
+      "整体柔化由 normalizer --soften 0.7 控制（HSL 饱和度 ×0.7），消除 AI 高饱和荧光感",
+      "锚点色与脚本 tileset 主色对齐（grass/dirt/soil/stone/water/wood/path 不变），AI 管线与脚本管线跨场景统一"
+    ]
+  }
+}

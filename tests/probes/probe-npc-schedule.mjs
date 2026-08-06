@@ -45,7 +45,7 @@ const EXPECTED = {
 
 const NPC_NAME = {
   elder: '村长', shopkeeper: '商店老板', miner: '矿工老张',
-  gardener: '花匠小梅', adventurer: '冒险家阿风', mystery: '神秘少女',
+  gardener: '花匠小梅', adventurer: '阿风', mystery: '神秘少女',
 };
 
 /** 切到指定场景并读取该场景的 NPC 列表 */

@@ -143,6 +143,8 @@ export interface TreeState {
   row: number;
   health: number;
   isStump: boolean;
+  /** 树桩已消失（木桩只保留几秒后淡出，视觉隐藏；树再生长时清除）——旧档无此字段视为 false */
+  stumpGone?: boolean;
 }
 
 /** 树木最大生命值（砍 3 次倒下） */
@@ -211,6 +213,7 @@ export function refreshStumps(): void {
     if (tree.isStump) {
       tree.isStump = false;
       tree.health = TREE_MAX_HEALTH;
+      tree.stumpGone = false;
     }
   }
 }

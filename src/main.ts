@@ -46,8 +46,11 @@ const game = new Phaser.Game({
   height: GAME_CONFIG.height,
   backgroundColor: GAME_CONFIG.backgroundColor,
   title: GAME_TITLE,
-  // 画布自适应：保持内部分辨率 800×600，等比缩放填满屏幕并居中
-  // 地图坐标/碰撞/NPC 位置都基于 800×600 世界坐标，不改内部尺寸
+  // 画布自适应：FIT + 动态逻辑宽度（见 applyAdaptiveLogicalSize）
+  // 逻辑高度恒定 600，宽度随屏幕宽高比扩展 → 画布比例 = 屏幕比例，等比缩放铺满
+  // 屏幕（无黑边、不裁剪）；相机 zoom=2 整数倍保持像素清晰，垂直视野恒定 300
+  // 世界像素完整可见（玩家/地图永不超出镜头），水平方向显示更多地图内容。
+  // 地图坐标/碰撞/NPC 位置仍基于世界坐标，不改内部尺寸
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -86,10 +89,13 @@ initAndroidBackHandler(game);
 initPcEscapeHandler(game);
 
 /**
- * 让 #game-container 尺寸 = 画布实际显示尺寸。
- * 原因：FIT 模式下画布居中于屏幕（横屏两侧黑边），若容器占满全屏，
- * 相对容器定位的 DOM UI（摇杆/按钮/HUD）会偏到黑边区。容器贴合画布后，
- * 所有 DOM UI 与画布对齐（黑边在容器外，由 body 背景填充）。
+ * 让 #game-container 尺寸 = 视口尺寸（全屏）。
+ * 原因：动态逻辑宽度方案（applyAdaptiveLogicalSize）下画布比例 = 屏幕比例，
+ * FIT 等比缩放后画布正好铺满视口，无黑边；容器保持全屏后，相对容器定位的
+ * DOM UI（摇杆/按钮/HUD）与画布天然对齐。
+ *
+ * 注意：不能把容器设为 game.scale.displaySize——displaySize 基于父容器尺寸计算，
+ * 容器缩小会反过来缩小 FIT 的缩放基准（循环缩小，画布只剩视口一部分）。
  *
  * 加固（P0 横屏触控布局修复）：
  * - 读取尺寸前先刷新 game.scale 的父尺寸，避免旋转/地址栏变化后取到旧 displaySize
@@ -99,26 +105,56 @@ initPcEscapeHandler(game);
 function syncGameContainer(): void {
   const c = document.getElementById('game-container');
   if (!c) return;
-  try {
-    game.scale.refresh();
-  } catch { /* 忽略刷新异常，继续用当前 displaySize */ }
-  const size = game.scale.displaySize;
-  c.style.width = `${size.width}px`;
-  c.style.height = `${size.height}px`;
+  c.style.width = `${window.innerWidth}px`;
+  c.style.height = `${window.innerHeight}px`;
 }
-game.scale.on('resize', syncGameContainer);
+
+/**
+ * 动态逻辑宽度（屏幕适配升级）：
+ * 逻辑高度恒定 600（世界坐标/碰撞/NPC 位置不变），宽度随屏幕宽高比扩展，
+ * 使画布比例 = 屏幕比例 → FIT 等比缩放正好铺满全屏（无黑边、不裁剪）。
+ * 相机 zoom=2 保持不变 → 垂直视野恒定 300 世界像素完整可见（玩家永不丢），
+ * 水平方向超宽屏显示更多地图内容（相机 setBounds 保证玩家始终在镜头内）。
+ * 4:3 及更窄屏回落 800×600 原设计。
+ */
+function applyAdaptiveLogicalSize(): void {
+  try {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    if (!vw || !vh) return;
+    const ratio = vw / vh;
+    // 设计基准 800×600（4:3）；更宽屏幕按比例扩展逻辑宽度（最小 800）
+    const logicalW = Math.max(800, Math.round(600 * ratio));
+    const logicalH = 600;
+    if (game.scale.gameSize.width !== logicalW || game.scale.gameSize.height !== logicalH) {
+      game.scale.setGameSize(logicalW, logicalH);
+    }
+  } catch (e) {
+    console.warn('[adapt] 动态逻辑尺寸调整失败', e);
+  }
+}
+
+game.scale.on('resize', () => {
+  syncGameContainer();
+  applyAdaptiveLogicalSize();
+});
 window.addEventListener('orientationchange', () => {
   // 旋转瞬间 displaySize 可能仍是旧方向（安卓 WebView 时序不稳定），双延迟覆盖过渡态
   setTimeout(syncGameContainer, 300);
   setTimeout(syncGameContainer, 700);
+  setTimeout(applyAdaptiveLogicalSize, 300);
+  setTimeout(applyAdaptiveLogicalSize, 700);
 });
 window.addEventListener('resize', syncGameContainer);
+window.addEventListener('resize', applyAdaptiveLogicalSize);
 // visualViewport 变化（安卓地址栏收起/展开影响视口高度）也触发同步
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', syncGameContainer);
   window.visualViewport.addEventListener('scroll', syncGameContainer);
+  window.visualViewport.addEventListener('resize', applyAdaptiveLogicalSize);
 }
 syncGameContainer();
+applyAdaptiveLogicalSize();
 
 // Debug API（Phase 4 仍保留，供测试用）
 // 用法：

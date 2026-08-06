@@ -247,7 +247,7 @@ export class NPC {
         break;
       }
       case 'adventurer': {
-        // 冒险家阿风：张望 —— 左右翻转（视线交替）
+        // 阿风：张望 —— 左右翻转（视线交替）
         this.idleTween = scene.tweens.add({
           targets: s,
           scaleX: { from: 0.5, to: -0.5 },

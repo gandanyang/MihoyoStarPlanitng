@@ -115,7 +115,7 @@ async function run() {
       if (btn) btn.click();
     });
     await sleep(1200);
-    await skipDialogue(page, 9); // GATE_OPENED_DIALOGUE 9 行（v0.8+E-07）
+    await skipDialogue(page, 10); // GATE_OPENED_DIALOGUE 10 行（v0.8+E-07 + 先开三块地）
     info = await sceneInfo(page);
     console.log(`5. 使用钥匙开门 → 步骤=${info.step}${info.step === 'clear_land' ? ' ✅' : ' ❌'}`);
 

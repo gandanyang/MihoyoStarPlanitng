@@ -88,8 +88,8 @@ export class VoiceBank {
     // 同 (speaker,text) 多个文件（如「嗯。」harvest_02/evening_04）→ 轮换，保证都用上
     const key = matches.map((m) => m.file).join('|');
     const i = (VoiceBank.usedCount.get(key) ?? 0) % matches.length;
-    // 优先使用标准化后的音频（音量统一 -16 LUFS）
-    return 'audio/voice_normalized/' + matches[i].file;
+    // 优先使用标准化后的音频（音量统一 -16 LUFS）；P0 瘦身后 wav→ogg（源保留在 art_source）
+    return 'audio/voice_normalized/' + matches[i].file.replace(/\.wav$/i, '.ogg');
   }
 
   /** 播放台词语音；找不到音频静默跳过，不阻塞对话 */
@@ -189,8 +189,8 @@ export class VoiceBank {
     const ctx = getCtx();
     
     for (const m of matches) {
-      // 优先使用标准化后的音频（音量统一 -16 LUFS）
-      const url = 'audio/voice_normalized/' + m.file;
+      // 优先使用标准化后的音频（音量统一 -16 LUFS）；P0 瘦身后 wav→ogg
+      const url = 'audio/voice_normalized/' + m.file.replace(/\.wav$/i, '.ogg');
       if (preloadCache.has(url)) continue;
       
       // fetch + decode 后缓存（防 IDM：URL 加时间戳）

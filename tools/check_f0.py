@@ -4,9 +4,9 @@
 归星物语语音 F0 音高自检工具（任务卡 §三 强制项）。
 
 用法：
-  python tools/check_f0.py public/audio/voice/linche/station_04.wav
-  python tools/check_f0.py public/audio/voice --role male   # 男声判定 [70,180]
-  python tools/check_f0.py public/audio/voice --role female # 女声判定 [170,320]
+  python tools/check_f0.py art_source/audio/voice/linche/station_04.wav
+  python tools/check_f0.py art_source/audio/voice --role male   # 男声判定 [70,180]
+  python tools/check_f0.py art_source/audio/voice --role female # 女声判定 [170,320]
 
 流程：ffmpeg 转 16kHz mono wav → stdlib wave 读取 → 分帧归一化自相关估计 F0 → 输出中位 F0。
 纯 stdlib（仅依赖外部 ffmpeg），不依赖 numpy。

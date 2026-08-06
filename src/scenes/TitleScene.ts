@@ -37,8 +37,13 @@ export class TitleScene extends Phaser.Scene {
     MusicSystem.play('title');
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => MusicSystem.stop());
 
-    const W = 800;
+    // 动态逻辑宽度：屏幕适配升级后宽度随屏幕比例扩展（main.ts applyAdaptiveLogicalSize）
+    const W = this.scale.width;
     const H = 600;
+
+    // pixelArt 全局开启后，AI 高清封面/Logo 恢复线性过滤（避免锯齿；像素素材不受影响）
+    this.textures.get('title_bg')?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    this.textures.get('logo_mark')?.setFilter(Phaser.Textures.FilterMode.LINEAR);
 
     // ── 背景 ──
     const bg = this.add.image(W / 2, H / 2, 'title_bg');
@@ -63,24 +68,6 @@ export class TitleScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(2);
     title.setAlpha(0);
     this.tweens.add({ targets: title, alpha: 1, duration: 1800, delay: 450, ease: 'Power2' });
-
-    // 游戏名文字（v0.9 独立 Logo 方案：图形标 + 文字标题，封面不再烧字）
-    // ── 副标题 ──
-    const subtitle = this.add.text(W / 2, 300, '星黎庄园的归乡之旅', {
-      fontSize: '18px',
-      fontFamily: '"Microsoft YaHei", "SimHei", sans-serif',
-      color: '#b8a88a',
-      stroke: '#000',
-      strokeThickness: 3,
-    }).setOrigin(0.5).setDepth(2);
-    subtitle.setAlpha(0);
-    this.tweens.add({
-      targets: subtitle,
-      alpha: 1,
-      duration: 2000,
-      delay: 600,
-      ease: 'Power2',
-    });
 
     // ── 版本号 ──
     this.add.text(W - 12, H - 12, 'v0.5.3', {

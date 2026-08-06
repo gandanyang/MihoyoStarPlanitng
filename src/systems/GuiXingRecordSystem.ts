@@ -24,6 +24,7 @@ export type GuiXingTag =
   | 'first_plant'
   | 'first_harvest'
   | 'restore_garden'
+  | 'restore_oldhouse'
   | 'help_resident'
   | 'stargaze_night'
   | 'obtain_manor_key'

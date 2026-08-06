@@ -28,11 +28,14 @@ mkdirSync(SHOT_DIR, { recursive: true });
 const snapGate = `(() => {
   const s = window.__game?.scene?.getScene('gate');
   if (!s) return { sceneLoaded: false };
+  const texts = (s.children.list || []).filter(o => o.type === 'Text' && o.visible).map(o => o.text || '');
+  const emoji = texts.filter(t => /[\\u{1F000}-\\u{1FAFF}\\u{2600}-\\u{27BF}\\u{FE0F}]/u.test(t));
   return {
     sceneLoaded: true,
     gateLife: s.gateLife,
     gateWall: !!s.gateWall,
     gateDoorVisual: !!s.gateDoorVisual,
+    emoji,
   };
 })()`;
 
@@ -99,6 +102,7 @@ async function run() {
   check('A4 白天无门灯', d.gateLife && d.gateLife.lamp === 0, `lamp=${d.gateLife && d.gateLife.lamp}`);
   check('A5 木门视觉存在', d.gateDoorVisual === true, `gateDoorVisual=${d.gateDoorVisual}`);
   check('A6 物理门墙未被破坏', d.gateWall === true, `gateWall=${d.gateWall}`);
+  check('A7 gate 无可见 emoji（审查 P0 #1）', d.emoji.length === 0, d.emoji.join(' '));
   await page.screenshot({ path: join(SHOT_DIR, 'gate-visual-day.png') });
 
   // 2) 夜间 20:00
@@ -130,7 +134,34 @@ async function run() {
   });
   await page.screenshot({ path: join(SHOT_DIR, 'gate-visual-opened.png') });
 
-  // 4) 运行时错误
+  // 5) town 无可见 emoji（审查 P0 #2：村长家提示物已像素化，引导功能保留）
+  await page.goto(GAME_URL, { waitUntil: 'networkidle2' });
+  await sleep(1000);
+  await page.evaluate(() => {
+    localStorage.setItem('return_star_save', JSON.stringify({
+      version: '0.5', savedAt: 'gate-visual-town', timestamp: Date.now(),
+      player: { x: 320, y: 300, scene: 'town', facing: 'down', inventory: {} },
+      world: { day: 1, hour: 6, minute: 0, coins: 100, level: 1, xp: 0, stamina: 100, minedOres: [], questState: 'not_started' },
+      farm: { tiles: [], crops: [], trees: [] },
+      story: { storyStep: 'done' },
+    }));
+  });
+  await page.reload({ waitUntil: 'networkidle2' });
+  await enterGame('town');
+  await sleep(1200);
+  const townD = await page.evaluate(`(() => {
+    const s = window.__game?.scene?.getScene('town');
+    if (!s) return { sceneLoaded: false };
+    const texts = (s.children.list || []).filter(o => o.type === 'Text' && o.visible).map(o => o.text || '');
+    const emoji = texts.filter(t => /[\\u{1F000}-\\u{1FAFF}\\u{2600}-\\u{27BF}\\u{FE0F}]/u.test(t));
+    return { sceneLoaded: true, emoji, hintVisible: !!(s.elderHouseHint && s.elderHouseHint.sprite.visible) };
+  })()`);
+  check('E1 town 加载', townD.sceneLoaded);
+  check('E2 town 无可见 emoji（审查 P0 #2）', townD.emoji.length === 0, townD.emoji.join(' '));
+  check('E3 村长家引导物仍在（功能保留）', townD.hintVisible === true, `hintVisible=${townD.hintVisible}`);
+  await page.screenshot({ path: join(SHOT_DIR, 'town-elder-hint-pixel.png') });
+
+  // 6) 运行时错误
   check('D1 无页面错误', errors.length === 0, errors.slice(0, 3).join(' | '));
   console.log(`\n资源 404（仅记录）: ${notFound.length} 个`);
 

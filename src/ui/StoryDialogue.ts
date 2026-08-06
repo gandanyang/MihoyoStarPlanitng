@@ -22,19 +22,19 @@ import { DialogueHistoryPanel } from './DialogueHistoryPanel';
 
 /** 对话立绘映射（§8.5 方案 A）：说话人 → 立绘资源；无映射角色回退首字色块 */
 const PORTRAIT_MAP: Record<string, string> = {
-  林澈: 'assets/portraits/linchen_ai.png',
-  夏雅: 'assets/portraits/xiya_ai_avatar_v2.png',
-  村长: 'assets/portraits/elder_ai.png',
-  爷爷的笔记: 'assets/portraits/grandpa_ai.png',
-  爷爷: 'assets/portraits/grandpa_ai.png',
-  信: 'assets/portraits/grandpa_ai.png',
-  冒险家阿风: 'assets/portraits/afeng_ai.png',
-  阿风: 'assets/portraits/afeng_ai.png',
-  矿工老张: 'assets/portraits/miner_ai.png',
-  老张: 'assets/portraits/miner_ai.png',
-  花匠小梅: 'assets/portraits/xiaomei_ai.png',
-  小梅: 'assets/portraits/xiaomei_ai.png',
-  商店老板: 'assets/portraits/shopkeeper_ai.png',
+  林澈: 'assets/portraits/linchen_ai.webp',
+  夏雅: 'assets/portraits/xiya_ai_avatar_v2.webp',
+  村长: 'assets/portraits/elder_ai.webp',
+  爷爷的笔记: 'assets/portraits/grandpa_ai.webp',
+  爷爷: 'assets/portraits/grandpa_ai.webp',
+  信: 'assets/portraits/grandpa_ai.webp',
+  冒险家阿风: 'assets/portraits/afeng_ai.webp',
+  阿风: 'assets/portraits/afeng_ai.webp',
+  矿工老张: 'assets/portraits/miner_ai.webp',
+  老张: 'assets/portraits/miner_ai.webp',
+  花匠小梅: 'assets/portraits/xiaomei_ai.webp',
+  小梅: 'assets/portraits/xiaomei_ai.webp',
+  商店老板: 'assets/portraits/shopkeeper_ai.webp',
 };
 
 export class StoryDialogue {
@@ -179,7 +179,7 @@ export class StoryDialogue {
     const histBtn = document.createElement('button');
     Object.assign(histBtn.style, {
       position: 'absolute',
-      top: '16px',
+      top: 'calc(16px + env(safe-area-inset-top, 0px))',
       right: '104px',
       fontSize: '13px',
       padding: '6px 16px',
@@ -216,7 +216,7 @@ export class StoryDialogue {
     const skipBtn = document.createElement('button');
     Object.assign(skipBtn.style, {
       position: 'absolute',
-      top: '16px',
+      top: 'calc(16px + env(safe-area-inset-top, 0px))',
       right: '24px',
       fontSize: '13px',
       padding: '6px 16px',

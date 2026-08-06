@@ -27,7 +27,10 @@ import { play } from '../systems/AudioSystem';
 import { VoiceBank } from '../audio/VoiceBank';
 import { isMobileLayout } from '../config';
 
-const W = 1120;   // 场景宽度（比屏幕宽，可滚动）
+// 场景宽度：基准 1120（比 4:3 屏幕宽，可滚动）；屏幕适配升级后逻辑宽度随
+// 屏幕比例扩展（main.ts applyAdaptiveLogicalSize），超宽屏下世界同宽延伸，
+// 避免相机视野超出世界露出背景（玩家镜头始终完整）
+const W = Math.max(1120, typeof window !== 'undefined' ? window.innerWidth / window.innerHeight * 600 : 1120);
 const H = 600;
 const TILE = 16;
 

@@ -27,6 +27,8 @@ let typing = false;
 let typeTimer: number | null = null;
 let onComplete: (() => void) | null = null;
 let completed = false;
+/** 可选背景图 URL（为空则用默认暖色渐变） */
+let bgUrl: string | null = null;
 
 function ensureDom(): void {
   if (containerEl) return;
@@ -47,6 +49,15 @@ function ensureDom(): void {
     'background:radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%);' +
     'pointer-events:none;';
   containerEl.appendChild(vignette);
+
+  // 可选背景图（盖在渐变之上、暗角之下，保持文字可读；无图时保持透明）
+  const bgImg = document.createElement('div');
+  bgImg.id = 'memory-flashback-bg';
+  bgImg.style.cssText =
+    'position:absolute;top:0;right:0;bottom:0;left:0;' +
+    'background-size:cover;background-position:center;' +
+    'opacity:0;transition:opacity 1.2s ease;pointer-events:none;';
+  containerEl.appendChild(bgImg);
 
   // 场景描述区域
   sceneEl = document.createElement('div');
@@ -173,12 +184,19 @@ function close(): void {
 
   // 渐隐
   if (sceneEl) sceneEl.style.opacity = '0';
+  const bgEl = document.getElementById('memory-flashback-bg') as HTMLDivElement | null;
+  if (bgEl) bgEl.style.opacity = '0';
   if (containerEl) containerEl.style.opacity = '0';
 
   setTimeout(() => {
     if (containerEl) containerEl.style.display = 'none';
     if (sceneEl) sceneEl.style.opacity = '0';
     if (hintEl) hintEl.style.opacity = '0';
+    const bgEl2 = document.getElementById('memory-flashback-bg') as HTMLDivElement | null;
+    if (bgEl2) {
+      bgEl2.style.backgroundImage = '';
+      bgEl2.style.opacity = '0';
+    }
 
     // 清理事件监听
     document.removeEventListener('keydown', handleKey);
@@ -206,13 +224,28 @@ function handlePointer(e: PointerEvent): void {
  * 播放记忆闪回
  * @param flashbackLines 闪回对话行（speaker 留空即可）
  * @param callback 闪回结束回调
+ * @param backgroundImage 可选背景图 URL（如剧情插图）；不传则用默认暖色渐变
  */
 export function playMemoryFlashback(
   flashbackLines: DialogueLine[],
-  callback?: () => void
+  callback?: () => void,
+  backgroundImage?: string
 ): void {
   ensureDom();
   if (!containerEl || !sceneEl || !textEl || !hintEl) return;
+
+  // 背景图：传入则淡入显示，未传入则隐藏（保持默认渐变）
+  bgUrl = backgroundImage ?? null;
+  const bgEl = document.getElementById('memory-flashback-bg') as HTMLDivElement | null;
+  if (bgEl) {
+    if (bgUrl) {
+      bgEl.style.backgroundImage = `url("${bgUrl}")`;
+      bgEl.style.opacity = '1';
+    } else {
+      bgEl.style.backgroundImage = '';
+      bgEl.style.opacity = '0';
+    }
+  }
 
   // 重置状态
   lines = flashbackLines;

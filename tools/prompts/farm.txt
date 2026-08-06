@@ -1,0 +1,20 @@
+A 4x2 grid game tileset sheet, 8 large clearly-separated squares arranged as 4 columns by 2 rows. STRICT GRID RULES:
+- The sheet MUST be a clean 4 columns by 2 rows grid of 8 equal square regions
+- Each square region is a DIFFERENT tile type, clearly separated by a thick black border line
+- Do NOT blend two tile types in one square
+- Inside each square, draw many 16x16 pixel art game tiles of that one tile type
+- 16x16 pixel art, top-down view, flat pixel clusters, no gradients, no lighting, no shadows
+- limited palette (8-16 colors per tile), consistent color style, tiles must tile seamlessly
+- inspired by Stardew Valley / old-school 16-bit JRPG farming games
+
+Grid layout (row 1 top, row 2 bottom):
+row1 col1: grass
+row1 col2: dirt
+row1 col3: stone-wall
+row1 col4: water
+row2 col1: soil-tilled (plowed dark-brown furrow lines)
+row2 col2: wood-floor (horizontal wooden planks with plank seams)
+row2 col3: path (lighter packed-earth trail with subtle pebble speckles)
+row2 col4: flowers (grass base with scattered colorful flower clusters)
+
+Color palette: muted warm greens, earthy browns, gray stone, deep blue water, soft yellow accents. No neon colors.

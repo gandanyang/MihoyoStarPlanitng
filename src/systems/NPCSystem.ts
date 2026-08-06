@@ -21,6 +21,8 @@
 
 import { NPC, ScheduleEntry } from '../entities/NPC';
 import { getTime } from '../data/TimeSystem';
+import { getRevivalLevel } from '../data/FarmRestore';
+import { hasTriggered } from './EventManager';
 import { COLORS, type DialogueLine } from './StorySystem';
 import { isMobileLayout } from '../config';
 
@@ -39,7 +41,7 @@ const T = 16;
  * 各点均避开碰撞区（farm 木屋上墙 row12、town 石屋、forest 四角石簇）。
  */
 type Spot = { x: number; y: number };
-type NpcId = 'elder' | 'shopkeeper' | 'mystery' | 'miner' | 'gardener' | 'adventurer';
+type NpcId = 'elder' | 'shopkeeper' | 'mystery' | 'miner' | 'gardener' | 'adventurer' | 'carpenter';
 type SpotMap = Record<NpcId, Spot>;
 const SPOTS: { farm: SpotMap; town: SpotMap; forest: SpotMap; mine: SpotMap; elder_house: SpotMap } = {
   farm: {
@@ -49,6 +51,7 @@ const SPOTS: { farm: SpotMap; town: SpotMap; forest: SpotMap; mine: SpotMap; eld
     miner: { x: 18 * T + 8, y: 18 * T + 8 },
     gardener: { x: 3 * T + 8, y: 14 * T + 8 },
     adventurer: { x: 30 * T + 8, y: 7 * T + 8 },
+    carpenter: { x: 12 * T + 8, y: 23 * T + 8 },
   },
   town: {
     elder: { x: 13 * T + 8, y: 10 * T + 8 },
@@ -57,6 +60,7 @@ const SPOTS: { farm: SpotMap; town: SpotMap; forest: SpotMap; mine: SpotMap; eld
     miner: { x: 14 * T + 8, y: 12 * T + 8 },
     gardener: { x: 18 * T + 8, y: 10 * T + 8 },
     adventurer: { x: 12 * T + 8, y: 12 * T + 8 },
+    carpenter: { x: 10 * T + 8, y: 9 * T + 8 },
   },
   forest: {
     elder: { x: 13 * T + 8, y: 10 * T + 8 },
@@ -65,6 +69,7 @@ const SPOTS: { farm: SpotMap; town: SpotMap; forest: SpotMap; mine: SpotMap; eld
     miner: { x: 14 * T + 8, y: 12 * T + 8 },
     gardener: { x: 18 * T + 8, y: 8 * T + 8 },
     adventurer: { x: 12 * T + 8, y: 10 * T + 8 },
+    carpenter: { x: 9 * T + 8, y: 11 * T + 8 },
   },
   mine: {
     elder: { x: 8 * T + 8, y: 10 * T + 8 },
@@ -73,6 +78,7 @@ const SPOTS: { farm: SpotMap; town: SpotMap; forest: SpotMap; mine: SpotMap; eld
     miner: { x: 12 * T + 8, y: 10 * T + 8 },
     gardener: { x: 10 * T + 8, y: 8 * T + 8 },
     adventurer: { x: 6 * T + 8, y: 10 * T + 8 },
+    carpenter: { x: 7 * T + 8, y: 12 * T + 8 },
   },
   elder_house: {
     elder: { x: 5 * T + 8, y: 5 * T + 8 },
@@ -81,6 +87,7 @@ const SPOTS: { farm: SpotMap; town: SpotMap; forest: SpotMap; mine: SpotMap; eld
     miner: { x: 5 * T + 8, y: 5 * T + 8 },
     gardener: { x: 5 * T + 8, y: 5 * T + 8 },
     adventurer: { x: 5 * T + 8, y: 5 * T + 8 },
+    carpenter: { x: 5 * T + 8, y: 5 * T + 8 },
   },
 };
 
@@ -147,12 +154,22 @@ function buildSchedule(npcId: NpcId): ScheduleEntry[] {
       { time: '18:00', location: 'home', ...VIRTUAL_HOME_POSITION },
     ];
   }
-  // 冒险家阿风：晨起在家 → 早起森林探险 → 下午镇上讲见闻 → 晚归
+  // 阿风：晨起在家 → 早起森林探险 → 下午镇上讲见闻 → 晚归
   if (npcId === 'adventurer') {
     return [
       { time: '06:00', location: 'home', ...VIRTUAL_HOME_POSITION },
       { time: '08:00', location: 'forest', ...SPOTS.forest.adventurer },
       { time: '14:00', location: 'town', ...SPOTS.town.adventurer },
+      { time: '18:00', location: 'home', ...VIRTUAL_HOME_POSITION },
+    ];
+  }
+  // 木匠老周（FEATURE-041，Alpha 简化日程，制作人拍板）：
+  //   晨起在家 → 白天在老屋附近干木工活（sort_wood 复用整理动作）→ 晚归
+  //   不做复杂多时段作息，避免为"完整 NPC 系统"提前扩大范围
+  if (npcId === 'carpenter') {
+    return [
+      { time: '06:00', location: 'home', ...VIRTUAL_HOME_POSITION },
+      { time: '08:00', location: 'farm', ...SPOTS.farm.carpenter, action: 'sort_wood' },
       { time: '18:00', location: 'home', ...VIRTUAL_HOME_POSITION },
     ];
   }
@@ -230,16 +247,27 @@ const GARDENER_DIALOGUES: DialogueLine[] = [
   { speaker: '花匠小梅', color: '#a0d888', text: '（笑）你也感觉到了？' },
 ];
 
-/** 冒险家阿风：冒险与森林提示 */
+/** 阿风：冒险与森林提示 */
 const ADVENTURER_DIALOGUES: DialogueLine[] = [
-  { speaker: '冒险家阿风', color: '#88b8e8', text: '嘿！你就是新搬来的林澈吧？我叫阿风，这座岛的每个角落我都跑遍了。' },
-  { speaker: '冒险家阿风', color: '#88b8e8', text: '告诉你个秘密——后山深处有东西在发光，镇长神神秘秘的不肯说。' },
-  { speaker: '冒险家阿风', color: '#88b8e8', text: '想去探险的话，记得备足体力。后山可比看上去大得多！' },
-  { speaker: '冒险家阿风', color: '#88b8e8', text: '后山深处……有些东西，最好别惊醒。' },
+  { speaker: '阿风', color: '#88b8e8', text: '嘿！你就是新搬来的林澈吧？我叫阿风，这座岛的每个角落我都跑遍了。' },
+  { speaker: '阿风', color: '#88b8e8', text: '告诉你个秘密——后山深处有东西在发光，镇长神神秘秘的不肯说。' },
+  { speaker: '阿风', color: '#88b8e8', text: '想去探险的话，记得备足体力。后山可比看上去大得多！' },
+  { speaker: '阿风', color: '#88b8e8', text: '后山深处……有些东西，最好别惊醒。' },
   { speaker: '林澈', color: COLORS.linche, text: '（笑）你越这么说，我越想去看。' },
-  { speaker: '冒险家阿风', color: '#88b8e8', text: '嘿！你这小子，胆子不小啊！' },
+  { speaker: '阿风', color: '#88b8e8', text: '嘿！你这小子，胆子不小啊！' },
   { speaker: '林澈', color: COLORS.linche, text: '不是胆子大。只是觉得，既然来了这座岛，就该看看它藏着什么。' },
-  { speaker: '冒险家阿风', color: '#88b8e8', text: '说得对。有空来后山，我带你转转。' },
+  { speaker: '阿风', color: '#88b8e8', text: '说得对。有空来后山，我带你转转。' },
+];
+
+/** 木匠老周：常驻对白（FEATURE-041，方向稿待制作人定稿） */
+const CARPENTER_DIALOGUES: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（老周蹲在木料堆旁，用刨子一遍遍推平木板。他抬头看见林澈，点了下头，没说话。）' },
+  { speaker: '木匠老周', color: '#c89860', text: '……这屋子的木料，是你张罗来的？' },
+  { speaker: '林澈', color: COLORS.linche, text: '嗯。爷爷说，东西坏了就要修。' },
+  { speaker: '木匠老周', color: '#c89860', text: '（低头继续刨板，声音很轻）……这岛上，修东西的人，快绝了。' },
+  { speaker: '林澈', color: COLORS.linche, text: '现在不是回来了吗？' },
+  { speaker: '木匠老周', color: '#c89860', text: '（手上没停，嘴角动了一下）……是啊。' },
+  { speaker: '木匠老周', color: '#c89860', text: '屋瓦、门槛、窗框……有需要修的地方，喊我一声。' },
 ];
 
 // ============ v0.5.3 剧情密度：NPC 每日随机一句 ============
@@ -284,19 +312,27 @@ const NPC_DAILY_LINES: Record<string, DialogueLine[]> = {
     { speaker: '花匠小梅', color: '#a0d888', text: '以前爷爷经常带我们去看星星。' },
   ],
   adventurer: [
-    { speaker: '冒险家阿风', color: '#88b8e8', text: '后山最近有奇怪的声音，我可没说谎。' },
-    { speaker: '冒险家阿风', color: '#88b8e8', text: '我今天又发现一个没人去过的地方。' },
-    { speaker: '冒险家阿风', color: '#88b8e8', text: '明天想去北边看看，你去不？' },
-    { speaker: '冒险家阿风', color: '#88b8e8', text: '听说老张昨晚又喝多了，哈哈。' },
-    { speaker: '冒险家阿风', color: '#88b8e8', text: '这座岛比我想象的大，还有好多地方没去过。' },
-    { speaker: '冒险家阿风', color: '#88b8e8', text: '你要是去后山，记得带够体力。' },
-    { speaker: '冒险家阿风', color: '#88b8e8', text: '城里的星星是不是很少？' },
+    { speaker: '阿风', color: '#88b8e8', text: '后山最近有奇怪的声音，我可没说谎。' },
+    { speaker: '阿风', color: '#88b8e8', text: '我今天又发现一个没人去过的地方。' },
+    { speaker: '阿风', color: '#88b8e8', text: '明天想去北边看看，你去不？' },
+    { speaker: '阿风', color: '#88b8e8', text: '听说老张昨晚又喝多了，哈哈。' },
+    { speaker: '阿风', color: '#88b8e8', text: '这座岛比我想象的大，还有好多地方没去过。' },
+    { speaker: '阿风', color: '#88b8e8', text: '你要是去后山，记得带够体力。' },
+    { speaker: '阿风', color: '#88b8e8', text: '城里的星星是不是很少？' },
     // L4 风/灯/星三角彩蛋（灯意象，制作人拍板 2026-08-05；每日随机池一条，不强推，无配音）
-    { speaker: '冒险家阿风', color: '#88b8e8', text: '岛上的人说我闲不住，跟阵风似的。夏雅那丫头不一样——她像盏灯，走到哪儿，哪儿就亮堂。' },
+    { speaker: '阿风', color: '#88b8e8', text: '岛上的人说我闲不住，跟阵风似的。夏雅那丫头不一样——她像盏灯，走到哪儿，哪儿就亮堂。' },
     // NPC-01 生活化补强（2026-08-06）：冒险日志意象 + 自嘲式幽默（生活观察 > 网络梗）
-    { speaker: '冒险家阿风', color: '#88b8e8', text: '我有个习惯——走到哪儿记到哪儿。这本子都磨破边了，上面全是这座岛的角角落落。' },
-    { speaker: '冒险家阿风', color: '#88b8e8', text: '以前觉得跑得远才算冒险。后来发现，能把一个地方慢慢看明白，也挺了不起。' },
-    { speaker: '冒险家阿风', color: '#88b8e8', text: '走丢过吗？当然走过。地图画错了半边，在林子转了一下午——不过你别说，错路也能撞见好东西。' },
+    { speaker: '阿风', color: '#88b8e8', text: '我有个习惯——走到哪儿记到哪儿。这本子都磨破边了，上面全是这座岛的角角落落。' },
+    { speaker: '阿风', color: '#88b8e8', text: '以前觉得跑得远才算冒险。后来发现，能把一个地方慢慢看明白，也挺了不起。' },
+    { speaker: '阿风', color: '#88b8e8', text: '走丢过吗？当然走过。地图画错了半边，在林子转了一下午——不过你别说，错路也能撞见好东西。' },
+  ],
+  carpenter: [
+    { speaker: '木匠老周', color: '#c89860', text: '（拍了拍手中的木板）这块料不错，能打个好柜子。' },
+    { speaker: '木匠老周', color: '#c89860', text: '以前村里修东西，都找我。' },
+    { speaker: '木匠老周', color: '#c89860', text: '（抬头看了看天）今天风大，木头干得快。' },
+    { speaker: '木匠老周', color: '#c89860', text: '你爷爷在的时候，木工房每天都有响动。' },
+    { speaker: '木匠老周', color: '#c89860', text: '别小看一把刨子，够用一辈子。' },
+    { speaker: '木匠老周', color: '#c89860', text: '（沉默了一会儿）……有人回来，就还有救。' },
   ],
 };
 
@@ -322,19 +358,28 @@ export function getDailyNpcLine(npcId: string, day: number): DialogueLine[] | nu
   return [pool[idx]];
 }
 
-/** 六个 NPC（贴图已独立，不再复用） */
+/** 七个 NPC（木匠为 FEATURE-041 条件性角色，回归前不渲染） */
 const npcs: NPC[] = [
   new NPC('elder', '村长', '#d9c8a0', 'npc_elder', ELDER_DIALOGUES, buildSchedule('elder')),
   new NPC('shopkeeper', '商店老板', '#e0b060', 'npc_merchant', SHOPKEEPER_DIALOGUES, buildSchedule('shopkeeper')),
   new NPC('mystery', '神秘少女', '#c8a0e8', 'npc_girl', MYSTERY_DIALOGUES, buildSchedule('mystery')),
   new NPC('miner', '矿工老张', '#d8a050', 'npc_miner', MINER_DIALOGUES, buildSchedule('miner')),
   new NPC('gardener', '花匠小梅', '#a0d888', 'npc_gardener', GARDENER_DIALOGUES, buildSchedule('gardener')),
-  new NPC('adventurer', '冒险家阿风', '#88b8e8', 'npc_adventurer', ADVENTURER_DIALOGUES, buildSchedule('adventurer')),
+  new NPC('adventurer', '阿风', '#88b8e8', 'npc_adventurer', ADVENTURER_DIALOGUES, buildSchedule('adventurer')),
+  new NPC('carpenter', '木匠老周', '#c89860', 'npc_carpenter', CARPENTER_DIALOGUES, buildSchedule('carpenter')),
 ];
 
 /** 读取全部 NPC（只读列表） */
 export function getAllNPCs(): readonly NPC[] {
   return npcs;
+}
+
+/**
+ * FEATURE-041：木匠是否已回归（条件 = 复兴度 ≥ Lv1 且回归事件已触发）
+ * 回归前：不参与场景渲染 / 不可被找到；回归后：按日程常驻。
+ */
+export function isCarpenterReturned(): boolean {
+  return getRevivalLevel() >= 1 && hasTriggered('carpenter_returned');
 }
 
 /** v0.5.3 剧情密度 E6：观星夜后少女追加台词（只读） */
@@ -380,9 +425,13 @@ export function refreshSchedule(): void {
 /**
  * 获取当前应出现在指定场景的 NPC 列表
  * （供 MapScene create 时创建 sprite）
+ * FEATURE-041：木匠未回归时不参与渲染（回归后才按日程常驻）。
  */
 export function getNPCsForScene(sceneKey: string): NPC[] {
-  return npcs.filter((n) => n.currentLocation === sceneKey);
+  return npcs.filter((n) => {
+    if (n.id === 'carpenter' && !isCarpenterReturned()) return false;
+    return n.currentLocation === sceneKey;
+  });
 }
 
 /** 查询 NPC 当前是否可被玩家找到（B-1，制作人拍板 2026-08-03）
@@ -391,7 +440,9 @@ export function getNPCsForScene(sceneKey: string): NPC[] {
  */
 export function isNpcFindable(npcId: string): boolean {
   const npc = npcs.find((n) => n.id === npcId);
-  return !!npc && npc.currentLocation !== 'home';
+  if (!npc) return false;
+  if (npc.id === 'carpenter' && !isCarpenterReturned()) return false;
+  return npc.currentLocation !== 'home';
 }
 
 /**

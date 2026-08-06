@@ -44,6 +44,7 @@
 ### 工具脚本（tools/，50+ 个，先查再写）
 - 语音：`gen_voice.py`/`gen_mainline_voice.py`/`gen_xiya_minimax.py`/`minimax_tts.ts`/`fish_tts.ts`/`normalize_audio.py`/`trim_voice_leads.py`/`check_voicebank_match.py`
 - 出图：`gen_portrait_comfy.py`/`gpt_image_gen.mjs`（gpt-image）/`_tmp_comfyui.mjs`（ComfyUI 文生图）
+- **GPT tileset 标准化（2026-08-07 新增）**：`gpt_tileset_normalizer.py`（切块+量化+降采样，GPT 出图→16×16 game tileset 三步管线）+ `prompts/{farm,town,forest,mine,gate,house}.txt` + `prompts/GPT_TILESET_PROMPTS.md`
 - 音频处理：`compress_audio.py`/`check_f0.py`
 - 地图/资源生成：`gen_*_tileset.py`/`gen_map_assets.py`/`gen_crops.py` 等
 - 打包：`build_apk.py`/`install_apk.py`
@@ -70,6 +71,18 @@
 - **T2 开工门禁**：先输出「现有种田流程涉及文件清单 + 修改计划」，禁止直接开写。
 - **Demo 验收标准**：首次玩家 30 分钟内应获得——一次星空体验、一次农业循环、一次 NPC 情感反馈、一次世界变化。
 - **EventManager**：不再扩接口，新内容只做消费方。
+
+## 制作人拍板（2026-08-07 美术管线）
+
+- **GPT tileset 路线 = A → B**（2026-08-07 03:30）：不批量跑 6 场景，先把 A 工具（gpt_tileset_normalizer）做扎实，farm 达标后再复制生产线。
+- **A 工具 3 件事**：① 32×32 自动切块 ② 每块量化(256→12 色, MEDIANCUT, dither=NONE) ③ 32→16 NEAREST 降采样。
+- **GPT 提示词**：从 "pixel art tileset" 改为 "**game tileset / seamless / Tiled / limited palette**" + STRICT TILE RULES（no gradients/lighting, flat pixel clusters, 8-16 colors）。
+- **normalizer v1.1（2026-08-07 04:01 拍板，GPT Pixel Asset Pipeline 6 步）**：网格检测 → 网格线删除 → 色彩量化 → **调色板映射（锁定）** → 无缝边缘修复 → 16px 输出。调色板锚点：tools/star_island_palette.json（与脚本 tileset 主色一致）。
+- **不回退 farm**：farm_hq 是"AI 原料测试样"不是最终资产；最终资产 = GPT 原稿 + normalizer 标准化（可追溯/可重新生成/来源记录，美术规范 v3 双轨制）。
+- **不建议 8 tile 一张图**（正式版拆 Ground tiles + Object tiles）；Demo 阶段沿用 8 格基础 tileset。
+- **当前产物**：tmp/farm_tileset_v3.png（近黑 4.1%、无完整暗线、主色=锚点，质量最优）；**未覆盖 public/** 等制作人验收截图后裁决。
+- **后续顺序**：P0 farm_v3 验收 → P1 逐个复制管线 farm→town→forest→house→mine→gate → P2 Visual Benchmark Scene（林澈+小屋+农田+河+树+夏雅）。
+- **v1.2+ 候补**：自动 tile 分类（免 --map）、阴影方向归一、总调色板约束、Ground/Object tiles 拆分。
 
 ## 项目平台事实（2026-08-07 制作人澄清）
 - **横屏优先，暂不碰竖屏**：标题画面有"请旋转设备横屏游玩"提示，iOS 横屏 Home Indicator 安全区已适配；竖屏适配（BUG-007）明确延后到横屏稳定后。所有截图/验证用横屏视口（1024×768 级别）。

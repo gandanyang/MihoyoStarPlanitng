@@ -24,6 +24,7 @@ let onCloseCb: (() => void) | null = null;
 function closePanel(): void {
   if (!open) return;
   open = false;
+  closeFullscreen();
   if (panelEl) panelFadeOut(panelEl, 150);
   onCloseCb?.();
 }
@@ -68,18 +69,53 @@ function createDom(): void {
       handleImgError(target as HTMLImageElement);
     }
   }, true);
+  // 全屏查看：点击已解锁照片 → 打开全屏；再点击任意处退出
+  panelEl.addEventListener('click', (e) => {
+    const img = (e.target as HTMLElement).closest('img[data-photo-img="1"]') as HTMLImageElement | null;
+    if (img) {
+      e.stopPropagation();
+      openFullscreen(img.src, img.alt);
+    }
+  });
   const closeBtn = panelEl.querySelector('[data-action="close"]') as HTMLElement | null;
   closeBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
     closePanel();
   });
-  // Esc 关闭
+  // Esc 关闭（捕获阶段 + 阻止后续监听器）：
+  // 全屏开着 → 只关全屏、保留相簿；相簿开着 → 关相簿。
+  // 必须用捕获阶段，否则 main.ts 的 initPcEscapeHandler（冒泡阶段）会抢先
+  // handleBackButton() 把相簿整个关掉（f6 回归：一次 Esc 关掉全屏+相簿）。
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && open) {
-      e.preventDefault();
-      closePanel();
-    }
-  });
+    if (e.key !== 'Escape') return;
+    if (closeFullscreen()) { e.stopImmediatePropagation(); return; }
+    if (open) { e.preventDefault(); e.stopImmediatePropagation(); closePanel(); }
+  }, true);
+}
+
+/** 全屏查看遮罩（模块级单例，复用相簿同一 DOM 元素层级） */
+let fullscreenEl: HTMLDivElement | null = null;
+
+/** 打开全屏看图；再点一下或 Esc 退出 */
+function openFullscreen(src: string, alt: string): void {
+  if (!fullscreenEl) {
+    fullscreenEl = document.createElement('div');
+    fullscreenEl.style.cssText =
+      'position:fixed;top:0;right:0;bottom:0;left:0;display:flex;align-items:center;justify-content:center;' +
+      'background:rgba(0,0,0,0.92);z-index:225;cursor:pointer;user-select:none;-webkit-user-select:none;';
+    fullscreenEl.addEventListener('click', () => closeFullscreen());
+    document.body.appendChild(fullscreenEl);
+  }
+  fullscreenEl.innerHTML = `<img src="${src}" alt="${escapeHtml(alt)}"
+    style="max-width:96vw;max-height:96vh;object-fit:contain;border-radius:4px;box-shadow:0 0 40px rgba(0,0,0,0.8);">`;
+  fullscreenEl.style.display = 'flex';
+}
+
+/** 关闭全屏；返回是否确实关闭了 */
+function closeFullscreen(): boolean {
+  if (!fullscreenEl || fullscreenEl.style.display === 'none') return false;
+  fullscreenEl.style.display = 'none';
+  return true;
 }
 
 /** 单张照片卡片（解锁 / 未解锁两种态） */

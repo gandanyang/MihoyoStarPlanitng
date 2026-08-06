@@ -28,7 +28,8 @@ export type QuestObjective =
   | { type: 'buy_shop'; count: number }
   | { type: 'sell_shop'; count: number }
   | { type: 'mine'; count: number }
-  | { type: 'woodcut'; count: number };
+  | { type: 'woodcut'; count: number }
+  | { type: 'open_board'; count: number };
 
 /** 任务模板 */
 export interface DailyQuestTemplate {
@@ -84,13 +85,16 @@ const QUEST_POOL: DailyQuestTemplate[] = [
   { id: 'talk_shopkeeper', title: '光顾商店', desc: '与商店老板对话', objective: { type: 'talk_npc', npcId: 'shopkeeper', npcName: '商店老板' }, reward: 1 },
   { id: 'talk_miner', title: '矿工闲谈', desc: '与矿工老张对话', objective: { type: 'talk_npc', npcId: 'miner', npcName: '矿工老张' }, reward: 1 },
   { id: 'talk_gardener', title: '花匠私语', desc: '与花匠小梅对话', objective: { type: 'talk_npc', npcId: 'gardener', npcName: '花匠小梅' }, reward: 1 },
-  { id: 'talk_adventurer', title: '冒险传说', desc: '与冒险家阿风对话', objective: { type: 'talk_npc', npcId: 'adventurer', npcName: '冒险家阿风' }, reward: 1 },
+  { id: 'talk_adventurer', title: '冒险传说', desc: '与阿风对话', objective: { type: 'talk_npc', npcId: 'adventurer', npcName: '阿风' }, reward: 1 },
 
   // --- 商店类 ---
   { id: 'buy_1', title: '小小消费', desc: '在商店购买 1 件物品', objective: { type: 'buy_shop', count: 1 }, reward: 1 },
   { id: 'buy_3', title: '购物达人', desc: '在商店购买 3 件物品', objective: { type: 'buy_shop', count: 3 }, reward: 2 },
   { id: 'sell_3', title: '小本生意', desc: '在商店卖出 3 个作物', objective: { type: 'sell_shop', count: 3 }, reward: 2 },
   { id: 'sell_5', title: '贸易达人', desc: '在商店卖出 5 个作物', objective: { type: 'sell_shop', count: 5 }, reward: 3 },
+
+  // --- 需求板引导类（首次进小镇注入；打开需求板即完成，一次后不再投放） ---
+  { id: 'board_open_1', title: '小镇需求板', desc: hint('去小镇广场看看需求板（广场右侧，靠近按 [E] 查看）', '去小镇广场看看需求板（广场右侧，靠近点「交互」查看）'), objective: { type: 'open_board', count: 1 }, reward: 1 },
 ];
 
 // ============ 每日任务状态 ============
@@ -194,6 +198,24 @@ export function injectGuideQuests(): void {
   }
 }
 
+/** 复兴引导任务池（day2 清晨「让农场重新运转起来」）：收获/种植/清理（砍树映射） */
+const REVIVAL_QUEST_IDS = new Set(['harvest_any_5', 'plant_2', 'woodcut_2']);
+
+/**
+ * day2 清晨剧情后注入复兴引导任务（「岛屿的第一声回应」任务卡，制作人拍板复用引导任务机制）。
+ * 在 MapScene.tryFirstMorningSequence 对白结束后调用；已出现的不重复添加；面板总数保持 4。
+ */
+export function injectRevivalQuests(): void {
+  for (const t of QUEST_POOL) {
+    if (!REVIVAL_QUEST_IDS.has(t.id)) continue;
+    if (dailyQuests.some((q) => q.id === t.id)) continue;
+    dailyQuests.unshift(createInstance(t));
+  }
+  if (dailyQuests.length > 4) {
+    dailyQuests.length = 4;
+  }
+}
+
 /** 获取每日任务天数 */
 export function getDailyQuestDay(): number {
   return currentDay;
@@ -276,6 +298,29 @@ export function onWoodcut(): void {
       if (q.progress >= q.target) q.completed = true;
     }
   }
+}
+
+/** 通知打开需求板 */
+export function onOpenBoard(): void {
+  for (const q of dailyQuests) {
+    if (q.claimed || q.completed) continue;
+    if (q.objective.type === 'open_board') {
+      q.progress = Math.min(q.target, q.progress + 1);
+      if (q.progress >= q.target) q.completed = true;
+    }
+  }
+}
+
+/**
+ * 需求板引导任务（首次进小镇注入）：去小镇广场查看需求板。
+ * 已完成过（board_quest_done 已标记）则不投放；已存在于面板不重复添加。
+ */
+export function injectBoardGuideQuest(): void {
+  if (dailyQuests.some((q) => q.id === 'board_open_1')) return;
+  const tpl = QUEST_POOL.find((t) => t.id === 'board_open_1');
+  if (!tpl) return;
+  dailyQuests.unshift(createInstance(tpl));
+  if (dailyQuests.length > 4) dailyQuests.length = 4;
 }
 
 /** 通知与 NPC 对话 */

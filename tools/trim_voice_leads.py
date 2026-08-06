@@ -7,8 +7,8 @@
 正题在其后。本工具在第一个静音结束处切割，去掉回声段，保留正题。
 
 用法：
-  python tools/trim_voice_leads.py --dir public/audio/voice/xiya --dry-run
-  python tools/trim_voice_leads.py --dir public/audio/voice/xiya
+  python tools/trim_voice_leads.py --dir art_source/audio/voice/xiya --dry-run
+  python tools/trim_voice_leads.py --dir art_source/audio/voice/xiya
 """
 from __future__ import annotations
 

@@ -4,10 +4,11 @@
 =============================================
 纯 PIL 程序化绘制，复用 gen_sprite_assets.py 的调色板与绘制辅助（保持风格统一）。
 
-生成 6 张 PNG：
+生成 7 张 PNG：
   public/assets/sprites/npc_miner.png       矿工老张 idle down  (32x32)
   public/assets/sprites/npc_gardener.png    花匠小梅 idle down  (32x32)
   public/assets/sprites/npc_adventurer.png  冒险家阿飞 idle down (32x32)
+  public/assets/sprites/npc_carpenter.png   木匠老周 idle down  (32x32)
   public/assets/sprites/ore_stone.png       石头矿脉 (32x32)
   public/assets/sprites/ore_copper.png      铜矿脉   (32x32)
   public/assets/sprites/ore_iron.png        铁矿脉   (32x32)
@@ -102,6 +103,29 @@ class N:
     AV_SWORD = (192, 197, 207, 255)          # 剑鞘
     AV_SWORD_S = (150, 155, 168, 255)
     AV_GUARD = (212, 162, 62, 255)           # 剑柄
+
+    # —— 木匠老周：深棕短发(略白发) + 棕色工作围裙 + 工具腰包 + 木屑痕迹 ——
+    CP_HAIR = (120, 84, 56, 255)           # 深棕短发
+    CP_HAIR_MID = (142, 102, 68, 255)      # 发绺过渡
+    CP_HAIR_S = (94, 62, 40, 255)          # 发根阴影
+    CP_GRAY_HAIR = (200, 192, 178, 255)    # 略有白发（几缕）
+    CP_SHIRT = (216, 196, 168, 255)        # 米灰工装衬衫
+    CP_SHIRT_MID = (194, 174, 146, 255)
+    CP_SHIRT_S = (170, 150, 122, 255)
+    CP_COLLAR = (226, 208, 182, 255)
+    CP_APRON = (150, 100, 62, 255)         # 棕色工作围裙
+    CP_APRON_MID = (128, 84, 50, 255)
+    CP_APRON_S = (106, 68, 38, 255)
+    CP_APRON_STRIPE = (176, 126, 82, 255)  # 围裙浅条纹
+    CP_BELT = (88, 58, 34, 255)            # 工具腰带（深棕皮革）
+    CP_PANTS = (86, 82, 88, 255)           # 深灰蓝工装裤
+    CP_PANTS_S = (68, 64, 70, 255)
+    CP_BOOT = (78, 54, 38, 255)            # 深棕靴子
+    CP_BOOT_L = (100, 70, 48, 255)
+    CP_TOOL_LEATHER = (112, 80, 46, 255)   # 工具腰包（皮革）
+    CP_TOOL_METAL = (198, 202, 214, 255)   # 金属工具（锤头/刨刃）
+    CP_TOOL_WOOD = (170, 128, 74, 255)     # 工具木柄
+    CP_WOODCHIP = (216, 178, 118, 255)     # 木屑（衣上浅色点）
 
     # —— 矿脉（与 MineState.ts 现有颜色语义一致）——
     OR_STONE = (150, 150, 158, 255)
@@ -403,6 +427,131 @@ def npc_adventurer_frame_32() -> Image.Image:
 
 
 # ============================================================================
+# 木匠老周（idle down）：深棕短发 + 米灰工装衬衫 + 棕色工作围裙 + 工具腰包
+# 视觉方向（制作人 2026-08-07 拍板）：40~50 岁男性乡镇手艺人，温和沉默，
+# 不要白胡子老人 / 大斧头伐木工 / 欧美木匠形象。
+# ============================================================================
+def npc_carpenter_frame_32() -> Image.Image:
+    img = blank_sprite()
+
+    # —— 靴子 ——
+    rect(img, 9, 29, 14, 31, N.CP_BOOT)
+    hline(img, 9, 14, 29, N.CP_BOOT_L)
+    hline(img, 9, 14, 31, (40, 26, 16, 255))
+    rect(img, 17, 29, 22, 31, N.CP_BOOT)
+    hline(img, 17, 22, 29, N.CP_BOOT_L)
+    hline(img, 17, 22, 31, (40, 26, 16, 255))
+    px(img, 12, 31, (56, 38, 26, 255))
+    px(img, 19, 31, (56, 38, 26, 255))
+
+    # —— 深灰蓝工装裤 ——
+    rect(img, 10, 23, 14, 28, N.CP_PANTS)
+    vline(img, 10, 23, 28, N.CP_PANTS_S)
+    vline(img, 14, 23, 28, N.CP_PANTS_S)
+    rect(img, 17, 23, 21, 28, N.CP_PANTS)
+    vline(img, 17, 23, 28, N.CP_PANTS_S)
+    vline(img, 21, 23, 28, N.CP_PANTS_S)
+    hline(img, 10, 14, 28, N.CP_PANTS_S)
+    hline(img, 17, 21, 28, N.CP_PANTS_S)
+    # 裤中缝
+    for y in range(23, 29):
+        px(img, 12, y, N.CP_PANTS_S) if (y - 23) % 2 == 0 else None
+        px(img, 19, y, N.CP_PANTS_S) if (y - 23) % 2 == 1 else None
+
+    # —— 米灰工装衬衫 ——
+    rect(img, 7, 11, 24, 22, N.CP_SHIRT)
+    vline(img, 7, 11, 22, N.CP_SHIRT_S)
+    vline(img, 24, 11, 22, N.CP_SHIRT_S)
+    hline(img, 7, 24, 22, N.CP_SHIRT_S)
+    # 前襟开合（暗缝线）
+    for y in range(13, 21):
+        px(img, 15, y, N.CP_SHIRT_S) if y % 2 == 0 else px(img, 16, y, N.CP_SHIRT_S)
+    # 衣领
+    rect(img, 13, 11, 18, 12, N.CP_COLLAR)
+    px(img, 12, 11, N.CP_SHIRT_S)
+    px(img, 19, 11, N.CP_SHIRT_S)
+    # 左胸口袋（略倾斜，工具感）
+    box_outline(img, 9, 14, 13, 18, N.CP_SHIRT_S)
+    px(img, 11, 15, N.CP_SHIRT_MID)
+    px(img, 11, 17, N.CP_SHIRT_MID)
+
+    # —— 棕色工作围裙（覆盖胸前到大腿）——
+    rect(img, 10, 13, 21, 24, N.CP_APRON)
+    vline(img, 10, 13, 24, N.CP_APRON_S)
+    vline(img, 21, 13, 24, N.CP_APRON_S)
+    hline(img, 10, 21, 24, N.CP_APRON_S)
+    # 围裙竖向浅条纹（2 条）
+    for x in (13, 18):
+        for y in range(14, 24):
+            px(img, x, y, N.CP_APRON_STRIPE) if (y - 14) % 3 == 0 else None
+    # 围裙上沿小翻边
+    hline(img, 10, 21, 13, N.CP_APRON_MID)
+    # 围裙上的木屑痕迹（浅木色小点，示意干活沾了木屑）
+    for sx, sy in [(14, 16), (20, 18), (12, 20), (18, 22), (15, 19)]:
+        px(img, sx, sy, N.CP_WOODCHIP)
+
+    # —— 工具腰带（深棕皮革，压住围裙下沿）——
+    hline(img, 9, 22, 23, N.CP_BELT)
+    hline(img, 9, 22, 24, N.CP_BELT)
+
+    # —— 工具腰包 + 工具（右侧腰间，木匠身份识别）——
+    # 腰包（皮革小袋，挂在腰带上）
+    rect(img, 21, 20, 25, 23, N.CP_TOOL_LEATHER)
+    px(img, 22, 20, (88, 58, 34, 255))
+    px(img, 24, 20, (88, 58, 34, 255))
+    # 袋口封边
+    hline(img, 21, 25, 20, N.CP_TOOL_LEATHER)
+    # 露出的木柄（从腰包向上，斜插）
+    for step in range(4):
+        px(img, 23 - step, 18 + step, N.CP_TOOL_WOOD)
+    # 金属工具头（锤头，贴在腰包侧面）
+    rect(img, 25, 18, 26, 20, N.CP_TOOL_METAL)
+    px(img, 25, 21, N.CP_TOOL_METAL)
+    px(img, 26, 21, N.CP_TOOL_METAL)
+
+    # —— 手臂 ——
+    # 左臂（下垂，袖口卷起露手腕）
+    rect(img, 6, 13, 7, 20, N.CP_SHIRT)
+    vline(img, 6, 13, 20, N.CP_SHIRT_S)
+    rect(img, 6, 21, 7, 23, C.SKIN)
+    px(img, 6, 23, C.SKIN_SHADOW)
+    # 右臂（略前伸，扶工具）
+    rect(img, 24, 12, 25, 20, N.CP_SHIRT)
+    vline(img, 25, 12, 20, N.CP_SHIRT_S)
+    rect(img, 24, 21, 25, 23, C.SKIN)
+
+    # —— 头：深棕短发 + 略有白发 ——
+    draw_face_down_32(img, skin=C.SKIN, hair=N.CP_HAIR, hair_mid=N.CP_HAIR_MID, hair_s=N.CP_HAIR_S,
+                      eye_y=9, left_eye_x=12, right_eye_x=18,
+                      brow=True, nose=True, mouth=True, cheek=False)
+    # 脖子
+    rect(img, 13, 14, 18, 16, C.SKIN_SHADOW)
+
+    # 头顶短发（y 0-5，不戴帽，乡镇手艺人）
+    rect(img, 9, 0, 22, 1, N.CP_HAIR)
+    rect(img, 8, 2, 23, 3, N.CP_HAIR)
+    hline(img, 8, 23, 4, N.CP_HAIR_MID)
+    hline(img, 8, 23, 5, N.CP_HAIR_S)
+    # 短发侧沿
+    px(img, 7, 3, N.CP_HAIR_MID)
+    px(img, 24, 3, N.CP_HAIR_MID)
+    px(img, 7, 4, N.CP_HAIR_S)
+    px(img, 24, 4, N.CP_HAIR_S)
+    # 头顶略有白发（几缕灰白发绺，体现 40~50 岁）
+    px(img, 11, 0, N.CP_GRAY_HAIR)
+    px(img, 14, 0, N.CP_GRAY_HAIR)
+    px(img, 19, 0, N.CP_GRAY_HAIR)
+    px(img, 13, 2, N.CP_GRAY_HAIR)
+    px(img, 17, 2, N.CP_GRAY_HAIR)
+    # 鬓角略花白
+    px(img, 8, 6, N.CP_GRAY_HAIR)
+    px(img, 23, 6, N.CP_GRAY_HAIR)
+
+    add_outline(img, C.OUTLINE)
+    return img
+
+
+# ============================================================================
 # 矿脉贴图（32×32）
 # ============================================================================
 def _ore_base(img: Image.Image) -> None:
@@ -478,6 +627,7 @@ def main() -> None:
         ("npc_miner.png", npc_miner_frame_32(), "矿工老张 idle down"),
         ("npc_gardener.png", npc_gardener_frame_32(), "花匠小梅 idle down"),
         ("npc_adventurer.png", npc_adventurer_frame_32(), "冒险家阿飞 idle down"),
+        ("npc_carpenter.png", npc_carpenter_frame_32(), "木匠老周 idle down"),
         ("ore_stone.png", ore_stone_32(), "石头矿脉"),
         ("ore_copper.png", ore_copper_32(), "铜矿脉"),
         ("ore_iron.png", ore_iron_32(), "铁矿脉"),

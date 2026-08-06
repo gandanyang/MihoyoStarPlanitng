@@ -74,9 +74,10 @@ const FARM_CHECKS = `(() => {
     homePath: t(gLD, 6, 18), homeFlower: t(wLD, 10, 21),
     pondWater: t(wLD, 32, 20), pondBank: t(gLD, 30, 19), pondTop: t(wLD, 33, 18),
   };
-  // M1-2 动态氛围：花精灵 spritesheet 就绪 + 循环 tween 已注册（涟漪 3 + 花摆动 6 + 光斑 1）
+  // M1-2 动态氛围（2026-08-07 制作人反馈后：花草摆动动效已删，仅涟漪+光斑）
+  // 花精灵 spritesheet tiles_fs 不应再存在；循环 tween = 涟漪 3 + 光斑 1 ≥ 4
   result.ambience = {
-    flowerSheet: window.__game.textures.exists('tiles_fs'),
+    flowerSheetRemoved: !window.__game.textures.exists('tiles_fs'),
     tweenCount: s.tweens.getTweens().length,
   };
   return result;
@@ -178,10 +179,10 @@ async function run() {
       check('五区-水塘 水(32,20)=4/岸(30,19)=2/塘上花(33,18)=8',
         z.pondWater === 4 && z.pondBank === 2 && z.pondTop === 8,
         `水=${z.pondWater} 岸=${z.pondBank} 花=${z.pondTop}`);
-      // M1-2 动态氛围
-      check('氛围：花精灵 spritesheet "tiles_fs" 已就绪', d.ambience.flowerSheet === true,
-        `实际=${d.ambience.flowerSheet}`);
-      check('氛围：循环 tween 已注册（涟漪3+花6+光斑1≥10）', d.ambience.tweenCount >= 10,
+      // M1-2 动态氛围（花草摆动已删）
+      check('氛围：花精灵动效已移除（tiles_fs 不存在）', d.ambience.flowerSheetRemoved === true,
+        `实际=${d.ambience.flowerSheetRemoved}`);
+      check('氛围：循环 tween 达标（涟漪3+光斑1 ≥4）', d.ambience.tweenCount >= 4,
         `实际=${d.ambience.tweenCount}`);
     }
 

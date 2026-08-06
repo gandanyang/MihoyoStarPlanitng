@@ -3,8 +3,8 @@
  *
  * 验证目标（Level 2）：
  *  1. VoiceBank 映射准确：角色台词 → 对应 wav 资源请求（fetch + Web Audio，URL 带 antiIDM 时间戳）
- *  2. 归一化：带（笑）等前缀标注的行能命中语音（xiya/dawn_03.wav）
- *  3. 通配 speaker：少女（空 speaker）→ girl/forest_08.wav；HR（「」引号文本）→ system/hr_station_02.wav
+ *  2. 归一化：带（笑）等前缀标注的行能命中语音（xiya/dawn_03.ogg）
+ *  3. 通配 speaker：少女（空 speaker）→ girl/forest_08.ogg；HR（「」引号文本）→ system/hr_station_02.ogg
  *  4. 轮换：同一文本「嗯。」两个文件（harvest_02 / evening_04）都被请求
  *  5. 静默跳过：系统旁白行（（收起手机。））不发起语音请求
  *  6. 对话推进不阻塞（语音与对话 UI 解耦）
@@ -117,15 +117,15 @@ async function run() {
     console.log(`  请求到的语音资源（${urls.length}）：${urls.join(', ') || '<无>'}`);
 
     // 断言
-    ok('2. inner 内心独白 → linche/station_01.wav', urls.includes('linche/station_01.wav'), '五年了。');
-    ok('3. 普通台词 → linche/station_04.wav', urls.includes('linche/station_04.wav'));
-    ok('4. 夏雅 → xiya/xiya_01.wav', urls.includes('xiya/xiya_01.wav'));
-    ok('5. 归一化（笑）标注 → xiya/dawn_03.wav', urls.includes('xiya/dawn_03.wav'), '（笑）前缀应命中');
-    ok('6. 少女（空 speaker 通配）→ girl/forest_08.wav', urls.includes('girl/forest_08.wav'));
-    ok('7. HR（「」引号文本）→ system/hr_station_02.wav', urls.includes('system/hr_station_02.wav'));
-    ok('8. 「嗯。」轮换 → 两个文件都请求', urls.includes('linche/harvest_02.wav') && urls.includes('linche/evening_04.wav'),
-      urls.filter(f => f.startsWith('linche/') && f.endsWith('_0x.wav')).join(','));
-    ok('9. 爷爷的笔记 → grandpa/notes_01.wav', urls.includes('grandpa/notes_01.wav'));
+    ok('2. inner 内心独白 → linche/station_01.ogg', urls.includes('linche/station_01.ogg'), '五年了。');
+    ok('3. 普通台词 → linche/station_04.ogg', urls.includes('linche/station_04.ogg'));
+    ok('4. 夏雅 → xiya/xiya_01.ogg', urls.includes('xiya/xiya_01.ogg'));
+    ok('5. 归一化（笑）标注 → xiya/dawn_03.ogg', urls.includes('xiya/dawn_03.ogg'), '（笑）前缀应命中');
+    ok('6. 少女（空 speaker 通配）→ girl/forest_08.ogg', urls.includes('girl/forest_08.ogg'));
+    ok('7. HR（「」引号文本）→ system/hr_station_02.ogg', urls.includes('system/hr_station_02.ogg'));
+    ok('8. 「嗯。」轮换 → 两个文件都请求', urls.includes('linche/harvest_02.ogg') && urls.includes('linche/evening_04.ogg'),
+      urls.filter(f => f.startsWith('linche/') && f.endsWith('_0x.ogg')).join(','));
+    ok('9. 爷爷的笔记 → grandpa/notes_01.ogg', urls.includes('grandpa/notes_01.ogg'));
 
     const non200 = voiceReqs.filter(r => r.status !== 200 && r.status !== 206);
     ok('10. 全部语音资源请求 200/206（文件齐全；206=音频 Range 流式正常）', non200.length === 0,

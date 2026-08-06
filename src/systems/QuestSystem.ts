@@ -12,7 +12,9 @@
  */
 
 import { addXp } from '../data/FarmProgress';
-import { COLORS, ELDER_QUEST_DIALOGUE, SHARD_DELIVER_DIALOGUE, ELDER_WHY_FARM_DIALOGUE, type DialogueLine, getStoryStep, isTutorialDone, isObservatoryComplete } from './StorySystem';
+import { getTime } from '../data/TimeSystem';
+import { hasTriggered } from './EventManager';
+import { COLORS, ELDER_QUEST_DIALOGUE, ELDER_BUSY_DIALOGUE, ELDER_BUSY_SHORT_DIALOGUE, SHARD_DELIVER_DIALOGUE, ELDER_WHY_FARM_DIALOGUE, type DialogueLine, getStoryStep, isTutorialDone, isObservatoryComplete } from './StorySystem';
 
 /** 任务状态 */
 export type QuestState = 'not_started' | 'accepted' | 'collected' | 'completed';
@@ -53,6 +55,14 @@ export function deliverQuest(): void {
 }
 
 /**
+ * f7：第一天村长是否处于「暂时有事」状态（未接主线 + 当天为 day 1）
+ * 供 MapScene 决定是否在对话结束后发放启动资源大礼包
+ */
+export function isElderBusyDay(): boolean {
+  return questState === 'not_started' && getTime().day < 2;
+}
+
+/**
  * 根据任务状态返回村长对话剧本
  * 不同状态对话不同，接受/交付在获取剧本时自动推进状态
  * 返回 DialogueLine[] 供 StoryDialogue 全屏播放
@@ -61,6 +71,13 @@ export function getElderDialogue(): DialogueLine[] {
   console.log('[DEBUG] getElderDialogue called, questState=', questState);
   switch (questState) {
     case 'not_started':
+      // f7（2026-08-07 制作人拍板）：第一天村长「暂时有事」，主线委托推迟到第二天才接；
+      // 大礼包已给过 → 简短提醒，避免重复长篇
+      if (getTime().day < 2) {
+        return hasTriggered('elder_starter_gift')
+          ? ELDER_BUSY_SHORT_DIALOGUE
+          : ELDER_BUSY_DIALOGUE;
+      }
       acceptQuest();
       return ELDER_QUEST_DIALOGUE;
     case 'accepted':

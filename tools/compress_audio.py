@@ -15,8 +15,8 @@ import json
 from pathlib import Path
 
 # ── 配置 ──
-MUSIC_DIR = Path(__file__).parent.parent / 'public' / 'assets' / 'audio' / 'music'
-OUTPUT_DIR = MUSIC_DIR  # 直接输出到同目录，ogg 与 mp3 并存
+MUSIC_DIR = Path(__file__).parent.parent / 'art_source' / 'audio' / 'music_mp3'
+OUTPUT_DIR = Path(__file__).parent.parent / 'public' / 'assets' / 'audio' / 'music'
 
 # 压缩规则：文件名 → 目标 ogg 码率 (kbps)
 RULES = {
