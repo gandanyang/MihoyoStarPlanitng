@@ -265,8 +265,8 @@ const CARPENTER_DIALOGUES: DialogueLine[] = [
   { speaker: '木匠老周', color: '#c89860', text: '……这屋子的木料，是你张罗来的？' },
   { speaker: '林澈', color: COLORS.linche, text: '嗯。爷爷说，东西坏了就要修。' },
   { speaker: '木匠老周', color: '#c89860', text: '（低头继续刨板，声音很轻）……这岛上，修东西的人，快绝了。' },
-  { speaker: '林澈', color: COLORS.linche, text: '现在不是回来了吗？' },
-  { speaker: '木匠老周', color: '#c89860', text: '（手上没停，嘴角动了一下）……是啊。' },
+  { speaker: '林澈', color: COLORS.linche, text: '所以，你回来就是为了修这些东西？' },
+  { speaker: '木匠老周', color: '#c89860', text: '（停了一下）嗯。' },
   { speaker: '木匠老周', color: '#c89860', text: '屋瓦、门槛、窗框……有需要修的地方，喊我一声。' },
 ];
 
@@ -327,7 +327,7 @@ const NPC_DAILY_LINES: Record<string, DialogueLine[]> = {
     { speaker: '阿风', color: '#88b8e8', text: '走丢过吗？当然走过。地图画错了半边，在林子转了一下午——不过你别说，错路也能撞见好东西。' },
   ],
   carpenter: [
-    { speaker: '木匠老周', color: '#c89860', text: '（拍了拍手中的木板）这块料不错，能打个好柜子。' },
+    { speaker: '木匠老周', color: '#c89860', text: '这些木料不错，能用很久。' },
     { speaker: '木匠老周', color: '#c89860', text: '以前村里修东西，都找我。' },
     { speaker: '木匠老周', color: '#c89860', text: '（抬头看了看天）今天风大，木头干得快。' },
     { speaker: '木匠老周', color: '#c89860', text: '你爷爷在的时候，木工房每天都有响动。' },

@@ -330,14 +330,13 @@ export const FOREST_ROAD_RESTORED_DIALOGUE: DialogueLine[] = [
  *  角色定位：青禾镇留下来的手艺人，不善言辞但可靠；重建行动的第一个具体执行者。 */
 export const CARPENTER_RETURN_DIALOGUE: DialogueLine[] = [
   { speaker: '', color: COLORS.system, text: '（老屋修好的第二天清晨，一个背着工具箱的人站在门口，正打量新补好的屋瓦。）' },
-  { speaker: '林澈', color: COLORS.linche, text: '……你是？' },
-  { speaker: '木匠老周', color: '#c89860', text: '（没有回头，只抬手敲了敲窗框）……青禾镇的。我叫老周。' },
+  { speaker: '木匠老周', color: '#c89860', text: '……青禾镇的。我叫老周。' },
   { speaker: '木匠老周', color: '#c89860', text: '听说岛上又有人修房子了。' },
   { speaker: '林澈', color: COLORS.linche, text: '嗯。这屋子是我爷爷留下的。' },
-  { speaker: '木匠老周', color: '#c89860', text: '……你爷爷的房子，是他自己一砖一瓦搭起来的。' },
-  { speaker: '木匠老周', color: '#c89860', text: '（背起工具箱，往农场里走了两步）门轴、窗栓、田边的栅栏……有不顺手的地方，喊我。' },
-  { speaker: '林澈', color: COLORS.linche, text: '你是说，你要留下？' },
-  { speaker: '木匠老周', color: '#c89860', text: '（回头看了一眼，语气很平）有人开始修，就有人愿意留下。' },
+  { speaker: '木匠老周', color: '#c89860', text: '你爷爷的房子，是他一点一点修起来的。' },
+  { speaker: '木匠老周', color: '#c89860', text: '门轴、窗栓、田边的栅栏……有不顺手的地方，喊我。' },
+  { speaker: '林澈', color: COLORS.linche, text: '你是说……你要留下？' },
+  { speaker: '木匠老周', color: '#c89860', text: '有人开始修，就有人愿意留下。' },
   { speaker: '', color: COLORS.system, text: '（归星岛，多了一个会修东西的人。）' },
 ];
 

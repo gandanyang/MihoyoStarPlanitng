@@ -157,12 +157,12 @@ async function run() {
     check('G3 木匠对白池非空', (logic.carpenterDialogues ?? 0) > 0, `dialogues=${logic.carpenterDialogues}`);
 
     // B. 未回归场景（worldRestore.garden=true 无 oldHouse → Lv0 → 不触发、无木匠）
-    // day=1 同时预置 first_morning_response 已触发，排除 day2 清晨剧情等其他自动对白的干扰
+    // day=1 预置 first_morning_response + adventurer_welcome_back 已触发，排除 day2 清晨及阿风欢迎("你回来了！")等自动对白干扰
     await gotoFarm({
       ...BASE_SAVE,
       world: { ...BASE_SAVE.world, day: 1 },
       worldRestore: { garden: true },
-      gameState: { triggeredEvents: { first_morning_response: true } },
+      gameState: { triggeredEvents: { first_morning_response: true, adventurer_welcome_back: true } },
     }, 'revival-not-returned');
     await sleep(4000);
     let d = await page.evaluate(SNAP_RUNTIME);
@@ -174,7 +174,7 @@ async function run() {
     await gotoFarm({
       ...BASE_SAVE,
       worldRestore: { garden: true, oldHouse: true },
-      gameState: { triggeredEvents: { first_morning_response: true } },
+      gameState: { triggeredEvents: { first_morning_response: true, adventurer_welcome_back: true } },
     }, 'revival-return');
     await sleep(4500); // 演出 delayedCall(950ms 触发 + 2600ms 对白)
     d = await page.evaluate(SNAP_RUNTIME);
