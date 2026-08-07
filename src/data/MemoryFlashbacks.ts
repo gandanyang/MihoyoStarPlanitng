@@ -313,3 +313,79 @@ export const PLUM_BLOOM_FLASHBACK: DialogueLine[] = [
     text: '「花要人照顾，才会开得长久。」',
   },
 ];
+
+/** T3.5 商店老板「镇子热闹了」：入口对白（首次卖出作物后，白天与老板对话） */
+export const SHOP_CROP_ENTRY_DIALOGUE: DialogueLine[] = [
+  {
+    speaker: '商店老板',
+    color: '#8ac8a0',
+    text: '嘿，正想找你呢。',
+  },
+  {
+    speaker: '商店老板',
+    color: '#8ac8a0',
+    text: '你卖给我的那些作物，镇上的老主顾可喜欢了。',
+  },
+  {
+    speaker: '商店老板',
+    color: '#8ac8a0',
+    text: '说起来，村长那里也好久没有收到新鲜东西了。',
+  },
+  {
+    speaker: '商店老板',
+    color: '#8ac8a0',
+    text: '他一个人住，总说没什么需要。但有人记得他，他应该会开心。',
+  },
+  {
+    speaker: '商店老板',
+    color: '#8ac8a0',
+    text: '要不，帮我带一篮过去？',
+  },
+];
+
+/** T3.5 需要作物提示（数量不足时） */
+export const SHOP_CROP_NEED_DIALOGUE: DialogueLine[] = [
+  {
+    speaker: '商店老板',
+    color: '#8ac8a0',
+    text: '篮子里还空着呢，至少装 3 个作物再去吧。',
+  },
+];
+
+/** T3.5 交付作物（完成态） */
+export const SHOP_CROP_DONE_DIALOGUE: DialogueLine[] = [
+  {
+    speaker: '商店老板',
+    color: '#8ac8a0',
+    text: '这就对了。',
+  },
+  {
+    speaker: '商店老板',
+    color: '#8ac8a0',
+    text: '村长收到的话，应该会高兴。',
+  },
+  {
+    speaker: '商店老板',
+    color: '#8ac8a0',
+    text: '以前镇上很久没有这样的来往了。',
+  },
+];
+
+/** T3.5 记忆卡（制作人拍板文案） */
+export const SHOP_CROP_FLASHBACK: DialogueLine[] = [
+  {
+    speaker: '',
+    color: MEM_COLORS.scene,
+    text: '（你把一篮作物送到村长家，他看了很久，没有说话。）',
+  },
+  {
+    speaker: '村长',
+    color: MEM_COLORS.grandpa,
+    text: '……好多年了。还是第一次有人把刚收下来的东西送到我这里。',
+  },
+  {
+    speaker: '村长',
+    color: MEM_COLORS.grandpa,
+    text: '以前的青禾镇，也是这样。大家互相照应，日子就慢慢过起来了。',
+  },
+];

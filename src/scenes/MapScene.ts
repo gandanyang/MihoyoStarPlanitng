@@ -67,7 +67,7 @@ import { unlockPhoto, isPhotoUnlocked, PHOTO_DATABASE } from '../data/PhotoAlbum
 import { TouchControls, setActionButtonLabel, setWaitHandler } from '../systems/TouchControls';
 import { showMemoryMoment } from '../ui/MemoryMoment';
 import { playMemoryFlashback } from '../ui/MemoryFlashback';
-import { getShardFlashback, SHARD_PROGRESS_LINES, XIYA_LAMP_FLASHBACK, XIYA_GARDEN_FLASHBACK, ELDER_STAR_FLASHBACK, XIYA_PHOTO_FLASHBACK, PLUM_BLOOM_FLASHBACK } from '../data/MemoryFlashbacks';
+import { getShardFlashback, SHARD_PROGRESS_LINES, XIYA_LAMP_FLASHBACK, XIYA_GARDEN_FLASHBACK, ELDER_STAR_FLASHBACK, XIYA_PHOTO_FLASHBACK, PLUM_BLOOM_FLASHBACK, SHOP_CROP_ENTRY_DIALOGUE, SHOP_CROP_NEED_DIALOGUE, SHOP_CROP_DONE_DIALOGUE, SHOP_CROP_FLASHBACK } from '../data/MemoryFlashbacks';
 import { ShopPanel } from '../ui/ShopPanel';
 import { BackpackPanel } from '../ui/BackpackPanel';
 import { QuestPanel } from '../ui/QuestPanel';
@@ -141,6 +141,9 @@ export interface MapSceneFlags {
   /** T3 小梅「小梅花」：小镇花圃种花（环境变化，一次性入档） */
   sideGardenerPlumAsked?: boolean;
   sideGardenerPlumDone?: boolean;
+  /** T3.5 商店老板「镇子热闹了」：首次卖出作物后，白天对话触发（一次性入档） */
+  sideShopCropAsked?: boolean;
+  sideShopCropDone?: boolean;
 }
 
 /** 存档中保存的 MapScene flag（模块级暂存，apply 时写入，MapScene.create 时消费） */
@@ -391,6 +394,11 @@ export class MapScene extends Phaser.Scene {
   private sideMinerLampDone = false;
   private sideGardenerPlumAsked = false;
   private sideGardenerPlumDone = false;
+  // T3.5 商店老板「镇子热闹了」flags（随 mapFlags 存档，读档不重复触发）
+  private sideShopCropAsked = false;
+  private sideShopCropDone = false;
+  /** T3.5 前置：本会话是否卖出过作物（会话级，不入档；读档后需重新卖出才可触发） */
+  private shopSoldOnce = false;
   // T3 互动点视觉（场景级，destroy 时清理）
   private xiyaPhotoMark: Phaser.GameObjects.Text | null = null;
   private minerLampGroup: Phaser.GameObjects.Container | null = null;
@@ -466,6 +474,8 @@ export class MapScene extends Phaser.Scene {
       sideMinerLampDone: inst.sideMinerLampDone,
       sideGardenerPlumAsked: inst.sideGardenerPlumAsked,
       sideGardenerPlumDone: inst.sideGardenerPlumDone,
+      sideShopCropAsked: inst.sideShopCropAsked,
+      sideShopCropDone: inst.sideShopCropDone,
       dawnXiyaDay: inst.dawnXiyaDay,
       eveningXiyaDay: inst.eveningXiyaDay,
     };
@@ -499,6 +509,8 @@ export class MapScene extends Phaser.Scene {
       this.sideMinerLampDone = saved.sideMinerLampDone ?? false;
       this.sideGardenerPlumAsked = saved.sideGardenerPlumAsked ?? false;
       this.sideGardenerPlumDone = saved.sideGardenerPlumDone ?? false;
+      this.sideShopCropAsked = saved.sideShopCropAsked ?? false;
+      this.sideShopCropDone = saved.sideShopCropDone ?? false;
       this.dawnXiyaDay = saved.dawnXiyaDay ?? 0;
       this.eveningXiyaDay = saved.eveningXiyaDay ?? 0;
     }
@@ -552,7 +564,7 @@ export class MapScene extends Phaser.Scene {
     }
     // elder_house 与 house 共用 house_tileset.png（地图 JSON 即引用该图；无 elder_house_tileset.png）
     const tilesetName = this.mapKey === 'elder_house' ? 'house' : this.mapKey;
-    this.load.image('tiles', `assets/tiles/${tilesetName}_tileset.png?v=7`);
+    this.load.image('tiles', `assets/tiles/${tilesetName}_tileset.png?v=8`);
     // 玩家 spritesheet（4方向×4帧 run 动画，每帧 32x32，显示时缩放 0.5 与 16x16 瓦片协调）
     if (!this.textures.exists('player')) {
       this.load.spritesheet('player', 'assets/sprites/player.png', { frameWidth: 32, frameHeight: 32 });
@@ -699,7 +711,12 @@ export class MapScene extends Phaser.Scene {
     // 这里对小于相机视野的地图关闭 bounds+跟随，居中显示。
     const camViewW = this.cameras.main.width / this.cameras.main.zoom;
     const camViewH = this.cameras.main.height / this.cameras.main.zoom;
-    if (map.widthInPixels < camViewW || map.heightInPixels < camViewH) {
+    // 仅室内小地图（house/elder_house）走"关闭跟随+居中"分支：
+    // 屏幕适配后逻辑宽随视口扩展（如 1280×720 → 1067），户外地图（gate/town/forest/mine 均 480 宽）
+    // 会小于相机视野被误判为小地图，导致 stopFollow + 每帧硬锁镜头（WASD 变成移动镜头、玩家移动异常）。
+    // 户外地图一律走 setBounds + startFollow 正常跟随（相机 bounds 自动钳制，玩家可正常移动）。
+    const isIndoor = this.mapKey === 'house' || this.mapKey === 'elder_house';
+    if (isIndoor && (map.widthInPixels < camViewW || map.heightInPixels < camViewH)) {
       this.cameras.main.stopFollow();
       this.centerCameraOn(map.widthInPixels / 2, map.heightInPixels / 2);
       this.centerSmallMap = true;
@@ -973,7 +990,12 @@ export class MapScene extends Phaser.Scene {
         this.updateHUD();
       },
       // 卖出回调：通知每日任务
-      (count: number) => { onDQSellShop(count); this.updateDailyQuestPanel(); },
+      (count: number) => {
+        // T3.5 前置：卖出过作物即置位（会话级），商店老板「镇子热闹了」可触发
+        if (count > 0) this.shopSoldOnce = true;
+        onDQSellShop(count);
+        this.updateDailyQuestPanel();
+      },
     );
 
     // 背包面板（DOM 覆盖层；关包时清理 B 键残留；使用钥匙回调）
@@ -4006,7 +4028,11 @@ export class MapScene extends Phaser.Scene {
     if (npc.id === 'mystery' && isObservatoryComplete()) {
       lines = [...lines, ...getMysteryAfterObservatory()];
     }
-    this.storyDialogue.play(lines, () => {
+    // T3.5 商店老板「镇子热闹了」：首次卖出作物后，白天对话触发（一次性）
+    // 在欢迎剧本前注入入口对白（asked）或交付链（done），不抢走 shopkeeper 打开商店流程
+    const shopSide = this.buildShopSideDialogue();
+    const finalLines = shopSide ? [...shopSide, ...lines] : lines;
+    this.storyDialogue.play(finalLines, () => {
       // BUG-041：神秘少女对白末尾「消失在林间」→ 对话完成隐藏精灵（演出层，不存档）
       if (npc.id === 'mystery') {
         npc.setVanished();
@@ -4017,6 +4043,64 @@ export class MapScene extends Phaser.Scene {
         this.shopPanel.open();
       }
     });
+  }
+
+  /**
+   * T3.5 商店老板「镇子热闹了」事件链（build 模式，供 showDialogue 注入）：
+   * - 未卖出作物 / 夜间 / 已完成 → 返回 null（走正常商店剧本）
+   * - 首次（asked 未置位）→ 置位 asked + 返回入口对白
+   * - 已 asked 且作物≥3 → 聚合扣除 + 置位 done + 返回完成对白（含记忆卡回调）
+   * - 已 asked 且作物<3 → 返回提示对白（不扣不完成）
+   */
+  private buildShopSideDialogue(): DialogueLine[] | null {
+    if (this.sideShopCropDone) return null;
+    if (!this.shopSoldOnce) return null;
+    const hour = getTime().hour;
+    if (hour < 6 || hour >= 18) return null;
+
+    if (!this.sideShopCropAsked) {
+      this.sideShopCropAsked = true;
+      save({
+        x: this.player.x, y: this.player.y,
+        scene: this.mapKey, facing: this.player.facing,
+        dailyQuest: getDailyQuestSaveData(),
+      } as any);
+      return SHOP_CROP_ENTRY_DIALOGUE;
+    }
+
+    const FOOD_ITEMS = ['radish', 'tomato', 'corn', 'strawberry'] as const;
+    const have = FOOD_ITEMS.reduce((sum, id) => sum + getItemCount(id), 0);
+    if (have < 3) {
+      return SHOP_CROP_NEED_DIALOGUE;
+    }
+
+    let need = 3;
+    for (const id of FOOD_ITEMS) {
+      const c = getItemCount(id);
+      if (c <= 0) continue;
+      const take = Math.min(c, need);
+      addItem(id, -take);
+      need -= take;
+      if (need <= 0) break;
+    }
+    this.sideShopCropDone = true;
+    // 完成对白后接记忆卡（通过完成后回调链：对话结束 → 闪回 → 回响）
+    const doneLines = [...SHOP_CROP_DONE_DIALOGUE];
+    queueMicrotask(() => {
+      // 在 showDialogue 的完成回调之后触发闪回（延迟一拍，避免打断对白收尾）
+      setTimeout(() => {
+        playMemoryFlashback(SHOP_CROP_FLASHBACK, () => {
+          showMemoryMoment('店里的货，越来越有人买了。');
+          this.updateHUD();
+          save({
+            x: this.player.x, y: this.player.y,
+            scene: this.mapKey, facing: this.player.facing,
+            dailyQuest: getDailyQuestSaveData(),
+          } as any);
+        });
+      }, 250);
+    });
+    return doneLines;
   }
 
   /**
