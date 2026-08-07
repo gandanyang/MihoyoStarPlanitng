@@ -177,7 +177,7 @@ export function generateGuiXingRecord(): GuiXingRecord {
     narrative: '有些地方，并不是坏掉了。\n只是等待有人重新走进去。',
     entries: [
       ...(gardenRestored ? ['完成：爷爷的旧花园'] : []),
-      ...(oldTreeFound ? ['发现：爷爷种下的老树'] : []),
+      ...(oldTreeFound ? ['发现：守望古树'] : []),
     ],
   };
 

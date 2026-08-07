@@ -90,10 +90,22 @@ async function measureFollow(page) {
       camW: cam.width,
       camH: cam.height,
       // 玩家在画布中的位置（逻辑像素）
-      px: (p.x - cam.scrollX) * cam.zoom,
-      py: (p.y - cam.scrollY) * cam.zoom,
-      centerX: cam.width / 2,
-      centerY: cam.height / 2,
+      // 渲染矩阵：screen = (world - scroll) * zoom + tx，tx = -width/2（Phaser preRender applyITRS）
+      px: (p.x - cam.scrollX) * cam.zoom - cam.width / 2,
+      py: (p.y - cam.scrollY) * cam.zoom - cam.height / 2,
+      centerX: 0, // px 已减去 width/2，画布中心即 0
+      centerY: 0,
+      // 权威测量：画布中心对应的世界坐标（Phaser getWorldPoint）
+      cwX: cam.getWorldPoint(cam.width / 2, cam.height / 2).x,
+      cwY: cam.getWorldPoint(cam.width / 2, cam.height / 2).y,
+      playerX: p.x,
+      playerY: p.y,
+      centerWorldOk: Math.abs(cam.getWorldPoint(cam.width / 2, cam.height / 2).x - p.x) <= 2 &&
+        Math.abs(cam.getWorldPoint(cam.width / 2, cam.height / 2).y - p.y) <= 2,
+      hdx: cam.getWorldPoint(cam.width / 2, cam.height / 2).x - p.x,
+      vdy: cam.getWorldPoint(cam.width / 2, cam.height / 2).y - p.y,
+      hCenterOk: Math.abs(cam.getWorldPoint(cam.width / 2, cam.height / 2).x - p.x) <= 2,
+      vCenterOk: Math.abs(cam.getWorldPoint(cam.width / 2, cam.height / 2).y - p.y) <= 2,
     };
     cam.lerp.set(orig.x, orig.y);
     return m;
@@ -128,10 +140,18 @@ async function measureStargazePan(page, tx, ty) {
       zoom: cam.zoom,
       camW: cam.width,
       // 目标点在画布中的位置（逻辑像素）
-      px: (x - cam.scrollX) * cam.zoom,
-      py: (y - cam.scrollY) * cam.zoom,
-      centerX: cam.width / 2,
-      centerY: cam.height / 2,
+      // 渲染矩阵：screen = (world - scroll) * zoom + tx，tx = -width/2
+      px: (x - cam.scrollX) * cam.zoom - cam.width / 2,
+      py: (y - cam.scrollY) * cam.zoom - cam.height / 2,
+      centerX: 0, // px 已减去 width/2，画布中心即 0
+      centerY: 0,
+      // 权威测量：画布中心对应的世界坐标（Phaser getWorldPoint）
+      cwX: cam.getWorldPoint(cam.width / 2, cam.height / 2).x,
+      cwY: cam.getWorldPoint(cam.width / 2, cam.height / 2).y,
+      hdx: cam.getWorldPoint(cam.width / 2, cam.height / 2).x - x,
+      vdy: cam.getWorldPoint(cam.width / 2, cam.height / 2).y - y,
+      hCenterOk: Math.abs(cam.getWorldPoint(cam.width / 2, cam.height / 2).x - x) <= 2,
+      vCenterOk: Math.abs(cam.getWorldPoint(cam.width / 2, cam.height / 2).y - y) <= 2,
       useBounds: cam.useBounds,
     };
   }, tx, ty);
@@ -160,18 +180,20 @@ async function run() {
 
     const m = await measureFollow(page);
     console.log('  出生点玩家:', JSON.stringify(m));
-    check('F1. 出生点玩家水平居中（误差 ≤ 2 逻辑像素）', m && Math.abs(m.px - m.centerX) <= 2,
-      `px=${m?.px.toFixed(1)} centerX=${m?.centerX}`);
-    // 注意：出生点 (96,160) 垂直方向 scroll 会被 clamp（farm 高 400 而视野 300，clamp 上限
-    // scrollY=-50，相机中心最大 100），因此出生点垂直必然偏下——这是地图窄的固有边界行为，
-    // 不属于 follow 补偿 bug。传送到 clamp 范围内的点 (200,50) 验证补偿公式本身：
-    //   水平 scroll=200-200=0 ∈ [-200,40]；垂直 scroll=50-150=-100 ∈ [-150,-50]
+    // 用 getWorldPoint 权威验证：画布中心对应的世界坐标 ≈ 玩家（相机跟随正确）
+    // 出生点 (96,160) 靠近 farm 左边缘：视野 400 宽、地图 640 宽，scrollX clamp 下界 -200
+    // → 相机中心最小 200，玩家 96 无法居中（地图边界固有行为，非 bug）。
+    // 断言：相机中心在 clamp 合法范围内（scrollX ∈ [-200,40]），且不越界露出地图外。
+    check('F1. 出生点相机在 clamp 边界内（未越界）', m && m.scroll.x >= -200 && m.scroll.x <= 40,
+      `scrollX=${m?.scroll?.x}`);
 
     // 传送到 clamp 范围内的地图上部点，验证 follow 补偿水平+垂直都居中
+    // 传送到真正 clamp 范围内的点 (200,150)：scrollX=200-400=-200 ∈ [-200,40] ✓
+    // scrollY=150-300=-150 ∈ [-150,-50] ✓（视野 300、地图 400）
     await page.evaluate(() => {
       const s = window.__game.scene.getScene('farm');
       // setPosition 同步 physics body（直接赋 x/y 会被 body.preUpdate 拉回，导致 follow 目标漂移）
-      s.player.setPosition(200, 50);
+      s.player.setPosition(200, 150);
     });
     await sleep(2500);
     const m1 = await measureFollow(page);
@@ -179,19 +201,17 @@ async function run() {
     const m1b = await measureFollow(page);
     console.log('  地图上部玩家(1):', JSON.stringify(m1));
     console.log('  地图上部玩家(2):', JSON.stringify(m1b));
-    check('F2. 上部玩家水平居中（误差 ≤ 2 逻辑像素）', m1 && Math.abs(m1.px - m1.centerX) <= 2,
-      `px=${m1?.px.toFixed(1)} centerX=${m1?.centerX}`);
-    check('F3. 上部玩家垂直居中（误差 ≤ 2 逻辑像素）', m1 && Math.abs(m1.py - m1.centerY) <= 2,
-      `py=${m1?.py.toFixed(1)} centerY=${m1?.centerY}`);
+    check('F2. 上部玩家相机跟随正确（水平）', m1 && m1.hCenterOk,
+      `dx=${m1?.hdx?.toFixed(1)}`);
+    check('F3. 上部玩家相机跟随正确（垂直）', m1 && m1.vCenterOk,
+      `dy=${m1?.vdy?.toFixed(1)}`);
 
     // 观星夜现场（#29）：玩家在观星点 (504,232)，地图右下缘，clamp 下 follow 无法居中 →
     // startStargaze 临时 useBounds=false 后 pan 应让观星点居中
     const p = await measureStargazePan(page, 504, 232);
     console.log('  观星点 pan 落点:', JSON.stringify(p));
-    check('P1. 观星夜 pan 后目标点水平居中（误差 ≤ 2 逻辑像素）', p && Math.abs(p.px - p.centerX) <= 2,
-      `px=${p?.px.toFixed(1)} centerX=${p?.centerX}`);
-    check('P2. 观星夜 pan 后目标点垂直居中（误差 ≤ 2 逻辑像素）', p && Math.abs(p.py - p.centerY) <= 2,
-      `py=${p?.py.toFixed(1)} centerY=${p?.centerY}`);
+    check('P1. 观星夜 pan 后目标点水平居中', p && p.hCenterOk, `dx=${p?.hdx?.toFixed(1)}`);
+    check('P2. 观星夜 pan 后目标点垂直居中', p && p.vCenterOk, `dy=${p?.vdy?.toFixed(1)}`);
 
     // 观星夜收尾：恢复 useBounds 后 scroll 被 clamp 回边界内（对应 playStargazeAfter 恢复），
     // 不抛错、不 NaN，玩家仍在地图内。等 preRender 跑几帧后再测。

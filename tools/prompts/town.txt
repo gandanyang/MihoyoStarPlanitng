@@ -9,8 +9,10 @@
 - inspired by Stardew Valley / old-school 16-bit JRPG farming games
 - ALL tiles separated by visible 1-pixel grid lines for clarity
 
-Layout: 8 columns x 2 rows of sub-regions, each sub-region 256x256 pixels.
-[Top row of 8 sub-regions]: grass, dirt, stone-wall, water, soil-tilled, wood-floor, path, flowers
-[Bottom row of 8 sub-regions]: roof-shingle, wall-wood, door-wood, window-glass, well-stone, fence-wood, signpost, bush-leaf
+Layout: 4 columns x 4 rows of sub-regions, each sub-region 256x256 pixels, total 1024x1024.
+Row 1 (top): grass, dirt, stone-wall, water
+Row 2: soil-tilled, wood-floor, path, flowers
+Row 3: roof-shingle, wall-wood, door-wood, window-glass
+Row 4 (bottom): well-stone, fence-wood, signpost, bush-leaf
 
 Color palette: warm wood browns, gray stone, terracotta roofs, soft green foliage. Same greens as farm tileset.

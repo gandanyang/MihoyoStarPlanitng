@@ -2,7 +2,7 @@
  * 探针 — 手机端室内地图居中（f1：室内地图未居中）
  *
  * 验证目标（Level 2）：
- *  1. 进入 house（室内）→ centerSmallMap=true（关闭 bounds+跟随，改每帧居中）
+ *  1. 进入 house（室内）→ centerSmallMap=true（关闭 bounds+跟随，相机固定地图中心）
  *  2. 相机视口中心世界坐标 ≈ 玩家坐标（centerOn 每帧生效，非贴左上角）
  *  3. 玩家移动后相机中心跟随玩家（持续保持居中）
  *  4. 大场景（farm）不受影响 → centerSmallMap=false，正常 bounds+跟随
@@ -54,13 +54,14 @@ async function run() {
     });
     await sleep(2000);
 
-    // 读取相机/玩家状态：相机中心世界坐标 = scroll + (displayWidth/2)/zoom
+    // 读取相机/玩家状态：相机中心世界坐标 = scroll + width/2（Phaser preRender midPoint 公式，
+    // width 为逻辑宽不除 zoom；旧公式多除 zoom 导致断言与实际渲染不符，2026-08-07 修正）
     const readCam = () => page.evaluate(() => {
       const s = window.__game.scene.getScene('house');
       if (!s?.player) return null;
       const cam = s.cameras.main;
-      const cx = cam.scrollX + (cam.width / 2) / cam.zoom;
-      const cy = cam.scrollY + (cam.height / 2) / cam.zoom;
+      const cx = cam.scrollX + cam.width / 2;
+      const cy = cam.scrollY + cam.height / 2;
       return {
         centerSmallMap: s.centerSmallMap === true,
         zoom: cam.zoom,
@@ -76,24 +77,24 @@ async function run() {
     const st = await readCam();
     check('1. house 室内 centerSmallMap 已开启', st?.centerSmallMap === true, `centerSmallMap=${st?.centerSmallMap}`);
     check('2. zoom2 生效', st?.zoom === 2, `zoom=${st?.zoom}`);
-    const dx = Math.abs((st?.camCenterX ?? 0) - (st?.playerX ?? 0));
-    const dy = Math.abs((st?.camCenterY ?? 0) - (st?.playerY ?? 0));
-    check('3. 相机中心 = 玩家位置（每帧居中，不贴角）', dx <= 2 && dy <= 2,
-      `camCenter=(${st?.camCenterX.toFixed?.(1)},${st?.camCenterY.toFixed?.(1)}) player=(${st?.playerX},${st?.playerY}) d=(${dx.toFixed(1)},${dy.toFixed(1)})`);
+    // 相机固定在地图中心（house 320×240 → 中心 160,120）；玩家在地图内活动不会出视野，
+    // 跟随反而会让画面随玩家滚动（WASD 变成"移动镜头"，2026-08-07 修复）。
+    const centerOK = Math.abs((st?.camCenterX ?? 0) - 160) <= 2 && Math.abs((st?.camCenterY ?? 0) - 120) <= 2;
+    check('3. 相机中心 = 地图中心（固定居中，不贴角）', centerOK,
+      `camCenter=(${st?.camCenterX.toFixed?.(1)},${st?.camCenterY.toFixed?.(1)}) 期望地图中心(160,120)`);
     check('3b. 相机 scroll 为负值（地图小于视口时的正常居中偏移）', (st?.scrollX ?? 0) < 0 && (st?.scrollY ?? 0) < 0,
       `scroll=(${st?.scrollX},${st?.scrollY})`);
 
-    // 4. 玩家移动后相机中心跟随（每帧 centerOn）
+    // 4. 玩家移动后相机中心仍固定在地图中心（不跟随）
     await page.evaluate(() => {
       const s = window.__game.scene.getScene('house');
       if (s?.player) { s.player.x += 30; s.player.y += 20; }
     });
     await sleep(500);
     const st2 = await readCam();
-    const dx2 = Math.abs((st2?.camCenterX ?? 0) - (st2?.playerX ?? 0));
-    const dy2 = Math.abs((st2?.camCenterY ?? 0) - (st2?.playerY ?? 0));
-    check('4. 玩家移动后相机仍居中', dx2 <= 2 && dy2 <= 2,
-      `camCenter=(${st2?.camCenterX.toFixed?.(1)},${st2?.camCenterY.toFixed?.(1)}) player=(${st2?.playerX},${st2?.playerY}) d=(${dx2.toFixed(1)},${dy2.toFixed(1)})`);
+    const center2OK = Math.abs((st2?.camCenterX ?? 0) - 160) <= 2 && Math.abs((st2?.camCenterY ?? 0) - 120) <= 2;
+    check('4. 玩家移动后相机仍固定地图中心', center2OK,
+      `camCenter=(${st2?.camCenterX.toFixed?.(1)},${st2?.camCenterY.toFixed?.(1)}) player=(${st2?.playerX},${st2?.playerY})`);
 
     // ---------- 5. farm 大场景不受影响 ----------
     await page.evaluate(() => {

@@ -317,30 +317,29 @@ def run_single_mimo(
     # 2. 输出父目录准备（21）
     ensure_dir(output.parent)
 
-    # 3. 准备请求
+    # 3. 准备请求：MiMo v1.1.2 服务端 /api/tts/voice-clone 期望 JSON body 里的
+    #    audioFile（data URL base64 音频）或 presetId（预设ID），不是 multipart 文件上传。
     base = mimo_base_url(port) + MIMO_VOICE_CLONE_PATH
-    ref_bytes = ref_audio.read_bytes()
-    ref_mime = "audio/mpeg" if ref_audio.suffix.lower() != ".wav" else "audio/wav"
+    data_url, _ = _file_to_base64_data_url(ref_audio)
 
-    fields: dict[str, str] = {"text": text}
+    payload: dict[str, str] = {"text": text, "audioFile": data_url}
     if api_key:
-        fields["apiKey"] = api_key
+        payload["apiKey"] = api_key
     if speed and abs(speed - 1.0) > 1e-6:
-        fields["speed"] = f"{speed:.2f}"
+        payload["speed"] = f"{speed:.2f}"
     if user_message:
-        fields["userMessage"] = user_message
-    files = {"audioFile": (ref_audio.name, ref_bytes, ref_mime)}
-
-    body, content_type = _encode_multipart_form(fields, files)
+        payload["userMessage"] = user_message
+    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    content_type = "application/json"
 
     if dry_run:
-        preview_b64_sample = base64.b64encode(ref_bytes[:32]).decode("ascii")
+        preview_b64_sample = base64.b64encode(ref_audio.read_bytes()[:32]).decode("ascii")
         log(f"任务 [{task_id}] MiMo DRY-RUN 不执行",
             f"POST {base}\n"
             f"Content-Type: {content_type}\n"
             f"body 总大小: {len(body):,} bytes\n"
-            f"fields: {list(fields.keys())}\n"
-            f"file: {ref_audio.name} ({len(ref_bytes):,} bytes, {ref_mime}, base64前16字样本: {preview_b64_sample})")
+            f"fields: {list(payload.keys())}\n"
+            f"audioFile: {ref_audio.name} ({ref_audio.stat().st_size:,} bytes, data URL 前缀: {data_url[:40]}…, base64前16字样本: {preview_b64_sample})")
         return True, "dry-run 成功"
 
     # 4. 发送请求（MiMo 单条一般 3~15s，给 90s 超时防止卡死）

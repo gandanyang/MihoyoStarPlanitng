@@ -1,0 +1,23 @@
+[
+  {
+    "file": "adv_07.wav",
+    "original_loudness": null,
+    "normalized_loudness": null,
+    "adjustment": null,
+    "status": "failed"
+  },
+  {
+    "file": "adv_08.wav",
+    "original_loudness": null,
+    "normalized_loudness": null,
+    "adjustment": null,
+    "status": "failed"
+  },
+  {
+    "file": "adv_09.wav",
+    "original_loudness": null,
+    "normalized_loudness": null,
+    "adjustment": null,
+    "status": "failed"
+  }
+]

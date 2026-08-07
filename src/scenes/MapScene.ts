@@ -433,7 +433,7 @@ export class MapScene extends Phaser.Scene {
   } | null = null;
   // 自动农业机器人视觉（v0.6 庄园自动化 MVP：id → 机器人容器）
   private robotVisuals: Map<string, Phaser.GameObjects.Container> = new Map();
-  // 后山老树（爷爷种的树，核心意象）
+  // 后山老树（守望古树，核心意象）
   private oldTree: Phaser.GameObjects.Container | null = null;
   private oldTreePos: { x: number; y: number } = { x: 0, y: 0 };
   private oldTreeInteractHint: HTMLDivElement | null = null;
@@ -631,6 +631,10 @@ export class MapScene extends Phaser.Scene {
     if (this.mapKey === 'house' || this.mapKey === 'farm') {
       this.collectBedTiles(map);
     }
+    // house 场景：床铺格叠加程序化绘制的床（gid9 是屋顶瓦片，玩家无法一眼认出是床）
+    if (this.mapKey === 'house') {
+      this.setupHouseBed();
+    }
     let tileset = map.addTilesetImage('placeholder', 'tiles');
     if (!tileset) {
       // 兜底：tileset 纹理加载失败时用程序生成的占位瓦片，避免整个场景黑屏
@@ -711,25 +715,27 @@ export class MapScene extends Phaser.Scene {
     // 这里对小于相机视野的地图关闭 bounds+跟随，居中显示。
     const camViewW = this.cameras.main.width / this.cameras.main.zoom;
     const camViewH = this.cameras.main.height / this.cameras.main.zoom;
-    // 仅室内小地图（house/elder_house）走"关闭跟随+居中"分支：
-    // 屏幕适配后逻辑宽随视口扩展（如 1280×720 → 1067），户外地图（gate/town/forest/mine 均 480 宽）
-    // 会小于相机视野被误判为小地图，导致 stopFollow + 每帧硬锁镜头（WASD 变成移动镜头、玩家移动异常）。
-    // 户外地图一律走 setBounds + startFollow 正常跟随（相机 bounds 自动钳制，玩家可正常移动）。
-    const isIndoor = this.mapKey === 'house' || this.mapKey === 'elder_house';
-    if (isIndoor && (map.widthInPixels < camViewW || map.heightInPixels < camViewH)) {
+    // 相机跟随策略（屏幕适配后逻辑宽随视口扩展，如 1280×720 → 1067，视野 533）：
+    // - 地图大于视野（farm 640×400）：setBounds + startFollow 正常跟随（玩家始终居中，边界钳制）
+    // - 地图小于视野（gate/town/forest/mine 480×320、house/elder_house 320×240）：
+    //     * 户外小地图：startFollow 跟随玩家（镜头跟着主角），**不 setBounds**——setBounds 在
+    //       视野大于地图时 clamp 异常会把相机推出地图边界（玩家出屏/画面偏移）。
+    //     * 室内（house/elder_house）：固定居中（小房间整间可见，跟随无意义）。
+    //   offset 必须为 0：Phaser scroll = follow.x - width/2，渲染 /zoom 后玩家自然居中，
+    //   非零 offset 会破坏居中（玩家偏到画布边缘）。
+    const isIndoorSmall = (this.mapKey === 'house' || this.mapKey === 'elder_house') &&
+      (map.widthInPixels < camViewW || map.heightInPixels < camViewH);
+    if (isIndoorSmall) {
       this.cameras.main.stopFollow();
       this.centerCameraOn(map.widthInPixels / 2, map.heightInPixels / 2);
       this.centerSmallMap = true;
     } else {
-      this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
-      // follow 无 zoom 因子（scroll = 玩家 - 视口宽/2，见 BaseCamera.preRender），zoom=2 下玩家会
-      // 显示在画布右/下缘（户外 follow 失真，观星夜 #29 同源）。用 followOffset 反向补偿：
-      // offset = width/2/zoom - width/2（负值），使 scroll = 玩家 - width/2/zoom，玩家真正居中。
-      const cam = this.cameras.main;
-      const offX = cam.width / 2 / cam.zoom - cam.width / 2;
-      const offY = cam.height / 2 / cam.zoom - cam.height / 2;
-      this.cameras.main.startFollow(this.player, true, 0.1, 0.1, offX, offY);
+      this.cameras.main.startFollow(this.player, true, 0.1, 0.1, 0, 0);
       this.centerSmallMap = false;
+      // 仅地图大于视野时启用边界钳制（视野 > 地图时 setBounds 会 clamp 异常）
+      if (map.widthInPixels >= camViewW && map.heightInPixels >= camViewH) {
+        this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
+      }
     }
 
     // DOM HUD 覆盖层（扛 zoom + scrollFactor 兼容问题，和 ShopPanel 一样走 DOM）
@@ -1103,8 +1109,12 @@ export class MapScene extends Phaser.Scene {
    */
   private centerCameraOn(wx: number, wy: number): void {
     const cam = this.cameras.main;
-    cam.scrollX = wx - cam.width / 2 / cam.zoom;
-    cam.scrollY = wy - cam.height / 2 / cam.zoom;
+    // Phaser preRender: 相机中心世界坐标 midPoint = scroll + width/2（width 为逻辑宽，不除 zoom）。
+    // 要让世界点 (wx,wy) 位于屏幕中心 → scroll = wx - width/2。
+    // 旧公式 wx - width/2/zoom 会多减一个 zoom 因子，相机中心偏到 wx+width/2*(1-1/zoom)，
+    // 室内画面整体偏左上（2026-08-07 修复）。
+    cam.scrollX = wx - cam.width / 2;
+    cam.scrollY = wy - cam.height / 2;
   }
 
   /**
@@ -1129,10 +1139,10 @@ export class MapScene extends Phaser.Scene {
       return;
     }
 
-    // 小地图（室内）：不跟随玩家，持续保持居中（玩家只在小地图内活动，不会出视野）
-    if (this.centerSmallMap && this.player) {
-      this.centerCameraOn(this.player.x, this.player.y);
-    }
+    // 小地图（地图小于相机视野）：相机已在地图中心固定居中（create 时设置），
+    // 玩家在地图内活动不会出视野，无需每帧跟随——跟随反而会让画面随玩家滚动
+    // （WASD 变成"移动镜头"）。centerSmallMap 保留为状态标记（探针 probe-indoor-center 读取）。
+    void this.centerSmallMap;
 
     // 相簿解锁反馈：对话/闪回结束后再弹出（避免被全屏演出盖住）
     this.maybeShowPhotoUnlockToast();
@@ -2089,7 +2099,7 @@ export class MapScene extends Phaser.Scene {
   }
 
   /**
-   * 后山老树（爷爷种的树，核心意象）
+   * 后山老树（守望古树，核心意象）
    * 位于森林地图左侧空地，大树 + 交互
    */
   private setupOldTree(): void {
@@ -2100,87 +2110,113 @@ export class MapScene extends Phaser.Scene {
 
     const container = this.add.container(cx, cy);
 
-    // ── 树干（多层，更有质感） ──
+    // ── 地面阴影（树底，更立体） ──
+    const groundShadow = this.add.graphics();
+    groundShadow.fillStyle(0x000000, 0.18);
+    groundShadow.fillEllipse(0, 42, 92, 22);
+    container.add(groundShadow);
+
+    // ── 树根（向四周延伸，更自然） ──
+    const roots = this.add.graphics();
+    roots.fillStyle(0x2e2012, 1);
+    roots.fillEllipse(-20, 40, 24, 9);
+    roots.fillEllipse(22, 40, 26, 9);
+    roots.fillEllipse(0, 42, 18, 8);
+    roots.fillStyle(0x4a3520, 0.6);
+    roots.fillEllipse(-18, 38, 14, 5);
+    roots.fillEllipse(20, 38, 15, 5);
+    container.add(roots);
+
+    // ── 树干（多层，深棕 + 树皮纹理） ──
     const trunk = this.add.graphics();
-    // 主干（深棕）
-    trunk.fillStyle(0x3a2a1a, 1);
-    trunk.fillRoundedRect(-12, -20, 24, 60, 4);
-    // 树干纹理（浅色条纹）
-    trunk.fillStyle(0x4a3a2a, 0.6);
-    trunk.fillRoundedRect(-8, -15, 6, 50, 2);
-    trunk.fillRoundedRect(4, -10, 5, 45, 2);
-    // 树根（向两侧延伸）
-    trunk.fillStyle(0x3a2a1a, 1);
-    trunk.fillEllipse(-18, 38, 20, 8);
-    trunk.fillEllipse(18, 38, 20, 8);
-    trunk.fillStyle(0x4a3a2a, 0.5);
-    trunk.fillEllipse(-14, 36, 12, 5);
-    trunk.fillEllipse(14, 36, 12, 5);
+    trunk.fillStyle(0x332415, 1);
+    trunk.fillRoundedRect(-14, -22, 28, 64, 5);
+    // 树皮条纹（深浅交替竖纹）
+    trunk.fillStyle(0x4a3520, 0.85);
+    trunk.fillRoundedRect(-10, -18, 5, 56, 2);
+    trunk.fillRoundedRect(4, -14, 4, 52, 2);
+    trunk.fillStyle(0x2a1d10, 0.7);
+    trunk.fillRoundedRect(-2, -16, 3, 54, 1);
+    trunk.fillRoundedRect(8, -10, 3, 48, 1);
+    // 树节（疤痕）
+    trunk.fillStyle(0x1f1508, 0.9);
+    trunk.fillEllipse(-6, 8, 5, 7);
+    trunk.fillStyle(0x4a3520, 0.5);
+    trunk.fillEllipse(-6, 8, 3, 5);
     container.add(trunk);
 
     // ── 树枝（向四周伸展） ──
     const branches = this.add.graphics();
-    branches.lineStyle(4, 0x3a2a1a, 1);
-    // 左枝
-    branches.lineBetween(-12, -5, -40, -25);
-    branches.lineStyle(3, 0x3a2a1a, 0.8);
-    branches.lineBetween(-40, -25, -55, -35);
-    // 右枝
-    branches.lineStyle(4, 0x3a2a1a, 1);
-    branches.lineBetween(12, -5, 40, -25);
-    branches.lineStyle(3, 0x3a2a1a, 0.8);
-    branches.lineBetween(40, -25, 55, -35);
+    branches.lineStyle(5, 0x332415, 1);
+    branches.lineBetween(-14, -10, -44, -30);
+    branches.lineBetween(14, -10, 44, -30);
+    branches.lineStyle(3.5, 0x332415, 0.85);
+    branches.lineBetween(-44, -30, -62, -40);
+    branches.lineBetween(44, -30, 62, -40);
+    branches.lineBetween(-44, -30, -50, -18);
+    branches.lineBetween(44, -30, 50, -18);
     // 上枝
-    branches.lineStyle(3, 0x3a2a1a, 0.9);
-    branches.lineBetween(0, -20, -15, -50);
-    branches.lineBetween(0, -20, 15, -50);
+    branches.lineStyle(3.5, 0x332415, 0.9);
+    branches.lineBetween(0, -24, -14, -54);
+    branches.lineBetween(0, -24, 14, -54);
+    branches.lineBetween(0, -24, 0, -60);
     container.add(branches);
 
-    // ── 树冠（多层圆形，营造茂密感） ──
+    // ── 树冠（多层圆形 + 边缘叶簇，更茂密） ──
     const canopy = this.add.graphics();
-    // 底层（深绿）
-    canopy.fillStyle(0x1a4a10, 0.9);
-    canopy.fillCircle(0, -45, 48);
-    canopy.fillCircle(-30, -35, 35);
-    canopy.fillCircle(30, -35, 35);
-    // 中层（中绿）
-    canopy.fillStyle(0x2a5a18, 0.85);
-    canopy.fillCircle(0, -50, 40);
-    canopy.fillCircle(-25, -40, 30);
-    canopy.fillCircle(25, -40, 30);
-    // 顶层（浅绿，高光）
-    canopy.fillStyle(0x3a6a20, 0.7);
-    canopy.fillCircle(0, -55, 32);
-    canopy.fillCircle(-18, -48, 22);
-    canopy.fillCircle(18, -48, 22);
-    // 最顶层（阳光照射）
-    canopy.fillStyle(0x4a7a28, 0.5);
-    canopy.fillCircle(0, -60, 20);
+    // 底层（最深的绿，外轮廓）
+    canopy.fillStyle(0x143c0c, 0.95);
+    canopy.fillCircle(0, -48, 52);
+    canopy.fillCircle(-34, -38, 38);
+    canopy.fillCircle(34, -38, 38);
+    canopy.fillCircle(-14, -28, 34);
+    canopy.fillCircle(14, -28, 34);
+    // 中层（主绿）
+    canopy.fillStyle(0x1e4e10, 0.9);
+    canopy.fillCircle(0, -52, 44);
+    canopy.fillCircle(-28, -42, 32);
+    canopy.fillCircle(28, -42, 32);
+    canopy.fillCircle(-12, -34, 28);
+    canopy.fillCircle(12, -34, 28);
+    // 亮层（叶簇受光）
+    canopy.fillStyle(0x2e6418, 0.85);
+    canopy.fillCircle(0, -58, 36);
+    canopy.fillCircle(-22, -48, 26);
+    canopy.fillCircle(22, -48, 26);
+    // 顶层高光（阳光）
+    canopy.fillStyle(0x3e7a20, 0.6);
+    canopy.fillCircle(0, -64, 24);
+    canopy.fillCircle(-14, -54, 16);
+    canopy.fillCircle(14, -54, 16);
+    canopy.fillStyle(0x508a2a, 0.4);
+    canopy.fillCircle(0, -70, 14);
     container.add(canopy);
+
+    // ── 垂下的枝条（树冠边缘） ──
+    const vines = this.add.graphics();
+    vines.lineStyle(2, 0x2e4a18, 0.7);
+    vines.lineBetween(-40, -30, -46, -8);
+    vines.lineBetween(-46, -8, -44, 4);
+    vines.lineBetween(38, -30, 44, -10);
+    vines.lineBetween(44, -10, 42, 2);
+    vines.lineBetween(-18, -20, -24, 0);
+    container.add(vines);
 
     // ── 光斑（树叶间隙的阳光） ──
     const light = this.add.graphics();
-    light.fillStyle(0xffffaa, 0.15);
-    light.fillCircle(-15, -45, 8);
-    light.fillCircle(10, -55, 6);
-    light.fillCircle(20, -40, 7);
+    light.fillStyle(0xffffcc, 0.18);
+    light.fillCircle(-18, -50, 9);
+    light.fillCircle(12, -60, 7);
+    light.fillCircle(22, -44, 8);
+    light.fillCircle(-6, -68, 5);
     container.add(light);
 
-    // ── 树干上的刻痕（小时候林澈刻的） ──
+    // ── 树干上的刻痕（小时候林澈刻的，保留） ──
     const mark = this.add.text(0, 0, '✦', {
       fontSize: '8px',
       color: '#8a7a5a',
     }).setOrigin(0.5);
     container.add(mark);
-
-    // ── 树名牌 ──
-    const label = this.add.text(0, 48, '爷爷种的树', {
-      fontSize: '10px',
-      color: '#8a7a5a',
-      stroke: '#000',
-      strokeThickness: 2,
-    }).setOrigin(0.5);
-    container.add(label);
 
     // 设置深度（树冠高于玩家）
     container.setDepth(8);
@@ -2277,7 +2313,7 @@ export class MapScene extends Phaser.Scene {
       ];
     } else if (shardCount === 3) {
       lines = [
-        { speaker: '', color: '#aaaaaa', text: '爷爷种的树。' },
+        { speaker: '', color: '#aaaaaa', text: '这棵树，一直站在这里。' },
         { speaker: '', color: '#aaaaaa', text: '他不在了，但树还在。' },
         { speaker: '', color: '#aaaaaa', text: '每年都在长高，每年都在看同样的星星。' },
         { speaker: '', color: '#aaaaaa', text: '（你靠着树干坐下，抬头看穿过树叶的天空。）' },
@@ -4919,6 +4955,50 @@ export class MapScene extends Phaser.Scene {
       }
     }
     console.log(`[MapScene:${this.mapKey}] 睡觉判定格 ${this.bedTiles.size} 个`);
+  }
+
+  /**
+   * house 场景：床铺格（Ground gid 9）叠加程序化绘制的俯视床。
+   * 背景：gid9 在 tileset 里是屋顶瓦片（陶土红），2×2 平铺看不出是床，
+   * 玩家无法一眼识别睡觉点。这里在床区域绘制「床头板+床垫+枕头+红被子+格纹」，
+   * 并在床头上方加 💤 睡眠标记。睡觉判定逻辑（bedTiles）不受影响。
+   */
+  private setupHouseBed(): void {
+    // 床区域：tile (2,2)-(3,3) → 像素 (32,32)-(64,64)（2×2 tile = 32×32）
+    const x = 2 * TILE_SIZE;
+    const y = 2 * TILE_SIZE;
+    const w = 2 * TILE_SIZE;
+    const h = 2 * TILE_SIZE;
+
+    const bed = this.add.graphics();
+    // ── 床外框（深棕木框，与木地板区分） ──
+    bed.fillStyle(0x4a3018, 1);
+    bed.fillRoundedRect(x - 1, y - 1, w + 2, h + 2, 3);
+    // ── 床垫（米白） ──
+    bed.fillStyle(0xf0ead8, 1);
+    bed.fillRoundedRect(x + 2, y + 2, w - 4, h - 4, 3);
+    // ── 枕头（纯白，床头下方） ──
+    bed.fillStyle(0xffffff, 1);
+    bed.fillRoundedRect(x + 7, y + 5, w - 14, 8, 3);
+    bed.lineStyle(1, 0xd8d0c0, 0.8);
+    bed.lineBetween(x + 7, y + 9, x + w - 7, y + 9);
+    // ── 被子（鲜红，盖住下半部分） ──
+    bed.fillStyle(0xd03020, 1);
+    bed.fillRoundedRect(x + 2, y + 15, w - 4, h - 17, 3);
+    // 被子格纹（深红横线，清晰）
+    bed.lineStyle(1, 0xa02018, 0.9);
+    bed.lineBetween(x + 3, y + 20, x + w - 3, y + 20);
+    bed.lineBetween(x + 3, y + 25, x + w - 3, y + 25);
+    bed.setDepth(2);
+
+    // ── 💤 睡眠标记（床头上方，静态，玩家一眼识别） ──
+    const zzz = this.add.text(x + w / 2, y - 9, '💤', {
+      fontSize: '13px',
+      color: '#ffffff',
+      stroke: '#000',
+      strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(3);
+    void zzz;
   }
 
   /** 玩家所在格是否在任一床铺格的相邻 1 格内（含床格本身） */

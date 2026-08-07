@@ -1,16 +1,32 @@
 {
-  "version": "1.1",
+  "version": "1.3",
   "name": "star_island_palette",
-  "description": "《归星物语》统一像素调色板锚点（v1.1：flower 改为草地绿底+花点保留杂色；整体配合 normalizer --soften 0.7 柔化）",
+  "description": "《归星物语》统一像素调色板锚点（v1.3：+mine 矿洞 8 锚点 gid 9-16；gid 1-8 通用室外/地面系，gid 9-16 按场景语义复用：town 建筑系 / mine 矿洞系）",
   "anchors": {
-    "grass":  "#609848",
-    "dirt":   "#967042",
-    "soil":   "#482e1a",
-    "stone":  "#54545c",
-    "water":  "#345c8c",
-    "wood":   "#be9054",
-    "path":   "#d2b07c",
-    "flower": "#6e9450"
+    "grass":   "#609848",
+    "dirt":    "#967042",
+    "soil":    "#482e1a",
+    "stone":   "#54545c",
+    "water":   "#345c8c",
+    "wood":    "#be9054",
+    "path":    "#d2b07c",
+    "flower":  "#6e9450",
+    "roof":    "#964832",
+    "wall":    "#d6be96",
+    "door":    "#784a2a",
+    "window":  "#d6be96",
+    "well":    "#5c5c68",
+    "fence":   "#845a36",
+    "signpost":"#987048",
+    "bush":    "#3a6c34",
+    "rock_wall":"#54545c",
+    "pillar":  "#4a4a54",
+    "rail":    "#6b5a42",
+    "ore":     "#5a5a68",
+    "crate":   "#8a6a42",
+    "plank":   "#967048",
+    "gravel":  "#7a7268",
+    "cart":    "#6e5a3e"
   },
   "usage": {
     "pipeline": "GPT 原稿 → 网格清洗 → 色彩量化 → 调色板映射(主色邻域偏移到锚点, 杂色保留) → 无缝边缘 → 整体柔化(--soften) → 16px tile",
@@ -22,12 +38,22 @@
       "5": "soil",
       "6": "wood",
       "7": "path",
-      "8": "flower"
+      "8": "flower",
+      "9": "roof|rock_wall",
+      "10": "wall|pillar",
+      "11": "door|rail",
+      "12": "window|ore",
+      "13": "well|crate",
+      "14": "fence|plank",
+      "15": "signpost|gravel",
+      "16": "bush|cart"
     },
     "note": [
+      "gid 1-8 与 farm 一致（跨场景统一）；gid 9-16 按场景取语义：town 建筑系（roof/wall/door/window/well/fence/signpost/bush），mine 矿洞系（rock_wall 岩壁/pillar 矿柱/rail 轨道/ore 矿石堆/crate 木箱/plank 木板/gravel 碎石/cart 矿车）",
+      "mine 锚点色取自脚本版 mine_tileset 主色（暗灰/暗棕，比户外更低饱和），gid 9/10 岩壁矿柱同为灰系以纹理区分",
       "flower 锚点 = 草地绿（绿底），黄色花点由 map_to_anchor 的阈值保留杂色机制呈现，避免花园一片黄",
       "整体柔化由 normalizer --soften 0.7 控制（HSL 饱和度 ×0.7），消除 AI 高饱和荧光感",
-      "锚点色与脚本 tileset 主色对齐（grass/dirt/soil/stone/water/wood/path 不变），AI 管线与脚本管线跨场景统一"
+      "锚点色与脚本 tileset 主色对齐，AI 管线与脚本管线跨场景统一"
     ]
   }
 }

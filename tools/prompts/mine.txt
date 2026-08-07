@@ -6,11 +6,13 @@
 - consistent color style across all tiles in the sheet
 - tiles must tile seamlessly (no visible seams when placed adjacent)
 - tiles must be usable in Tiled map editor (clear pixel boundaries)
-- inspired by Stardew Valley / old-school 16-bit JRPG farming games
+- inspired by Stardew Valley / old-school 16-bit JRPG mining games
 - ALL tiles separated by visible 1-pixel grid lines for clarity
 
-Layout: 8 columns x 2 rows of sub-regions, each sub-region 256x256 pixels.
-[Top row of 8 sub-regions]: stone-floor, dark-stone, ore-vein, water-drip, wood-plank, rubble, path-dim, dirt-dark
-[Bottom row of 8 sub-regions]: rock-wall, mine-pillar, rail-track, ore-pile, wood-crate, plank-bridge, gravel, minecart
+Layout: 4 columns x 4 rows of sub-regions, each sub-region 256x256 pixels, total 1024x1024.
+Row 1 (top): grass, dirt-floor, stone, water
+Row 2: soil, wood, path, flowers
+Row 3: rock-wall, mine-pillar, rail-track, ore-pile
+Row 4 (bottom): wood-crate, plank-floor, gravel, minecart
 
-Color palette: cool grays, dark browns, dim blue water, warm torch-wood. Lower saturation than outdoor tilesets.
+Color palette: cool dark grays, dark browns, dim blue water, warm torch-wood. Lower saturation than outdoor tilesets. Same dirt/grass base as farm tileset for consistency.
