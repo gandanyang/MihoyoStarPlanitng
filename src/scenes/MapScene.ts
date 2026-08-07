@@ -2017,9 +2017,10 @@ export class MapScene extends Phaser.Scene {
   private playEveningLampSequence(): void {
     if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
     this.storyDialogue.play(XIYA_EVENING_OBS_DIALOGUE, () => {
+      // 灯意象闪回配剧情插图（xiya_lamp_v1，2026-08-08 AI 生成；文字在插图上、暗角下，不遮挡）
       playMemoryFlashback(XIYA_LAMP_FLASHBACK, () => {
         this.updateHUD();
-      });
+      }, 'assets/images/story/xiya_lamp_v1.jpg');
     });
   }
 
