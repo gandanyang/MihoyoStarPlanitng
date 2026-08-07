@@ -91,6 +91,7 @@ import {
   GARDEN_RESTORED_XIYA_DIALOGUE, XIYA_SMALL_THINGS_DIALOGUE,
   OLD_HOUSE_RESTORED_DIALOGUE, FOREST_ROAD_RESTORED_DIALOGUE,
   CARPENTER_RETURN_DIALOGUE,
+  ADVENTURER_WELCOME_BACK_DIALOGUE,
   XIYA_GARDEN_TRELLIS_DIALOGUE, XIYA_GARDEN_TRELLIS_NEED_DIALOGUE, XIYA_GARDEN_TRELLIS_DONE_DIALOGUE,
   ELDER_TEA_QUEST_DIALOGUE, ELDER_STAR_SITE_DIALOGUE,
   XIYA_PHOTO_ENTRY_DIALOGUE, XIYA_PHOTO_DONE_DIALOGUE,
@@ -307,6 +308,10 @@ export class MapScene extends Phaser.Scene {
   // FEATURE-041 木匠回归演出：老屋旁出现的木匠（自动触发，一次性，triggerOnce('carpenter_returned') 判重）
   private carpenterReturnSprite: Phaser.GameObjects.Sprite | null = null;
   private carpenterReturnDone = false;
+  // 反馈 #28 阿风欢迎演出：木屋旁出现的阿风（自动触发，一次性，triggerOnce('adventurer_welcome_back') 判重）
+  private adventurerWelcomeSprite: Phaser.GameObjects.Sprite | null = null;
+  private adventurerWelcomeLabel: Phaser.GameObjects.Text | null = null;
+  private adventurerWelcomeDone = false;
   
   // 村长家提示物品
   private elderHouseHint: { sprite: Phaser.GameObjects.Container; text: Phaser.GameObjects.Text } | null = null;
@@ -700,7 +705,13 @@ export class MapScene extends Phaser.Scene {
       this.centerSmallMap = true;
     } else {
       this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
-      this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+      // follow 无 zoom 因子（scroll = 玩家 - 视口宽/2，见 BaseCamera.preRender），zoom=2 下玩家会
+      // 显示在画布右/下缘（户外 follow 失真，观星夜 #29 同源）。用 followOffset 反向补偿：
+      // offset = width/2/zoom - width/2（负值），使 scroll = 玩家 - width/2/zoom，玩家真正居中。
+      const cam = this.cameras.main;
+      const offX = cam.width / 2 / cam.zoom - cam.width / 2;
+      const offY = cam.height / 2 / cam.zoom - cam.height / 2;
+      this.cameras.main.startFollow(this.player, true, 0.1, 0.1, offX, offY);
       this.centerSmallMap = false;
     }
 
@@ -872,6 +883,8 @@ export class MapScene extends Phaser.Scene {
       this.time.delayedCall(900, () => this.tryFirstMorningSequence());
       // FEATURE-041 木匠回归演出：老屋修复后当晚/次日进入 farm 时尝试触发（与清晨剧情各自判重隔离）
       this.time.delayedCall(950, () => this.tryCarpenterReturn());
+      // 反馈 #28 阿风欢迎「你回来了！」：去过镇上后回 farm 尝试触发（依赖 ch1TownIntroDone，错开清晨演出）
+      this.time.delayedCall(1000, () => this.tryAdventurerWelcome());
     }
 
     // 农场商店摊位（靠近按 E 打开 ShopPanel，买种子不用跑小镇）
@@ -1070,6 +1083,21 @@ export class MapScene extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.scrollX = wx - cam.width / 2 / cam.zoom;
     cam.scrollY = wy - cam.height / 2 / cam.zoom;
+  }
+
+  /**
+   * 带 zoom 补偿的镜头缓推（替代 cam.pan，观星夜 #29 修复）。
+   * Phaser 的 pan 内部用 getScroll：scroll = 目标 - 视口宽/2（无 zoom 因子），
+   * zoom=2 下目标点会落到画布右/下缘（画面偏左/偏上）。
+   * 这里反向补偿世界坐标，使 pan 结束后世界点 (wx, wy) 真正位于画面中心。
+   */
+  private panCameraTo(wx: number, wy: number, duration: number, onComplete?: () => void): void {
+    const cam = this.cameras.main;
+    const px = wx - cam.width / 2 / cam.zoom + cam.width / 2;
+    const py = wy - cam.height / 2 / cam.zoom + cam.height / 2;
+    cam.pan(px, py, duration, 'Power2', false, (_c: unknown, progress: number) => {
+      if (progress === 1) onComplete?.();
+    });
   }
 
   update(timeMs: number): void {
@@ -1838,6 +1866,51 @@ export class MapScene extends Phaser.Scene {
         if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
         this.storyDialogue.play(CARPENTER_RETURN_DIALOGUE, () => {
           // ④ 对白结束：木匠成为常驻 NPC → 刷新 HUD → 存档（含 triggerOnce 状态）
+          this.updateHUD();
+          save({
+            x: this.player.x, y: this.player.y,
+            scene: this.mapKey, facing: this.player.facing,
+            dailyQuest: getDailyQuestSaveData(),
+          } as any);
+        });
+      });
+    });
+  }
+
+  /**
+   * 反馈 #28：阿风热情欢迎「你回来了！」
+   * 玩家去过镇上（第一章，ch1TownIntroDone）后再次进入农场时自动触发：
+   * 阿风出现在木屋旁 → 自动播放 ADVENTURER_WELCOME_BACK_DIALOGUE → 一次性（triggerOnce('adventurer_welcome_back')）。
+   * 触发时机依赖 ch1TownIntroDone，天然错开 day2 清晨 first_morning_response 演出。
+   * 双挂钩点：create（从镇上/外部切回农场）+ trySleep（睡醒仍在农场）。
+   */
+  private tryAdventurerWelcome(): void {
+    if (this.mapKey !== 'farm') return;
+    if (!isTutorialDone()) return;
+    if (!isCh1TownIntroDone()) return;
+    if (hasTriggered('adventurer_welcome_back')) return;
+    if (this.adventurerWelcomeDone) return;
+    this.adventurerWelcomeDone = true;
+    triggerOnce('adventurer_welcome_back', () => {
+      // 阿风出现在木屋旁空地（避开 morningXiya 10*T 与 carpenter 12*T 锚点、house 出口）
+      const T = TILE_SIZE;
+      const ax = 11 * T + T / 2;
+      const ay = 21 * T + T / 2;
+      this.adventurerWelcomeSprite = this.add.sprite(ax, ay, 'npc_adventurer');
+      this.adventurerWelcomeSprite.setScale(0.5).setDepth(5);
+      this.adventurerWelcomeLabel = this.add.text(ax, ay - 14, '阿风', {
+        fontSize: '13px', color: '#88b8e8',
+        stroke: '#000000', strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(6);
+      // 演出后自动播对白（不等玩家靠近）
+      this.time.delayedCall(1800, () => {
+        if (!this.storyDialogue) this.storyDialogue = new StoryDialogue();
+        this.storyDialogue.play(ADVENTURER_WELCOME_BACK_DIALOGUE, () => {
+          // 对白结束：阿风离开（移除演出精灵）→ 刷新 HUD → 存档（含 triggerOnce 状态）
+          this.adventurerWelcomeSprite?.destroy();
+          this.adventurerWelcomeSprite = null;
+          this.adventurerWelcomeLabel?.destroy();
+          this.adventurerWelcomeLabel = null;
           this.updateHUD();
           save({
             x: this.player.x, y: this.player.y,
@@ -4425,6 +4498,8 @@ export class MapScene extends Phaser.Scene {
       this.time.delayedCall(1800, () => this.tryFirstMorningSequence());
       // FEATURE-041 木匠回归演出：睡醒后仍留在 farm 时立即尝试触发（老屋已完成且未回归过）
       this.time.delayedCall(2000, () => this.tryCarpenterReturn());
+      // 反馈 #28 阿风欢迎「你回来了！」：睡醒后仍留在 farm 时尝试触发
+      this.time.delayedCall(2200, () => this.tryAdventurerWelcome());
     } finally {
       this.sleeping = false;
     }
@@ -4599,22 +4674,23 @@ export class MapScene extends Phaser.Scene {
     play('stargaze'); // 观星夜演出音效（试玩-14）
     // 显示星空（MVP：静态星野底 + 星点闪烁）
     this.setStarFieldVisible(true);
-    // 镜头调度：缓推至观星点上空（2s）
-    const cam = this.cameras.main;
-    cam.pan(this.STARGAZE_POS.x, this.STARGAZE_POS.y, 2000, 'Power2', false, (_: any, progress: number) => {
-      if (progress === 1) {
-        // 镜头到位后显示记忆片段 + 开始对话
-        showMemoryMoment('这片星空，和爷爷记忆里的一样。');
-        this.storyDialogue?.play(
-          DEMO_ENDING_DIALOGUE,
-          () => this.finishStargaze(),
-          (index: number) => {
-            const choice: EndingChoice = index === 0 ? 'try_stay' : index === 1 ? 'unknown' : 'tonight';
-            setEndingChoice(choice);
-            this.playStargazeAfter(DEMO_ENDING_BRANCHES[choice]);
-          },
-        );
-      }
+    // 临时解除相机边界（#29）：观星点 (504,232) 靠近地图右下缘，zoom=2 视野 400x300 下
+    // clamp 上限只有 scroll=(40,-50)（相机中心最大 240,100），玩家会被推到画布右侧之外，
+    // 表现为"观星夜画面偏左、看不到玩家"。解除 bounds 后相机才能滚到观星点使其真正居中。
+    this.cameras.main.useBounds = false;
+    // 镜头调度：缓推至观星点上空（2s，zoom 补偿见 panCameraTo，#29）
+    this.panCameraTo(this.STARGAZE_POS.x, this.STARGAZE_POS.y, 2000, () => {
+      // 镜头到位后显示记忆片段 + 开始对话
+      showMemoryMoment('这片星空，和爷爷记忆里的一样。');
+      this.storyDialogue?.play(
+        DEMO_ENDING_DIALOGUE,
+        () => this.finishStargaze(),
+        (index: number) => {
+          const choice: EndingChoice = index === 0 ? 'try_stay' : index === 1 ? 'unknown' : 'tonight';
+          setEndingChoice(choice);
+          this.playStargazeAfter(DEMO_ENDING_BRANCHES[choice]);
+        },
+      );
     });
   }
 
@@ -4649,9 +4725,12 @@ export class MapScene extends Phaser.Scene {
             this.setStarFieldVisible(false);
             // 重置相机背景为透明（防黑屏：setBackgroundColor 持久化会导致后续场景黑屏）
             cam.setBackgroundColor();
-            // 镜头拉回玩家位置
-            cam.pan(this.player.x, this.player.y, 1000, 'Power2', false, () => {
+            // 镜头拉回玩家位置（zoom 补偿见 panCameraTo，#29）
+            this.panCameraTo(this.player.x, this.player.y, 1000, () => {
               this.updateHUD();
+              // 恢复相机边界（#29）：观星期间临时 useBounds=false，此刻玩家已回到可
+              // 见区域，恢复后 follow 正常。EndingPanel 紧随其后全屏打开，无可见跳变。
+              this.cameras.main.useBounds = true;
               if (!this.endingPanel) this.endingPanel = new EndingPanel();
               save({ x: this.player.x, y: this.player.y, scene: this.mapKey, facing: this.player.facing } as any);
               this.endingPanel.open();

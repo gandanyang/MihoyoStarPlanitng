@@ -45,7 +45,7 @@ function ensureDom(): void {
   // 暗角效果（vignette）
   const vignette = document.createElement('div');
   vignette.style.cssText =
-    'position:absolute;top:0;right:0;bottom:0;left:0;' +
+    'position:absolute;top:0;right:0;bottom:0;left:0;z-index:2;' +
     'background:radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%);' +
     'pointer-events:none;';
   containerEl.appendChild(vignette);
@@ -59,10 +59,11 @@ function ensureDom(): void {
     'opacity:0;transition:opacity 1.2s ease;pointer-events:none;';
   containerEl.appendChild(bgImg);
 
-  // 场景描述区域
+  // 场景描述区域（position:relative 提升到背景图之上——#27：bgImg 为 absolute，
+  // 绘制在普通流元素之上，会把文字盖住；z-index:1 保证文字在 bgImg 上、暗角下）
   sceneEl = document.createElement('div');
   sceneEl.style.cssText =
-    'max-width:min(480px,85vw);text-align:center;padding:0 24px;' +
+    'position:relative;z-index:1;max-width:min(480px,85vw);text-align:center;padding:0 24px;' +
     'opacity:0;transition:opacity 1.0s ease 0.3s;';
 
   // 主文字

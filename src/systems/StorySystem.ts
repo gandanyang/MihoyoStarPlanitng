@@ -341,6 +341,18 @@ export const CARPENTER_RETURN_DIALOGUE: DialogueLine[] = [
   { speaker: '', color: COLORS.system, text: '（归星岛，多了一个会修东西的人。）' },
 ];
 
+/** 反馈 #28：阿风热情欢迎「你回来了！」（一次性：玩家去过镇上第一章后回农场自动触发）
+ *  纯生活化欢迎，不涉及主角成长/世界观/主线走向；触发实现见 MapScene.tryAdventurerWelcome。
+ *  配音：阿风 3 条新台词由 gen_voice.py 生成（adv_07~09），VoiceBank 按 (speaker,text) 匹配。 */
+export const ADVENTURER_WELCOME_BACK_DIALOGUE: DialogueLine[] = [
+  { speaker: '', color: COLORS.system, text: '（刚走进庄园，就看见阿风靠在木屋前的栅栏上，远远地朝你挥手。）' },
+  { speaker: '阿风', color: '#88b8e8', text: '嘿！你回来了！' },
+  { speaker: '林澈', color: COLORS.linche, text: '阿风？你怎么跑庄园来了？' },
+  { speaker: '阿风', color: '#88b8e8', text: '路过，顺便看看。听说你把这儿拾掇得挺像样，我来长长见识。' },
+  { speaker: '林澈', color: COLORS.linche, text: '（笑）就是刚开荒，还乱着呢。' },
+  { speaker: '阿风', color: '#88b8e8', text: '乱不怕，有人气就行。你忙你的，我先走啦——回头找你玩。' },
+];
+
 // ============ T2 改动 2：关键对白（制作人 2026-08-06 定稿） ============
 /** 村长「为什么种田」：星之碎片交付完成后追加（T2 改动 2，制作人定稿台词） */
 export const ELDER_WHY_FARM_DIALOGUE: DialogueLine[] = [
